@@ -4,39 +4,8 @@
 # ///
 
 """
-Enables automatic self-updating! (To a limited extent.)
-This script is possible because of the tilde-pattern of the requirements files.
-Called by a cron job, it will check to see if a `uv pip compile ...`
-  would create anything different from the previous run.
-If so, it will activate the project's venv, and run `uv pip sync...' against the newly compiled file,
-  auto-updating the venv.
-
-Flow overview...
-(see `manage_update()`, near bottom dundermain, for details)
-- determines the local/staging/production environment
-- determines the python version
-- determines the group
-- determines the admin-emails
-- compiles and saves appropriate requirements file
-- checks it to see if anything is new
-- if so, updates the project's virtual-environment
-
-Usage:
-- Directly:
-    `$ uv run self_update.py "/path/to/project_code_dir/"`
-- Via cron (eg to run every day at midnight):
-    `0 0 * * * /path/to/uv run /path/to/self_update.py "/path/to/project_code_dir/"`
-
-Project assumptions:
-- All requirements files are in a top-level `requirements` directory.
-- The requirements files are named `local.in`, `staging.in`, and `production.in`.
-- The virtual environment is in a parent-level `env` (simlink) directory.
-- (Suggestion: we do _not_ tweak this script for different structures, but rather
-   we restructure our apps to fit these assumptions (to keep this script simple).)
-
-TODOs:
-- Add tests.
-- Email on error.
+See README.md for extensive info.
+<https://github.com/birkin/self_updater_code>
 """
 
 import logging
