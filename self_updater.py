@@ -5,7 +5,7 @@
 
 """
 See README.md for extensive info.
-<https://github.com/birkin/self_updater_code>
+<https://github.com/Brown-University-Library/self_updater_code/blob/main/README.md>
 """
 
 import logging

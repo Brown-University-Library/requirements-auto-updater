@@ -55,7 +55,7 @@ _(Code is working an actively updating the `bdr_deposits_uploader` on dev.)_
 ---
 
 
-### Motivation...
+## Motivation...
 
 The need to make upgrading dependency-packages more sustainable. By definition, the third part of package-notation infers both backwards-compatibility and bug-fixes, so this seems like it should lighten the technical-debt load a bit.
 
