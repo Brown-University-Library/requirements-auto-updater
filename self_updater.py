@@ -94,7 +94,7 @@ def determine_uv_path() -> Path:
         log.debug(f'uv_path: ``{uv_path}``')
     except subprocess.CalledProcessError:
         log.debug("`which` unsuccessful; accessing this script's venv")
-        initial_uv_path: Path = Path(__file__).parent / 'env' / 'bin' / 'uv'
+        initial_uv_path: Path = Path(__file__).parent.parent / 'env' / 'bin' / 'uv'
         uv_path = initial_uv_path.resolve()
     log.debug(f'determined uv_path: ``{uv_path}``')
     return uv_path
