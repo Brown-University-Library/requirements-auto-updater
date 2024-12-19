@@ -6,6 +6,9 @@
 """
 See README.md for extensive info.
 <https://github.com/Brown-University-Library/self_updater_code/blob/main/README.md>
+
+Main manager function is`manage_update()`, at bottom above dundermain.
+Functions are in order called by `manage_update()`.
 """
 
 import logging
@@ -319,13 +322,13 @@ def manage_update(project_path: str) -> None:
     ## see if the new compile is different --------------------------
     differences_found: bool = compare_with_previous_backup(project_path, compiled_requirements)
     if not differences_found:
-        log.debug('no differences found in dependencies; exiting.')
-        return
+        log.debug('no differences found in dependencies.')
     else:
-        ## if it's different, update the venv -----------------------
+        ## since it's different, update the venv --------------------
+        log.debug('differences found in dependencies; updating venv')
         sync_dependencies(project_path, compiled_requirements)
-        update_permissions_and_mark_active(project_path, compiled_requirements)
         log.debug('dependencies updated successfully.')
+    update_permissions_and_mark_active(project_path, compiled_requirements)
     return
 
 
