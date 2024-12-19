@@ -148,9 +148,9 @@ def get_uv_path(project_path: Path) -> Path:
     return uv_path
 
 
-def remove_old_backups(backup_dir: Path, keep_recent: int = 7) -> None:
+def remove_old_backups(backup_dir: Path, keep_recent: int = 30) -> None:
     """
-    Removes all files in the backup directory other than the most-recent 7 files.
+    Removes all files in the backup directory other than the most-recent files.
     """
     log.debug('starting remove_old_backups()')
     backups: list[Path] = sorted([f for f in backup_dir.iterdir() if f.is_file() and f.suffix == '.txt'], reverse=True)
