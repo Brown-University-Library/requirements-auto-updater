@@ -24,6 +24,19 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
+def validate_project_path(project_path: str) -> None:
+    """
+    Validates that the provided project path exists.
+    Exits the script if the path is invalid.
+    """
+    log.debug('starting validate_project_path()')
+    if not Path(project_path).exists():
+        message = f'Error: The provided project_path ``{project_path}`` does not exist.'
+        log.exception(message)
+        raise Exception(message)
+    return
+
+
 def infer_environment_type() -> str:
     """
     Infers environment type based on the system hostname.
@@ -56,19 +69,6 @@ def infer_group(project_path: Path) -> str:
         message = f'Error inferring group: {e}'
         log.exception(message)
         raise Exception(message)
-
-
-def validate_project_path(project_path: str) -> None:
-    """
-    Validates that the provided project path exists.
-    Exits the script if the path is invalid.
-    """
-    log.debug('starting validate_project_path()')
-    if not Path(project_path).exists():
-        message = f'Error: The provided project_path ``{project_path}`` does not exist.'
-        log.exception(message)
-        raise Exception(message)
-    return
 
 
 def infer_python_version(project_path: Path) -> str:
@@ -268,14 +268,14 @@ def manage_update(project_path: str) -> None:
     Calls various helper functions to validate, compile, compare, sync, and update permissions.
     """
     log.debug('starting manage_update()')
-    project_path: Path = Path(project_path).resolve()
+    ## validate project path ----------------------------------------
+    project_path: Path = Path(project_path).resolve()  # ensures an absolute path now
+    validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
     ## infer local/staging/production, and python version -----------
     environment_type: str = infer_environment_type()
     python_version: str = infer_python_version(project_path)
-    ## validate project path ----------------------------------------
-    validate_project_path(project_path)
     ## compile requirements file ------------------------------------
     backup_file: Path = compile_requirements(project_path, python_version, environment_type)
     ## cleanup old backups ------------------------------------------
