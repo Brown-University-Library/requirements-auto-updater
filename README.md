@@ -31,7 +31,7 @@ _(Code is working an actively updating the `bdr_deposits_uploader` on dev.)_
     `$ uv run ./self_update.py "/path/to/project_code_dir/"`
 
 - Via cron (eg to run every day at midnight):
-    `0 0 * * * /path/to/uv run /path/to/self_update.py "/path/to/project_code_dir/"`
+    `0 0 * * * cd "/path/to/self_updater_stuff/self_updater_code/"; ../env/bin/uv run "/path/to/project_code_dir/"`
 
 ---
 
