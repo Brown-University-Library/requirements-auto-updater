@@ -37,7 +37,7 @@ def validate_project_path(project_path: str) -> None:
     return
 
 
-def infer_environment_type() -> str:
+def determine_environment_type() -> str:
     """
     Infers environment type based on the system hostname.
     Returns 'local', 'staging', or 'production'.
@@ -71,7 +71,7 @@ def infer_group(project_path: Path) -> str:
         raise Exception(message)
 
 
-def infer_python_version(project_path: Path) -> str:
+def determine_python_version(project_path: Path) -> str:
     """
     Determines Python version from the virtual environment in the project.
     Exits the script if the virtual environment or Python version is invalid.
@@ -275,9 +275,11 @@ def manage_update(project_path: str) -> None:
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
     ## determine python version -------------------------------------
-    python_version: str = infer_python_version(project_path)  # for compiling requirements
+    python_version: str = determine_python_version(project_path)  # for compiling requirements
     ## determine local/staging/production environment ---------------
-    environment_type: str = infer_environment_type()  # for compiling requirements
+    environment_type: str = determine_environment_type()  # for compiling requirements
+    ## determine `uv` path ------------------------------------------
+    uv_path: Path = determine_uv_path()
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type)
     ## cleanup old backups ------------------------------------------
@@ -293,6 +295,25 @@ def manage_update(project_path: str) -> None:
         update_permissions_and_mark_active(project_path, compiled_requirements)
         log.debug('dependencies updated successfully.')
     return
+
+
+def determine_uv_path() -> Path:
+    """
+    Checks `which` for the `uv` command.
+    If that fails, gets path from this script's venv.
+    Used for compile and sync.
+    """
+    log.debug('starting determine_uv_path()')
+    try:
+        uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
+        uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
+        log.debug(f'uv_path: ``{uv_path}``')
+    except subprocess.CalledProcessError:
+        log.debug("`which` unsuccessful; accessing this script's venv")
+        initial_uv_path: Path = Path(__file__).parent / 'env' / 'bin' / 'uv'
+        uv_path = initial_uv_path.resolve()
+    log.debug(f'determined uv_path: ``{uv_path}``')
+    return uv_path
 
 
 if __name__ == '__main__':
