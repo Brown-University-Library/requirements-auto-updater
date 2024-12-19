@@ -140,6 +140,8 @@ def compile_requirements(project_path: Path, python_version: str, environment_ty
         raise Exception(message)
     return compiled_filepath
 
+    ## end def compile_requirements()
+
 
 def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
     """
@@ -168,20 +170,7 @@ def compare_with_previous_backup(project_path: Path, backup_file: Path) -> bool:
     log.debug(f'backup_dir: ``{backup_dir}``')
     previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt' and f != backup_file])
 
-    def filter_initial_comments(lines: list[str]) -> list[str]:
-        """
-        Filters out initial lines starting with '#' from a list of lines.
-        The reason for this is that:
-        - one of the first line of the backup file includes a timestamp, which would always be different.
-        - if a generated `.txt` file is used to update the venv, the string `# ACTIVE`
-          is added to the top of the file, which would always be different from a fresh compile.
-        """
-        log.debug('starting filter_initial_comments()')
-        non_comment_index = next((i for i, line in enumerate(lines) if not line.startswith('#')), len(lines))
-        return lines[non_comment_index:]
-
     if previous_files:
-        log.debug('hereC')
         previous_file_path: Path = previous_files[-1]
         with previous_file_path.open() as prev, backup_file.open() as curr:
             prev_lines = prev.readlines()
@@ -238,6 +227,8 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
         log.exception(message)
         raise Exception(message)
 
+    ## end def sync_dependencies()
+
 
 def update_permissions_and_mark_active(project_path: Path, backup_file: Path) -> None:
     """
@@ -268,6 +259,20 @@ def update_permissions_and_mark_active(project_path: Path, backup_file: Path) ->
 ## ------------------------------------------------------------------
 ## helper functions (called by code above) --------------------------
 ## ------------------------------------------------------------------
+
+
+def filter_initial_comments(lines: list[str]) -> list[str]:
+    """
+    Filters out initial lines starting with '#' from a list of lines.
+    The reason for this is that:
+    - one of the first line of the backup file includes a timestamp, which would always be different.
+    - if a generated `.txt` file is used to update the venv, the string `# ACTIVE`
+        is added to the top of the file, which would always be different from a fresh compile.
+    Called by `compare_with_previous_backup()`.
+    """
+    log.debug('starting filter_initial_comments()')
+    non_comment_index = next((i for i, line in enumerate(lines) if not line.startswith('#')), len(lines))
+    return lines[non_comment_index:]
 
 
 def infer_group(project_path: Path) -> str:
@@ -326,6 +331,8 @@ def manage_update(project_path: str) -> None:
         log.debug('dependencies updated successfully.')
     update_permissions_and_mark_active(project_path, compiled_requirements)
     return
+
+    ## end def manage_update()
 
 
 if __name__ == '__main__':
