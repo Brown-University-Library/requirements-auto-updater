@@ -201,25 +201,36 @@ def compare_with_previous_backup(project_path: Path, backup_file: Path) -> bool:
 
 def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
     """
-    Referencing the virtual environment, syncs dependencies to the recent `--output` requirements.in file.
+    Prepares the venv environment.
+    Syncs the recent `--output` requirements.in file to the venv.
     Exits the script if any command fails.
+
+    Why this works, without explicitly "activate"-ing the venv...
+
+    When a Python virtual environment is traditionally 'activated' -- ie via `source venv/bin/activate`
+    in a shell -- what is really happening is that a set of environment variables is adjusted
+    to ensure that when python or other commands are run, they refer to the virtual environment's
+    binaries and site-packages rather than the system-wide python installation.
+
+    This code mimicks that environment modification by explicitly setting
+    the PATH and VIRTUAL_ENV environment variables before running the command.
     """
     log.debug('starting activate_and_sync_dependencies()')
-
+    ## prepare env-path variables -----------------------------------
     venv_bin_path: Path = project_path.parent / 'env' / 'bin'
-    log.debug(f'venv_bin_path: ``{venv_bin_path}``')
     venv_path: Path = project_path.parent / 'env'
+    log.debug(f'venv_bin_path: ``{venv_bin_path}``')
     log.debug(f'venv_path: ``{venv_path}``')
-
+    ## set the local-env paths ---------------------------------------
+    local_scoped_env = os.environ.copy()
+    local_scoped_env['PATH'] = f'{venv_bin_path}:{local_scoped_env["PATH"]}'  # prioritizes venv-path
+    local_scoped_env['VIRTUAL_ENV'] = str(venv_path)
+    ## prepare sync command ------------------------------------------
     sync_command: list[str] = [str(uv_path), 'pip', 'sync', str(backup_file)]
     log.debug(f'sync_command: ``{sync_command}``')
-
-    env = os.environ.copy()
-    env['PATH'] = f'{venv_bin_path}:{env["PATH"]}'
-    env['VIRTUAL_ENV'] = str(venv_path)
-
     try:
-        subprocess.run(sync_command, check=True, env=env)
+        ## run sync command ------------------------------------------
+        subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
         log.debug('uv pip sync was successful')
         return
     except subprocess.CalledProcessError:
