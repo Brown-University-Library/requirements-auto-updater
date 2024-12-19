@@ -205,9 +205,9 @@ def compare_with_previous_backup(project_path: Path, backup_file: Path) -> bool:
     return changes
 
 
-def activate_and_sync_dependencies(project_path: Path, backup_file: Path) -> None:
+def sync_dependencies(project_path: Path, backup_file: Path) -> None:
     """
-    Activate the virtual environment and sync dependencies using the provided backup file.
+    Referencing the virtual environment, syncs dependencies to the recent `--output` requirements.in file.
     Exits the script if any command fails.
     """
     log.debug('starting activate_and_sync_dependencies()')
@@ -232,29 +232,6 @@ def activate_and_sync_dependencies(project_path: Path, backup_file: Path) -> Non
         return
     except subprocess.CalledProcessError:
         message = 'Error during pip sync'
-        log.exception(message)
-        raise Exception(message)
-
-
-def activate_virtualenv(project_path: Path) -> None:
-    """
-    Activates the virtual environment for the project.
-    Called by `activate_and_sync_dependencies()`.
-    """
-    log.debug('starting activate_virtualenv()')
-    activate_script: Path = (project_path / '../env/bin/activate').resolve()
-    log.debug(f'activate_script: ``{activate_script}``')
-    if not activate_script.exists():
-        message = 'Error: Activate script not found.'
-        log.exception(message)
-        raise Exception(message)
-
-    activate_command: str = f'source {activate_script}'
-    try:
-        subprocess.run(activate_command, shell=True, check=True, executable='/bin/bash')
-        return
-    except subprocess.CalledProcessError:
-        message = 'Error activating virtual environment'
         log.exception(message)
         raise Exception(message)
 
@@ -311,7 +288,7 @@ def manage_update(project_path: str) -> None:
         return
     else:
         ## if it's different, update the venv -----------------------
-        activate_and_sync_dependencies(project_path, backup_file)
+        sync_dependencies(project_path, backup_file)
         update_permissions_and_mark_active(project_path, backup_file)
         log.debug('dependencies updated successfully.')
     return
