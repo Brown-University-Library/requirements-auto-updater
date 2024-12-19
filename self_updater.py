@@ -24,6 +24,11 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
+## ------------------------------------------------------------------
+## main code -- called by manage_update() ---------------------------
+## ------------------------------------------------------------------
+
+
 def validate_project_path(project_path: str) -> None:
     """
     Validates that the provided project path exists.
@@ -35,40 +40,6 @@ def validate_project_path(project_path: str) -> None:
         log.exception(message)
         raise Exception(message)
     return
-
-
-def determine_environment_type() -> str:
-    """
-    Infers environment type based on the system hostname.
-    Returns 'local', 'staging', or 'production'.
-    """
-    hostname: str = subprocess.check_output(['hostname'], text=True).strip()
-    if hostname.startswith('d') or hostname.startswith('q'):
-        env_type: str = 'staging'
-    elif hostname.startswith('p'):
-        env_type: str = 'production'
-    else:
-        env_type: str = 'local'
-    log.debug(f'env_type: {env_type}')
-    return env_type
-
-
-def infer_group(project_path: Path) -> str:
-    """
-    Infers the group by examining existing files.
-    Returns the most common group.
-    """
-    log.debug('starting infer_group()')
-    try:
-        group_list: list[str] = subprocess.check_output(['ls', '-l', str(project_path)], text=True).splitlines()
-        groups = [line.split()[3] for line in group_list if len(line.split()) > 3]
-        most_common_group: str = max(set(groups), key=groups.count)
-        log.debug(f'most_common_group: {most_common_group}')
-        return most_common_group
-    except Exception as e:
-        message = f'Error inferring group: {e}'
-        log.exception(message)
-        raise Exception(message)
 
 
 def determine_python_version(project_path: Path) -> str:
@@ -91,38 +62,72 @@ def determine_python_version(project_path: Path) -> str:
     return python_version
 
 
-def compile_requirements(project_path: Path, python_version: str, environment_type: str) -> Path:
+def determine_environment_type() -> str:
+    """
+    Infers environment type based on the system hostname.
+    Returns 'local', 'staging', or 'production'.
+    """
+    hostname: str = subprocess.check_output(['hostname'], text=True).strip()
+    if hostname.startswith('d') or hostname.startswith('q'):
+        env_type: str = 'staging'
+    elif hostname.startswith('p'):
+        env_type: str = 'production'
+    else:
+        env_type: str = 'local'
+    log.debug(f'env_type: {env_type}')
+    return env_type
+
+
+def determine_uv_path() -> Path:
+    """
+    Checks `which` for the `uv` command.
+    If that fails, gets path from this script's venv.
+    Used for compile and sync.
+    """
+    log.debug('starting determine_uv_path()')
+    try:
+        uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
+        uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
+        log.debug(f'uv_path: ``{uv_path}``')
+    except subprocess.CalledProcessError:
+        log.debug("`which` unsuccessful; accessing this script's venv")
+        initial_uv_path: Path = Path(__file__).parent / 'env' / 'bin' / 'uv'
+        uv_path = initial_uv_path.resolve()
+    log.debug(f'determined uv_path: ``{uv_path}``')
+    return uv_path
+
+
+def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
     """
     Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
     Returns the path to the newly created backup file.
     """
     log.debug('starting compile_requirements()')
-
+    ## prepare requirements.in filepath -----------------------------
+    requirements_in: Path = project_path / 'requirements' / f'{environment_type}.in'  # local.in, staging.in, production.in
+    log.debug(f'requirements.in path, ``{requirements_in}``')
+    ## ensure backup-directory is ready -----------------------------
     backup_dir: Path = project_path.parent / 'requirements_backups'
     log.debug(f'backup_dir: ``{backup_dir}``')
     backup_dir.mkdir(parents=True, exist_ok=True)
-
+    ## prepare compiled_filepath ------------------------------------
     timestamp: str = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-    backup_file: Path = backup_dir / f'{environment_type}_{timestamp}.txt'
-    log.debug(f'backup_file: ``{backup_file}``')
-
-    requirements_in: Path = project_path / 'requirements' / f'{environment_type}.in'  # local.in, staging.in, production.in
-    log.debug(f'requirements.in path, ``{requirements_in}``')
-
-    uv_path: Path = get_uv_path(project_path)
+    compiled_filepath: Path = backup_dir / f'{environment_type}_{timestamp}.txt'
+    log.debug(f'backup_file: ``{compiled_filepath}``')
+    ## prepare compile command --------------------------------------
     compile_command: list[str] = [
         str(uv_path),
         'pip',
         'compile',
         str(requirements_in),
         '--output-file',
-        str(backup_file),
+        str(compiled_filepath),
         '--universal',
         '--python',
         python_version,
     ]
     log.debug(f'compile_command: ``{compile_command}``')
-
+    ## run compile command ------------------------------------------
     try:
         subprocess.run(compile_command, check=True)
         log.debug('uv pip compile was successful')
@@ -130,22 +135,7 @@ def compile_requirements(project_path: Path, python_version: str, environment_ty
         message = 'Error during pip compile'
         log.exception(message)
         raise Exception(message)
-
-    return backup_file
-
-
-def get_uv_path(project_path: Path) -> Path:
-    """
-    Infers the full path to `uv` directly from the virtual environment.
-    """
-    log.debug('starting get_uv_path()')
-    uv_path: Path = project_path.parent / 'env/bin/uv'
-    log.debug(f'uv_path: {uv_path}')
-    if not uv_path.exists():
-        message = f'Error: `uv` command not found in virtual environment at {uv_path}.'
-        log.exception(message)
-        raise Exception(message)
-    return uv_path
+    return compiled_filepath
 
 
 def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
@@ -263,6 +253,48 @@ def update_permissions_and_mark_active(project_path: Path, backup_file: Path) ->
     return
 
 
+## ------------------------------------------------------------------
+## helper functions (called by code above) --------------------------
+## ------------------------------------------------------------------
+
+
+def infer_group(project_path: Path) -> str:
+    """
+    Infers the group by examining existing files.
+    Returns the most common group.
+    """
+    log.debug('starting infer_group()')
+    try:
+        group_list: list[str] = subprocess.check_output(['ls', '-l', str(project_path)], text=True).splitlines()
+        groups = [line.split()[3] for line in group_list if len(line.split()) > 3]
+        most_common_group: str = max(set(groups), key=groups.count)
+        log.debug(f'most_common_group: {most_common_group}')
+        return most_common_group
+    except Exception as e:
+        message = f'Error inferring group: {e}'
+        log.exception(message)
+        raise Exception(message)
+
+
+def get_uv_path(project_path: Path) -> Path:
+    """
+    Infers the full path to `uv` directly from the virtual environment.
+    """
+    log.debug('starting get_uv_path()')
+    uv_path: Path = project_path.parent / 'env/bin/uv'
+    log.debug(f'uv_path: {uv_path}')
+    if not uv_path.exists():
+        message = f'Error: `uv` command not found in virtual environment at {uv_path}.'
+        log.exception(message)
+        raise Exception(message)
+    return uv_path
+
+
+## ------------------------------------------------------------------
+## main manager function --------------------------------------------
+## ------------------------------------------------------------------
+
+
 def manage_update(project_path: str) -> None:
     """
     Main function to manage the update process for the project's dependencies.
@@ -281,7 +313,7 @@ def manage_update(project_path: str) -> None:
     ## determine `uv` path ------------------------------------------
     uv_path: Path = determine_uv_path()
     ## compile requirements file ------------------------------------
-    compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type)
+    compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
@@ -295,25 +327,6 @@ def manage_update(project_path: str) -> None:
         update_permissions_and_mark_active(project_path, compiled_requirements)
         log.debug('dependencies updated successfully.')
     return
-
-
-def determine_uv_path() -> Path:
-    """
-    Checks `which` for the `uv` command.
-    If that fails, gets path from this script's venv.
-    Used for compile and sync.
-    """
-    log.debug('starting determine_uv_path()')
-    try:
-        uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
-        uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
-        log.debug(f'uv_path: ``{uv_path}``')
-    except subprocess.CalledProcessError:
-        log.debug("`which` unsuccessful; accessing this script's venv")
-        initial_uv_path: Path = Path(__file__).parent / 'env' / 'bin' / 'uv'
-        uv_path = initial_uv_path.resolve()
-    log.debug(f'determined uv_path: ``{uv_path}``')
-    return uv_path
 
 
 if __name__ == '__main__':
