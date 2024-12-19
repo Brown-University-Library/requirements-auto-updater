@@ -199,15 +199,13 @@ def compare_with_previous_backup(project_path: Path, backup_file: Path) -> bool:
     return changes
 
 
-def sync_dependencies(project_path: Path, backup_file: Path) -> None:
+def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
     """
     Referencing the virtual environment, syncs dependencies to the recent `--output` requirements.in file.
     Exits the script if any command fails.
     """
     log.debug('starting activate_and_sync_dependencies()')
 
-    uv_path: Path = get_uv_path(project_path)
-    log.debug(f'uv_path: ``{uv_path}``')
     venv_bin_path: Path = project_path.parent / 'env' / 'bin'
     log.debug(f'venv_bin_path: ``{venv_bin_path}``')
     venv_path: Path = project_path.parent / 'env'
@@ -265,6 +263,7 @@ def infer_group(project_path: Path) -> str:
     """
     Infers the group by examining existing files.
     Returns the most common group.
+    Called by `update_permissions_and_mark_active()`.
     """
     log.debug('starting infer_group()')
     try:
@@ -277,20 +276,6 @@ def infer_group(project_path: Path) -> str:
         message = f'Error inferring group: {e}'
         log.exception(message)
         raise Exception(message)
-
-
-def get_uv_path(project_path: Path) -> Path:
-    """
-    Infers the full path to `uv` directly from the virtual environment.
-    """
-    log.debug('starting get_uv_path()')
-    uv_path: Path = project_path.parent / 'env/bin/uv'
-    log.debug(f'uv_path: {uv_path}')
-    if not uv_path.exists():
-        message = f'Error: `uv` command not found in virtual environment at {uv_path}.'
-        log.exception(message)
-        raise Exception(message)
-    return uv_path
 
 
 ## ------------------------------------------------------------------
@@ -326,7 +311,7 @@ def manage_update(project_path: str) -> None:
     else:
         ## since it's different, update the venv --------------------
         log.debug('differences found in dependencies; updating venv')
-        sync_dependencies(project_path, compiled_requirements)
+        sync_dependencies(project_path, compiled_requirements, uv_path)
         log.debug('dependencies updated successfully.')
     update_permissions_and_mark_active(project_path, compiled_requirements)
     return
