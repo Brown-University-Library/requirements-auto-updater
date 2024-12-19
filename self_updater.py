@@ -148,11 +148,12 @@ def get_uv_path(project_path: Path) -> Path:
     return uv_path
 
 
-def remove_old_backups(backup_dir: Path, keep_recent: int = 30) -> None:
+def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
     """
     Removes all files in the backup directory other than the most-recent files.
     """
     log.debug('starting remove_old_backups()')
+    backup_dir: Path = project_path.parent / 'requirements_backups'
     backups: list[Path] = sorted([f for f in backup_dir.iterdir() if f.is_file() and f.suffix == '.txt'], reverse=True)
     old_backups: list[Path] = backups[keep_recent:]
 
@@ -273,23 +274,23 @@ def manage_update(project_path: str) -> None:
     validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
-    ## infer local/staging/production, and python version -----------
-    environment_type: str = infer_environment_type()
-    python_version: str = infer_python_version(project_path)
+    ## determine python version -------------------------------------
+    python_version: str = infer_python_version(project_path)  # for compiling requirements
+    ## determine local/staging/production environment ---------------
+    environment_type: str = infer_environment_type()  # for compiling requirements
     ## compile requirements file ------------------------------------
-    backup_file: Path = compile_requirements(project_path, python_version, environment_type)
+    compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type)
     ## cleanup old backups ------------------------------------------
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    remove_old_backups(backup_dir)
+    remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
-    differences_found: bool = compare_with_previous_backup(project_path, backup_file)
+    differences_found: bool = compare_with_previous_backup(project_path, compiled_requirements)
     if not differences_found:
         log.debug('no differences found in dependencies; exiting.')
         return
     else:
         ## if it's different, update the venv -----------------------
-        sync_dependencies(project_path, backup_file)
-        update_permissions_and_mark_active(project_path, backup_file)
+        sync_dependencies(project_path, compiled_requirements)
+        update_permissions_and_mark_active(project_path, compiled_requirements)
         log.debug('dependencies updated successfully.')
     return
 
