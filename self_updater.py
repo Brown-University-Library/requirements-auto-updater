@@ -1,32 +1,36 @@
+# /// script
+# requires-python = "~=3.12.0"
+# dependencies = []
+# ///
+
 """
 Enables automatic self-updating! (To a limited extent.)
 This script is possible because of the tilde-pattern of the requirements files.
 Called by a cron job, it will check to see if a `uv pip compile ...`
   would create anything different from the previous run.
-  If so, it will run `uv pip sync...' against the newly compiled file, auto-updating the venv.
+If so, it will activate the project's venv, and run `uv pip sync...' against the newly compiled file,
+  auto-updating the venv.
 
 Flow overview...
 (see `manage_update()`, near bottom dundermain, for details)
-- the local/staging/production environment is inferred
-- the python version is inferred
-- the requirements file is newly-compiled
-- it's checked to see if anything is new
-- if so, the virtual-environment is updated
+- determines the local/staging/production environment
+- determines the python version
+- determines the group
+- determines the admin-emails
+- compiles and saves appropriate requirements file
+- checks it to see if anything is new
+- if so, updates the project's virtual-environment
 
 Usage:
 - Directly:
-    `$ python update_packages.py "/path/to/project_code_dir/"`
+    `$ uv run self_update.py "/path/to/project_code_dir/"`
 - Via cron (eg to run every day at midnight):
-    `0 0 * * * /path/to/python /path/to/self_updater.py "/path/to/project_code_dir/"`
+    `0 0 * * * /path/to/uv run /path/to/self_update.py "/path/to/project_code_dir/"`
 
-Assumptions:
+Project assumptions:
 - All requirements files are in a top-level `requirements` directory.
 - The requirements files are named `local.in`, `staging.in`, and `production.in`.
 - The virtual environment is in a parent-level `env` (simlink) directory.
-- `uv` is installed in the virtual environment. (I'd like instead for `uv` to be installed globally.)
-- We only use `.in` files, not `.txt` files.
-  (I think this is ok, because for every app where this is implemented, we have backups
-   of the relevant `.txt` files.)
 - (Suggestion: we do _not_ tweak this script for different structures, but rather
    we restructure our apps to fit these assumptions (to keep this script simple).)
 
@@ -232,27 +236,6 @@ def compare_with_previous_backup(project_path: Path, backup_file: Path) -> bool:
     return changes
 
 
-# def activate_and_sync_dependencies(project_path: Path, backup_file: Path) -> None:
-#     """
-#     Activate the virtual environment and sync dependencies using the provided backup file.
-#     Exits the script if any command fails.
-#     """
-#     log.debug('starting activate_and_sync_dependencies()')
-#     activate_virtualenv(project_path)
-
-#     uv_path: Path = get_uv_path(project_path)
-#     sync_command: list[str] = [str(uv_path), 'pip', 'sync', str(backup_file)]
-
-#     try:
-#         subprocess.run(sync_command, check=True)
-#         log.debug('uv pip sync was successful')
-#         return
-#     except subprocess.CalledProcessError:
-#         message = 'Error during pip sync'
-#         log.exception(message)
-#         raise Exception(message)
-
-
 def activate_and_sync_dependencies(project_path: Path, backup_file: Path) -> None:
     """
     Activate the virtual environment and sync dependencies using the provided backup file.
@@ -340,6 +323,8 @@ def manage_update(project_path: str) -> None:
     """
     log.debug('starting manage_update()')
     project_path: Path = Path(project_path).resolve()
+    ## cd to project dir --------------------------------------------
+    os.chdir(project_path)
     ## infer local/staging/production, and python version -----------
     environment_type: str = infer_environment_type()
     python_version: str = infer_python_version(project_path)
