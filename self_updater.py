@@ -221,11 +221,19 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
         ## run sync command ------------------------------------------
         subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
         log.debug('uv pip sync was successful')
-        return
     except subprocess.CalledProcessError:
         message = 'Error during pip sync'
         log.exception(message)
         raise Exception(message)
+    try:
+        ## run `touch` to make the changes take effect ---------------
+        subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
+        log.debug('ran `touch`')
+    except subprocess.CalledProcessError:
+        message = 'Error during pip sync or touch'
+        log.exception(message)
+        raise Exception(message)
+    return
 
     ## end def sync_dependencies()
 
