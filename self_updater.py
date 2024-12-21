@@ -11,11 +11,14 @@ Main manager function is`manage_update()`, at bottom above dundermain.
 Functions are in order called by `manage_update()`.
 """
 
+import difflib
 import logging
 import os
+import smtplib
 import subprocess
 import sys
 from datetime import datetime
+from email.message import EmailMessage
 from pathlib import Path
 
 logging.basicConfig(
@@ -238,6 +241,71 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     ## end def sync_dependencies()
 
 
+def send_email_of_diffs(project_path: Path) -> None:
+    """
+    Sends an email with the differences between the previous and current requirements files.
+    """
+    log.debug('starting send_email_of_diffs()')
+
+    # Generate the diff text
+    diff_text: str = make_diff_text(project_path)
+
+    # Email details
+    email_subject = f'Differences in dependencies for {project_path.name}'
+    email_body = f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}'
+    sender_email = '<your_email>'
+    smtp_server = '<your_smtp_server>'
+    smtp_port = 587  # Typically 587 for TLS
+    email_password = '<your_email_password>'
+
+    # Recipients
+    recipients = ['Foofirstname Foolastname <foo@foo.edu>', 'Barfirstname Barlastname <bar@bar.edu>']
+
+    # Create the email message
+    msg = EmailMessage()
+    msg.set_content(email_body)
+    msg['Subject'] = email_subject
+    msg['From'] = sender_email
+    msg['To'] = ', '.join(recipients)  # Join recipients into a single comma-separated string
+
+    # Send the email
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()  # Secure the connection
+            server.login(sender_email, email_password)
+            server.send_message(msg)
+            log.debug('email sent successfully')
+    except Exception as e:
+        log.exception('Error sending email')
+        raise e
+    return
+
+
+def make_diff_text(project_path: Path) -> str:
+    """
+    Creates a diff from the two most recent requirements files.
+    Called by send_email_of_diffs().
+    """
+    log.debug('starting make_diff_text()')
+    backup_dir: Path = project_path.parent / 'requirements_backups'
+    previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+    if len(previous_files) < 2:
+        return 'no previous backups found.'
+    previous_file_path: Path = previous_files[-2]
+    most_recent_file_path: Path = previous_files[-1]
+    with previous_file_path.open() as prev, most_recent_file_path.open() as curr:
+        prev_lines = prev.readlines()
+        curr_lines = curr.readlines()
+
+        prev_lines_filtered = filter_initial_comments(prev_lines)
+        curr_lines_filtered = filter_initial_comments(curr_lines)
+
+        diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
+        diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
+        diff_text = ''.join(diff_lines)
+    return diff_text
+
+
 def update_permissions_and_mark_active(project_path: Path, backup_file: Path) -> None:
     """
     Update group ownership and permissions for relevant directories.
@@ -337,6 +405,10 @@ def manage_update(project_path: str) -> None:
         log.debug('differences found in dependencies; updating venv')
         sync_dependencies(project_path, compiled_requirements, uv_path)
         log.debug('dependencies updated successfully.')
+        ## send diff email ------------------------------------------
+        send_email_of_diffs(project_path)
+        log.debug('email sent')
+    ## update group and permissions ---------------------------------
     update_permissions_and_mark_active(project_path, compiled_requirements)
     return
 
