@@ -1,6 +1,6 @@
 # /// script
 # requires-python = "~=3.12.0"
-# dependencies = []
+# dependencies = ["dotenv"]
 # ///
 
 """
@@ -20,6 +20,8 @@ import sys
 from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
+
+import dotenv
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -101,6 +103,29 @@ def determine_uv_path() -> Path:
         uv_path = initial_uv_path.resolve()
     log.debug(f'determined uv_path: ``{uv_path}``')
     return uv_path
+
+
+def determine_email_addresses() -> list[list[str, str]]:
+    """
+    Loads email addresses from a `.env` file.
+    Returns a list of email addresses.
+    Assumes the setting `ADMINS_JSON` structured like:
+    ADMINS_JSON='
+    [
+      [ "exampleFirstName exampleLastName", "example@domain.edu"],
+      etc...
+    ]'
+    """
+    log.debug('starting determine_email_addresses()')
+    try:
+        settings: dict = dotenv.load_values('../.env')
+        email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
+        log.debug(f'email_addresses: {email_addresses}')
+        return email_addresses
+    except Exception as e:
+        message = f'Error determining email addresses: {e}'
+        log.exception(message)
+        raise Exception(message)
 
 
 def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
@@ -241,34 +266,32 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     ## end def sync_dependencies()
 
 
-def send_email_of_diffs(project_path: Path) -> None:
+def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]]) -> None:
     """
     Sends an email with the differences between the previous and current requirements files.
     """
     log.debug('starting send_email_of_diffs()')
-
-    # Generate the diff text
+    ## generate diff ------------------------------------------------
     diff_text: str = make_diff_text(project_path)
-
-    # Email details
+    ## prep email data ----------------------------------------------
     email_subject = f'Differences in dependencies for {project_path.name}'
     email_body = f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}'
-    sender_email = '<your_email>'
+    sender_email = '<donotreply@bul_self_updater@brown.edu>'
     smtp_server = '<your_smtp_server>'
-    smtp_port = 587  # Typically 587 for TLS
+    smtp_port = 'the_port'
     email_password = '<your_email_password>'
-
-    # Recipients
-    recipients = ['Foofirstname Foolastname <foo@foo.edu>', 'Barfirstname Barlastname <bar@bar.edu>']
-
-    # Create the email message
+    ## prep recipients data -----------------------------------------
+    recipients = []
+    for name, email in email_addresses:
+        recipients.append(f'{name} <{email}>')
+    log.debug(f'recipients: {recipients}')
+    ## build email message ------------------------------------------
     msg = EmailMessage()
     msg.set_content(email_body)
     msg['Subject'] = email_subject
     msg['From'] = sender_email
     msg['To'] = ', '.join(recipients)  # Join recipients into a single comma-separated string
-
-    # Send the email
+    ## send email ---------------------------------------------------
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()  # Secure the connection
@@ -276,8 +299,9 @@ def send_email_of_diffs(project_path: Path) -> None:
             server.send_message(msg)
             log.debug('email sent successfully')
     except Exception as e:
-        log.exception('Error sending email')
-        raise e
+        msg = f'Error sending email: {e}'
+        log.exception(msg)
+        raise Exception(msg)
     return
 
 
@@ -386,12 +410,11 @@ def manage_update(project_path: str) -> None:
     validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
-    ## determine python version -------------------------------------
+    ## get everything needed up front -------------------------------
     python_version: str = determine_python_version(project_path)  # for compiling requirements
-    ## determine local/staging/production environment ---------------
     environment_type: str = determine_environment_type()  # for compiling requirements
-    ## determine `uv` path ------------------------------------------
     uv_path: Path = determine_uv_path()
+    email_addresses: list[list[str, str]] = determine_email_addresses()
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
@@ -406,7 +429,7 @@ def manage_update(project_path: str) -> None:
         sync_dependencies(project_path, compiled_requirements, uv_path)
         log.debug('dependencies updated successfully.')
         ## send diff email ------------------------------------------
-        send_email_of_diffs(project_path)
+        send_email_of_diffs(project_path, email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
     update_permissions_and_mark_active(project_path, compiled_requirements)
