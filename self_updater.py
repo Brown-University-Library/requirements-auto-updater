@@ -15,13 +15,27 @@ import difflib
 import logging
 import os
 import smtplib
+import socket
 import subprocess
 import sys
 from datetime import datetime
-from email.message import EmailMessage
+from email.mime.text import MIMEText
 from pathlib import Path
 
 import dotenv
+from dotenv import find_dotenv, load_dotenv
+
+## load envars ------------------------------------------------------
+dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
+assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
+load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
+
+## define constants -------------------------------------------------
+ENVAR_EMAIL_FROM = os.environ['SLFUPDTR__EMAIL_FROM']
+ENVAR_EMAIL_HOST = os.environ['SLFUPDTR__EMAIL_HOST']
+ENVAR_EMAIL_HOST_PORT = os.environ['SLFUPDTR__EMAIL_HOST_PORT']
+ENVAR_EMAIL_RECIPIENTS_JSON = os.environ['SLFUPDTR__EMAIL_RECIPIENTS_JSON']
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -124,6 +138,24 @@ def determine_email_addresses() -> list[list[str, str]]:
         return email_addresses
     except Exception as e:
         message = f'Error determining email addresses: {e}'
+        log.exception(message)
+        raise Exception(message)
+
+
+def determine_group(project_path: Path) -> str:
+    """
+    Infers the group by examining existing files.
+    Returns the most common group.
+    """
+    log.debug('starting infer_group()')
+    try:
+        group_list: list[str] = subprocess.check_output(['ls', '-l', str(project_path)], text=True).splitlines()
+        groups = [line.split()[3] for line in group_list if len(line.split()) > 3]
+        most_common_group: str = max(set(groups), key=groups.count)
+        log.debug(f'most_common_group: {most_common_group}')
+        return most_common_group
+    except Exception as e:
+        message = f'Error inferring group: {e}'
         log.exception(message)
         raise Exception(message)
 
@@ -266,7 +298,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     ## end def sync_dependencies()
 
 
-def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]]) -> None:
+def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]], message: str) -> None:
     """
     Sends an email with the differences between the previous and current requirements files.
     """
@@ -274,69 +306,41 @@ def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]
     ## generate diff ------------------------------------------------
     diff_text: str = make_diff_text(project_path)
     ## prep email data ----------------------------------------------
-    email_subject = f'Differences in dependencies for {project_path.name}'
-    email_body = f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}'
-    sender_email = '<donotreply@bul_self_updater@brown.edu>'
-    smtp_server = '<your_smtp_server>'
-    smtp_port = 'the_port'
-    email_password = '<your_email_password>'
-    ## prep recipients data -----------------------------------------
+    EMAIL_HOST = ENVAR_EMAIL_HOST
+    log.debug(f'EMAIL_HOST: ``{EMAIL_HOST}``')
+    EMAIL_PORT = int(ENVAR_EMAIL_HOST_PORT)
+    EMAIL_FROM = ENVAR_EMAIL_FROM
     recipients = []
     for name, email in email_addresses:
         recipients.append(f'{name} <{email}>')
     log.debug(f'recipients: {recipients}')
+    EMAIL_RECIPIENTS = recipients
+    HOST = socket.gethostname()
+    log.debug(f'HOST: ``{HOST}``')  # if this is the same as EMAIL_HOST, combine.
+    BODY = f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}'
     ## build email message ------------------------------------------
-    msg = EmailMessage()
-    msg.set_content(email_body)
-    msg['Subject'] = email_subject
-    msg['From'] = sender_email
-    msg['To'] = ', '.join(recipients)  # Join recipients into a single comma-separated string
+    eml = MIMEText(f'{BODY}')
+    eml['Subject'] = f'queue-checker alert from ``{HOST.upper()}``'
+    eml['From'] = EMAIL_FROM
+    eml['To'] = ';'.join(EMAIL_RECIPIENTS)
     ## send email ---------------------------------------------------
     try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()  # Secure the connection
-            server.login(sender_email, email_password)
-            server.send_message(msg)
-            log.debug('email sent successfully')
+        s = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        s.sendmail(EMAIL_FROM, EMAIL_RECIPIENTS, eml.as_string())
     except Exception as e:
-        msg = f'Error sending email: {e}'
-        log.exception(msg)
-        raise Exception(msg)
+        err = repr(e)
+        log.exception(f'problem sending self-updater mail, ``{err}``')
+        raise Exception(err)
     return
 
 
-def make_diff_text(project_path: Path) -> str:
-    """
-    Creates a diff from the two most recent requirements files.
-    Called by send_email_of_diffs().
-    """
-    log.debug('starting make_diff_text()')
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-    if len(previous_files) < 2:
-        return 'no previous backups found.'
-    previous_file_path: Path = previous_files[-2]
-    most_recent_file_path: Path = previous_files[-1]
-    with previous_file_path.open() as prev, most_recent_file_path.open() as curr:
-        prev_lines = prev.readlines()
-        curr_lines = curr.readlines()
-
-        prev_lines_filtered = filter_initial_comments(prev_lines)
-        curr_lines_filtered = filter_initial_comments(curr_lines)
-
-        diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
-        diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
-        diff_text = ''.join(diff_lines)
-    return diff_text
-
-
-def update_permissions_and_mark_active(project_path: Path, backup_file: Path) -> None:
+def update_permissions_and_mark_active(project_path: Path, backup_file: Path, group: str) -> None:
     """
     Update group ownership and permissions for relevant directories.
     Mark the backup file as active by adding a header comment.
     """
     log.debug('starting update_permissions_and_mark_active()')
-    group: str = infer_group(project_path)
+    # group: str = infer_group(project_path)
     backup_dir: Path = project_path.parent / 'requirements_backups'
     log.debug(f'backup_dir: ``{backup_dir}``')
     relative_env_path = project_path / '../env'
@@ -375,23 +379,29 @@ def filter_initial_comments(lines: list[str]) -> list[str]:
     return lines[non_comment_index:]
 
 
-def infer_group(project_path: Path) -> str:
+def make_diff_text(project_path: Path) -> str:
     """
-    Infers the group by examining existing files.
-    Returns the most common group.
-    Called by `update_permissions_and_mark_active()`.
+    Creates a diff from the two most recent requirements files.
+    Called by send_email_of_diffs().
     """
-    log.debug('starting infer_group()')
-    try:
-        group_list: list[str] = subprocess.check_output(['ls', '-l', str(project_path)], text=True).splitlines()
-        groups = [line.split()[3] for line in group_list if len(line.split()) > 3]
-        most_common_group: str = max(set(groups), key=groups.count)
-        log.debug(f'most_common_group: {most_common_group}')
-        return most_common_group
-    except Exception as e:
-        message = f'Error inferring group: {e}'
-        log.exception(message)
-        raise Exception(message)
+    log.debug('starting make_diff_text()')
+    backup_dir: Path = project_path.parent / 'requirements_backups'
+    previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+    if len(previous_files) < 2:
+        return 'no previous backups found.'
+    previous_file_path: Path = previous_files[-2]
+    most_recent_file_path: Path = previous_files[-1]
+    with previous_file_path.open() as prev, most_recent_file_path.open() as curr:
+        prev_lines = prev.readlines()
+        curr_lines = curr.readlines()
+
+        prev_lines_filtered = filter_initial_comments(prev_lines)
+        curr_lines_filtered = filter_initial_comments(curr_lines)
+
+        diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
+        diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
+        diff_text = ''.join(diff_lines)
+    return diff_text
 
 
 ## ------------------------------------------------------------------
@@ -415,6 +425,7 @@ def manage_update(project_path: str) -> None:
     environment_type: str = determine_environment_type()  # for compiling requirements
     uv_path: Path = determine_uv_path()
     email_addresses: list[list[str, str]] = determine_email_addresses()
+    group: str = determine_group(project_path)
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
@@ -432,7 +443,7 @@ def manage_update(project_path: str) -> None:
         send_email_of_diffs(project_path, email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
-    update_permissions_and_mark_active(project_path, compiled_requirements)
+    update_permissions_and_mark_active(project_path, compiled_requirements, group)
     return
 
     ## end def manage_update()
