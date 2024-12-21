@@ -37,7 +37,7 @@ load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), overri
 ENVAR_EMAIL_FROM = os.environ['SLFUPDTR__EMAIL_FROM']
 ENVAR_EMAIL_HOST = os.environ['SLFUPDTR__EMAIL_HOST']
 ENVAR_EMAIL_HOST_PORT = os.environ['SLFUPDTR__EMAIL_HOST_PORT']
-ENVAR_EMAIL_RECIPIENTS_JSON = os.environ['SLFUPDTR__EMAIL_RECIPIENTS_JSON']
+# ENVAR_EMAIL_RECIPIENTS_JSON = os.environ['SLFUPDTR__EMAIL_RECIPIENTS_JSON']
 
 
 logging.basicConfig(
@@ -323,7 +323,7 @@ def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]
     EMAIL_FROM = ENVAR_EMAIL_FROM
     recipients = []
     for name, email in email_addresses:
-        recipients.append(f'{name} {email}')
+        recipients.append(f'"{name}" <{email}>')
     log.debug(f'recipients: {recipients}')
     EMAIL_RECIPIENTS = recipients
     HOST = socket.gethostname()
@@ -331,9 +331,9 @@ def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]
     BODY = f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}'
     ## build email message ------------------------------------------
     eml = MIMEText(f'{BODY}')
-    eml['Subject'] = f'queue-checker alert from ``{HOST.upper()}``'
+    eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{project_path.name}``'
     eml['From'] = EMAIL_FROM
-    eml['To'] = ';'.join(EMAIL_RECIPIENTS)
+    eml['To'] = ', '.join(EMAIL_RECIPIENTS)
     ## send email ---------------------------------------------------
     try:
         s = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
@@ -388,35 +388,6 @@ def filter_initial_comments(lines: list[str]) -> list[str]:
     log.debug('starting filter_initial_comments()')
     non_comment_index = next((i for i, line in enumerate(lines) if not line.startswith('#')), len(lines))
     return lines[non_comment_index:]
-
-
-# def make_diff_text(project_path: Path) -> str:
-#     """
-#     Creates a diff from the two most recent requirements files.
-#     Called by send_email_of_diffs().
-#     """
-#     log.debug('starting make_diff_text()')
-#     backup_dir: Path = project_path.parent / 'requirements_backups'
-#     previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-#     log.debug(f'previous_files: ``{previous_files}``')
-#     if len(previous_files) < 2:
-#         return 'no previous backups found.'
-#     previous_file_path: Path = previous_files[-2]
-#     most_recent_file_path: Path = previous_files[-1]
-#     with previous_file_path.open() as prev, most_recent_file_path.open() as curr:
-#         prev_lines = prev.readlines()
-#         curr_lines = curr.readlines()
-
-#         prev_lines_filtered = filter_initial_comments(prev_lines)
-#         log.debug(f'first twenty lines of prev_lines_filtered: ``{prev_lines_filtered[:20]}``')
-#         curr_lines_filtered = filter_initial_comments(curr_lines)
-#         log.debug(f'first twenty lines of curr_lines_filtered: ``{curr_lines_filtered[:20]}``')
-
-#         diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
-#         diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
-#         diff_text = ''.join(diff_lines)
-#     log.debug(f'diff_text: ``{diff_text}``')
-#     return diff_text
 
 
 def make_diff_text(project_path: Path) -> str:
