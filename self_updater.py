@@ -54,16 +54,32 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 
 
-def validate_project_path(project_path: str) -> None:
+# def validate_project_path(project_path: str) -> None:
+#     """
+#     Validates that the provided project path exists.
+#     Exits the script if the path is invalid.
+#     """
+#     log.debug('starting validate_project_path()')
+#     if not Path(project_path).exists():
+#         message = f'Error: The provided project_path ``{project_path}`` does not exist.'
+#         log.exception(message)
+#         raise Exception(message)
+#     return
+
+
+def validate_project_path(project_path: Path) -> None:
     """
     Validates that the provided project path exists.
     Exits the script if the path is invalid.
     """
     log.debug('starting validate_project_path()')
-    if not Path(project_path).exists():
+    log.debug(f'project_path: ``{project_path}``')
+    if not project_path.exists():
         message = f'Error: The provided project_path ``{project_path}`` does not exist.'
         log.exception(message)
         raise Exception(message)
+    else:
+        log.debug('project_path exists')
     return
 
 
