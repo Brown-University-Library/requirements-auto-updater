@@ -390,29 +390,58 @@ def filter_initial_comments(lines: list[str]) -> list[str]:
     return lines[non_comment_index:]
 
 
+# def make_diff_text(project_path: Path) -> str:
+#     """
+#     Creates a diff from the two most recent requirements files.
+#     Called by send_email_of_diffs().
+#     """
+#     log.debug('starting make_diff_text()')
+#     backup_dir: Path = project_path.parent / 'requirements_backups'
+#     previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+#     log.debug(f'previous_files: ``{previous_files}``')
+#     if len(previous_files) < 2:
+#         return 'no previous backups found.'
+#     previous_file_path: Path = previous_files[-2]
+#     most_recent_file_path: Path = previous_files[-1]
+#     with previous_file_path.open() as prev, most_recent_file_path.open() as curr:
+#         prev_lines = prev.readlines()
+#         curr_lines = curr.readlines()
+
+#         prev_lines_filtered = filter_initial_comments(prev_lines)
+#         log.debug(f'first twenty lines of prev_lines_filtered: ``{prev_lines_filtered[:20]}``')
+#         curr_lines_filtered = filter_initial_comments(curr_lines)
+#         log.debug(f'first twenty lines of curr_lines_filtered: ``{curr_lines_filtered[:20]}``')
+
+#         diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
+#         diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
+#         diff_text = ''.join(diff_lines)
+#     log.debug(f'diff_text: ``{diff_text}``')
+#     return diff_text
+
+
 def make_diff_text(project_path: Path) -> str:
     """
     Creates a diff from the two most recent requirements files.
     Called by send_email_of_diffs().
     """
     log.debug('starting make_diff_text()')
+    ## get the two most recent backup files -------------------------
     backup_dir: Path = project_path.parent / 'requirements_backups'
-    previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-    log.debug(f'previous_files: ``{previous_files}``')
-    if len(previous_files) < 2:
-        return 'no previous backups found.'
-    previous_file_path: Path = previous_files[-2]
-    most_recent_file_path: Path = previous_files[-1]
-    with previous_file_path.open() as prev, most_recent_file_path.open() as curr:
-        prev_lines = prev.readlines()
+    log.debug(f'backup_dir: ``{backup_dir}``')
+    backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+    current_file: Path = backup_files[0]
+    log.debug(f'current_file: ``{current_file}``')
+    previous_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
+    log.debug(f'previous_file: ``{previous_file}``')
+
+    with current_file.open() as curr, previous_file.open() as prev:
+        ## prepare the lines for the diff ---------------------------
         curr_lines = curr.readlines()
-
-        prev_lines_filtered = filter_initial_comments(prev_lines)
-        log.debug(f'first twenty lines of prev_lines_filtered: ``{prev_lines_filtered[:20]}``')
-        curr_lines_filtered = filter_initial_comments(curr_lines)
-        log.debug(f'first twenty lines of curr_lines_filtered: ``{curr_lines_filtered[:20]}``')
-
-        diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
+        prev_lines = prev.readlines()
+        curr_lines_filtered = filter_initial_comments(curr_lines)  # removes initial comments
+        prev_lines_filtered = filter_initial_comments(prev_lines)  # removes initial comments
+        ## build the diff info --------------------------------------
+        diff_lines = [f'--- {previous_file.name}\n', f'+++ {current_file.name}\n']
         diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
         diff_text = ''.join(diff_lines)
     log.debug(f'diff_text: ``{diff_text}``')
