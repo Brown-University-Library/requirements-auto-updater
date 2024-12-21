@@ -1,6 +1,6 @@
 # /// script
 # requires-python = "~=3.12.0"
-# dependencies = ["dotenv"]
+# dependencies = ["python-dotenv"]
 # ///
 
 """
@@ -12,6 +12,7 @@ Functions are in order called by `manage_update()`.
 """
 
 import difflib
+import json
 import logging
 import os
 import smtplib
@@ -26,7 +27,9 @@ import dotenv
 from dotenv import find_dotenv, load_dotenv
 
 ## load envars ------------------------------------------------------
-dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
+this_file_path = Path(__file__).resolve()
+stuff_dir = this_file_path.parent.parent
+dotenv_path = stuff_dir / '.env'
 assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
 
@@ -132,9 +135,12 @@ def determine_email_addresses() -> list[list[str, str]]:
     """
     log.debug('starting determine_email_addresses()')
     try:
-        settings: dict = dotenv.load_values('../.env')
-        email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
+        settings: dict = dotenv.dotenv_values('../.env')
+        # email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
+        email_addresses_json: str = settings['ADMINS_JSON']
+        email_addresses: list[list[str, str]] = json.loads(email_addresses_json)
         log.debug(f'email_addresses: {email_addresses}')
+        log.debug(f'type(email_addresses): {type(email_addresses)}')
         return email_addresses
     except Exception as e:
         message = f'Error determining email addresses: {e}'
@@ -298,11 +304,12 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     ## end def sync_dependencies()
 
 
-def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]], message: str) -> None:
+def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]]) -> None:
     """
     Sends an email with the differences between the previous and current requirements files.
     """
     log.debug('starting send_email_of_diffs()')
+    log.debug(f'email_addresses: ``{email_addresses}``')
     ## generate diff ------------------------------------------------
     diff_text: str = make_diff_text(project_path)
     ## prep email data ----------------------------------------------
@@ -312,7 +319,7 @@ def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]
     EMAIL_FROM = ENVAR_EMAIL_FROM
     recipients = []
     for name, email in email_addresses:
-        recipients.append(f'{name} <{email}>')
+        recipients.append(f'{name} {email}')
     log.debug(f'recipients: {recipients}')
     EMAIL_RECIPIENTS = recipients
     HOST = socket.gethostname()
@@ -401,6 +408,7 @@ def make_diff_text(project_path: Path) -> str:
         diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
         diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
         diff_text = ''.join(diff_lines)
+    log.debug(f'diff_text: ``{diff_text}``')
     return diff_text
 
 
