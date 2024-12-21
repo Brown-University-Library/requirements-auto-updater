@@ -224,34 +224,38 @@ def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
     return
 
 
-def compare_with_previous_backup(project_path: Path, backup_file: Path) -> bool:
+def compare_with_previous_backup(project_path: Path) -> bool:
     """
     Compares the newly created `requirements.txt` with the most recent one.
     Ignores initial lines starting with '#' in the comparison.
     Returns False if there are no changes, True otherwise.
+    Possible refactor: pass in the current-file.
     """
     log.debug('starting compare_with_previous_backup()')
     changes = True
+    ## get the two most recent backup files -------------------------
     backup_dir: Path = project_path.parent / 'requirements_backups'
     log.debug(f'backup_dir: ``{backup_dir}``')
-    previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt' and f != backup_file])
-
-    if previous_files:
-        previous_file_path: Path = previous_files[-1]
-        with previous_file_path.open() as prev, backup_file.open() as curr:
-            prev_lines = prev.readlines()
+    backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+    current_file: Path = backup_files[0]
+    log.debug(f'current_file: ``{current_file}``')
+    previous_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
+    log.debug(f'previous_file: ``{previous_file}``')
+    if not previous_file:
+        log.debug('no previous backups found, so changes=False.')
+        changes = False
+    else:
+        ## compare the two files ------------------------------------
+        with current_file.open() as curr, previous_file.open() as prev:
             curr_lines = curr.readlines()
-
-            prev_lines_filtered = filter_initial_comments(prev_lines)
-            curr_lines_filtered = filter_initial_comments(curr_lines)
-
-            if prev_lines_filtered == curr_lines_filtered:
+            prev_lines = prev.readlines()
+            curr_lines_filtered = filter_initial_comments(curr_lines)  # removes initial comments
+            prev_lines_filtered = filter_initial_comments(prev_lines)  # removes initial comments
+            if curr_lines_filtered == prev_lines_filtered:
                 log.debug('no differences found in dependencies.')
                 changes = False
-    else:
-        log.debug('no previous backups found, so changes=True.')
     log.debug(f'changes: ``{changes}``')
-    return changes
+    return changes  # just the boolean
 
 
 def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
@@ -394,6 +398,7 @@ def make_diff_text(project_path: Path) -> str:
     log.debug('starting make_diff_text()')
     backup_dir: Path = project_path.parent / 'requirements_backups'
     previous_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+    log.debug(f'previous_files: ``{previous_files}``')
     if len(previous_files) < 2:
         return 'no previous backups found.'
     previous_file_path: Path = previous_files[-2]
@@ -403,7 +408,9 @@ def make_diff_text(project_path: Path) -> str:
         curr_lines = curr.readlines()
 
         prev_lines_filtered = filter_initial_comments(prev_lines)
+        log.debug(f'first twenty lines of prev_lines_filtered: ``{prev_lines_filtered[:20]}``')
         curr_lines_filtered = filter_initial_comments(curr_lines)
+        log.debug(f'first twenty lines of curr_lines_filtered: ``{curr_lines_filtered[:20]}``')
 
         diff_lines = [f'--- {previous_file_path.name}\n', f'+++ {most_recent_file_path.name}\n']
         diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
@@ -439,7 +446,7 @@ def manage_update(project_path: str) -> None:
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
-    differences_found: bool = compare_with_previous_backup(project_path, compiled_requirements)
+    differences_found: bool = compare_with_previous_backup(project_path)
     if not differences_found:
         log.debug('no differences found in dependencies.')
     else:
