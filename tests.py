@@ -38,6 +38,17 @@ class TestSelfUpdater(unittest.TestCase):
         change_check_result = self_updater.compare_with_previous_backup(file_a_new_path, file_b_old_path, project_path)
         self.assertEqual(expected, change_check_result)
 
+    def test__compare_with_previous_backup__differences(self):
+        """
+        Files A and B differ in actual package version, so should be considered different.
+        """
+        file_a_new_path = Path('./test_docs/differences/file_a.txt').resolve()
+        file_b_old_path = Path('./test_docs/differences/file_b.txt').resolve()
+        project_path = None
+        expected = True
+        change_check_result = self_updater.compare_with_previous_backup(file_a_new_path, file_b_old_path, project_path)
+        self.assertEqual(expected, change_check_result)
+
 
 if __name__ == '__main__':
     unittest.main()
