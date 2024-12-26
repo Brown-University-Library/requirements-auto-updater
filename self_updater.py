@@ -28,32 +28,13 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
-try:
-    from self_updater_code.environment_checker import (
-        determine_email_addresses,
-        determine_environment_type,
-        determine_group,
-        determine_python_version,
-        determine_uv_path,
-        validate_project_path,
-    )
-except ModuleNotFoundError:
-    # ## add project to path ----------------------------------------------
-    this_file_path = Path(__file__).resolve()
-    stuff_dir = this_file_path.parent.parent
-    sys.path.append(str(stuff_dir))
-    from self_updater_code.environment_checker import (
-        determine_email_addresses,
-        determine_environment_type,
-        determine_group,
-        determine_python_version,
-        determine_uv_path,
-        validate_project_path,
-    )
-
-## load envars ------------------------------------------------------
+# ## add project to path ----------------------------------------------
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
+sys.path.append(str(stuff_dir))
+from self_updater_code import environment_checker  # noqa: E402  (prevents linter problem-indicator)
+
+## load envars ------------------------------------------------------
 dotenv_path = stuff_dir / '.env'
 assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
@@ -350,15 +331,15 @@ def manage_update(project_path: str) -> None:
     log.debug('starting manage_update()')
     ## validate project path ----------------------------------------
     project_path: Path = Path(project_path).resolve()  # ensures an absolute path now
-    validate_project_path(project_path)
+    environment_checker.validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
     ## get everything needed up front -------------------------------
-    python_version: str = determine_python_version(project_path)  # for compiling requirements
-    environment_type: str = determine_environment_type()  # for compiling requirements
-    uv_path: Path = determine_uv_path()
-    email_addresses: list[list[str, str]] = determine_email_addresses()
-    group: str = determine_group(project_path)
+    python_version: str = environment_checker.determine_python_version(project_path)  # for compiling requirements
+    environment_type: str = environment_checker.determine_environment_type()  # for compiling requirements
+    uv_path: Path = environment_checker.determine_uv_path()
+    email_addresses: list[list[str, str]] = environment_checker.determine_email_addresses()
+    group: str = environment_checker.determine_group(project_path)
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
