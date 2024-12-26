@@ -412,13 +412,6 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
         log.debug(f'updating group and permissions for path: ``{path}``')
         subprocess.run(['chgrp', '-R', group, str(path)], check=True)
         subprocess.run(['chmod', '-R', 'g=rwX', str(path)], check=True)
-
-    with backup_file.open('r') as file:
-        content: list[str] = file.readlines()
-    content.insert(0, '# ACTIVE\n')
-
-    with backup_file.open('w') as file:
-        file.writelines(content)
     return
 
 
