@@ -3,6 +3,13 @@
 # dependencies = ["python-dotenv"]
 # ///
 
+
+"""
+Usage:
+
+uv run ./tests.py
+"""
+
 import unittest
 from pathlib import Path
 

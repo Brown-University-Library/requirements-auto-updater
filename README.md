@@ -88,7 +88,7 @@ By definition, the third part of package-notation (`major`, `minor`, `patch`) in
 
 - ~~Create diff of changes~~
 - ~~Email the diff to the admins.~~
-- Add tests for this script.
+- ~~Add tests for this script.~~
 - Add the ability to run `$ python ./run_tests.py` on project.
 - Explore shell-script version.
 
