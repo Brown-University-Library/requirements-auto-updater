@@ -15,7 +15,6 @@ Usage...
 `$ uv run ./self_update.py "/path/to/project_code_dir/"`
 """
 
-import difflib
 import logging
 import os
 import smtplib
@@ -33,6 +32,9 @@ this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
 from self_updater_code import environment_checker  # noqa: E402  (prevents linter problem-indicator)
+from self_updater_code.compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
+
+compiled_comparator = CompiledComparator()
 
 ## load envars ------------------------------------------------------
 dotenv_path = stuff_dir / '.env'
@@ -116,40 +118,6 @@ def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
     return
 
 
-def compare_with_previous_backup(new_path: Path, old_path: Path | None = None, project_path: Path | None = None) -> bool:
-    """
-    Compares the newly created `requirements.txt` with the most recent one.
-    Ignores initial lines starting with '#' in the comparison.
-    Returns False if there are no changes, True otherwise.
-    (Currently the manager-script just passes in the new_path, and the old_path is determined.)
-    """
-    log.debug('starting compare_with_previous_backup()')
-    changes = True
-    ## try to get the old-path --------------------------------------
-    if not old_path:
-        log.debug('old_path not passed in; looking for it in `requirements_backups`')
-        backup_dir: Path = project_path.parent / 'requirements_backups'
-        log.debug(f'backup_dir: ``{backup_dir}``')
-        backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-        old_path: Path | None = backup_files[1] if len(backup_files) > 1 else None
-        log.debug(f'old_file: ``{old_path}``')
-    if not old_path:
-        log.debug('no previous backups found, so changes=False.')
-        changes = False
-    else:
-        ## compare the two files ------------------------------------
-        with new_path.open() as curr, old_path.open() as prev:
-            curr_lines = curr.readlines()
-            prev_lines = prev.readlines()
-            curr_lines_filtered = filter_initial_comments(curr_lines)  # removes initial comments
-            prev_lines_filtered = filter_initial_comments(prev_lines)  # removes initial comments
-            if curr_lines_filtered == prev_lines_filtered:
-                log.debug('no differences found in dependencies.')
-                changes = False
-    log.debug(f'changes: ``{changes}``')
-    return changes  # just the boolean
-
-
 def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
     """
     Prepares the venv environment.
@@ -205,23 +173,20 @@ def mark_active(backup_file: Path) -> None:
     Marks the backup file as active by adding a header comment.
     """
     log.debug('starting mark_active()')
-    with backup_file.open('r') as file:
+    with backup_file.open('r') as file:  # read the file
         content: list[str] = file.readlines()
     content.insert(0, '# ACTIVE\n')
-
-    with backup_file.open('w') as file:
+    with backup_file.open('w') as file:  # write the file
         file.writelines(content)
     return
 
 
-def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]]) -> None:
+def send_email_of_diffs(project_path: Path, diff_text: str, email_addresses: list[list[str, str]]) -> None:
     """
     Sends an email with the differences between the previous and current requirements files.
     """
     log.debug('starting send_email_of_diffs()')
     log.debug(f'email_addresses: ``{email_addresses}``')
-    ## generate diff ------------------------------------------------
-    diff_text: str = make_diff_text(project_path)
     ## prep email data ----------------------------------------------
     EMAIL_HOST = ENVAR_EMAIL_HOST
     log.debug(f'EMAIL_HOST: ``{EMAIL_HOST}``')
@@ -257,7 +222,6 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
     Mark the backup file as active by adding a header comment.
     """
     log.debug('starting update_permissions_and_mark_active()')
-    # group: str = infer_group(project_path)
     backup_dir: Path = project_path.parent / 'requirements_backups'
     log.debug(f'backup_dir: ``{backup_dir}``')
     relative_env_path = project_path / '../env'
@@ -268,54 +232,6 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
         subprocess.run(['chgrp', '-R', group, str(path)], check=True)
         subprocess.run(['chmod', '-R', 'g=rwX', str(path)], check=True)
     return
-
-
-## ------------------------------------------------------------------
-## helper functions (called by code above) --------------------------
-## ------------------------------------------------------------------
-
-
-def filter_initial_comments(lines: list[str]) -> list[str]:
-    """
-    Filters out initial lines starting with '#' from a list of lines.
-    The reason for this is that:
-    - one of the first line of the backup file includes a timestamp, which would always be different.
-    - if a generated `.txt` file is used to update the venv, the string `# ACTIVE`
-        is added to the top of the file, which would always be different from a fresh compile.
-    Called by `compare_with_previous_backup()`.
-    """
-    log.debug('starting filter_initial_comments()')
-    non_comment_index = next((i for i, line in enumerate(lines) if not line.startswith('#')), len(lines))
-    return lines[non_comment_index:]
-
-
-def make_diff_text(project_path: Path) -> str:
-    """
-    Creates a diff from the two most recent requirements files.
-    Called by send_email_of_diffs().
-    """
-    log.debug('starting make_diff_text()')
-    ## get the two most recent backup files -------------------------
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    log.debug(f'backup_dir: ``{backup_dir}``')
-    backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-    current_file: Path = backup_files[0]
-    log.debug(f'current_file: ``{current_file}``')
-    previous_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
-    log.debug(f'previous_file: ``{previous_file}``')
-
-    with current_file.open() as curr, previous_file.open() as prev:
-        ## prepare the lines for the diff ---------------------------
-        curr_lines = curr.readlines()
-        prev_lines = prev.readlines()
-        curr_lines_filtered = filter_initial_comments(curr_lines)  # removes initial comments
-        prev_lines_filtered = filter_initial_comments(prev_lines)  # removes initial comments
-        ## build the diff info --------------------------------------
-        diff_lines = [f'--- {previous_file.name}\n', f'+++ {current_file.name}\n']
-        diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
-        diff_text = ''.join(diff_lines)
-    log.debug(f'diff_text: ``{diff_text}``')
-    return diff_text
 
 
 ## ------------------------------------------------------------------
@@ -345,8 +261,9 @@ def manage_update(project_path: str) -> None:
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
-    # differences_found: bool = compare_with_previous_backup(project_path)
-    differences_found: bool = compare_with_previous_backup(compiled_requirements, old_path=None, project_path=project_path)
+    differences_found: bool = compiled_comparator.compare_with_previous_backup(
+        compiled_requirements, old_path=None, project_path=project_path
+    )
     if not differences_found:
         log.debug('no differences found in dependencies.')
     else:
@@ -356,8 +273,10 @@ def manage_update(project_path: str) -> None:
         log.debug('dependencies updated successfully.')
         ## mark new-compile as active -------------------------------
         mark_active(compiled_requirements)
+        ## make diff ------------------------------------------------
+        diff_text: str = compiled_comparator.make_diff_text(project_path)
         ## send diff email ------------------------------------------
-        send_email_of_diffs(project_path, email_addresses)
+        send_email_of_diffs(project_path, diff_text, email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
     update_permissions(project_path, compiled_requirements, group)

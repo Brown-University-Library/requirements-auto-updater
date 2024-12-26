@@ -10,14 +10,20 @@ Usage:
 uv run ./tests.py
 """
 
+import sys
 import unittest
 from pathlib import Path
 
-import self_updater
+# ## add project to path ----------------------------------------------
+this_file_path = Path(__file__).resolve()
+stuff_dir = this_file_path.parent.parent
+sys.path.append(str(stuff_dir))
+from self_updater_code.compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
 
 
 class TestSelfUpdater(unittest.TestCase):
     def setUp(self):
+        self.compiled_comparator = CompiledComparator()
         pass
 
     def tearDown(self):
@@ -31,7 +37,9 @@ class TestSelfUpdater(unittest.TestCase):
         file_b_old_path = Path('./test_docs/no_differences_A/file_b.txt').resolve()
         project_path = None
         expected = False
-        change_check_result = self_updater.compare_with_previous_backup(file_a_new_path, file_b_old_path, project_path)
+        change_check_result = self.compiled_comparator.compare_with_previous_backup(
+            file_a_new_path, file_b_old_path, project_path
+        )
         self.assertEqual(expected, change_check_result)
 
     def test__compare_with_previous_backup__no_differences_B(self):
@@ -42,7 +50,9 @@ class TestSelfUpdater(unittest.TestCase):
         file_b_old_path = Path('./test_docs/no_differences_B/file_b.txt').resolve()
         project_path = None
         expected = False
-        change_check_result = self_updater.compare_with_previous_backup(file_a_new_path, file_b_old_path, project_path)
+        change_check_result = self.compiled_comparator.compare_with_previous_backup(
+            file_a_new_path, file_b_old_path, project_path
+        )
         self.assertEqual(expected, change_check_result)
 
     def test__compare_with_previous_backup__differences(self):
@@ -53,7 +63,9 @@ class TestSelfUpdater(unittest.TestCase):
         file_b_old_path = Path('./test_docs/differences/file_b.txt').resolve()
         project_path = None
         expected = True
-        change_check_result = self_updater.compare_with_previous_backup(file_a_new_path, file_b_old_path, project_path)
+        change_check_result = self.compiled_comparator.compare_with_previous_backup(
+            file_a_new_path, file_b_old_path, project_path
+        )
         self.assertEqual(expected, change_check_result)
 
 
