@@ -13,8 +13,7 @@ log = logging.getLogger(__name__)
 
 class CompiledComparator:
     def __init__(self):
-        self.new_lines = []
-        self.old_lines = []
+        pass
 
     def compare_with_previous_backup(
         self, new_path: Path, old_path: Path | None = None, project_path: Path | None = None
