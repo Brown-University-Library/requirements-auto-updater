@@ -311,6 +311,20 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     ## end def sync_dependencies()
 
 
+def mark_active(backup_file: Path) -> None:
+    """
+    Marks the backup file as active by adding a header comment.
+    """
+    log.debug('starting mark_active()')
+    with backup_file.open('r') as file:
+        content: list[str] = file.readlines()
+    content.insert(0, '# ACTIVE\n')
+
+    with backup_file.open('w') as file:
+        file.writelines(content)
+    return
+
+
 def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]]) -> None:
     """
     Sends an email with the differences between the previous and current requirements files.
@@ -348,7 +362,7 @@ def send_email_of_diffs(project_path: Path, email_addresses: list[list[str, str]
     return
 
 
-def update_permissions_and_mark_active(project_path: Path, backup_file: Path, group: str) -> None:
+def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
     """
     Update group ownership and permissions for relevant directories.
     Mark the backup file as active by adding a header comment.
@@ -457,11 +471,13 @@ def manage_update(project_path: str) -> None:
         log.debug('differences found in dependencies; updating venv')
         sync_dependencies(project_path, compiled_requirements, uv_path)
         log.debug('dependencies updated successfully.')
+        ## mark new-compile as active -------------------------------
+        mark_active(compiled_requirements)
         ## send diff email ------------------------------------------
         send_email_of_diffs(project_path, email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
-    update_permissions_and_mark_active(project_path, compiled_requirements, group)
+    update_permissions(project_path, compiled_requirements, group)
     return
 
     ## end def manage_update()
