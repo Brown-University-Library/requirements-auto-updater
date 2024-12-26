@@ -261,7 +261,7 @@ def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
 #     return changes  # just the boolean
 
 
-def compare_with_previous_backup(project_path: Path) -> bool:
+def compare_with_previous_backup(new_path: Path, old_path: Path | None = None, project_path: Path | None = None) -> bool:
     """
     Compares the newly created `requirements.txt` with the most recent one.
     Ignores initial lines starting with '#' in the comparison.
@@ -270,20 +270,20 @@ def compare_with_previous_backup(project_path: Path) -> bool:
     """
     log.debug('starting compare_with_previous_backup()')
     changes = True
-    ## get the two most recent backup files -------------------------
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    log.debug(f'backup_dir: ``{backup_dir}``')
-    backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-    current_file: Path = backup_files[0]
-    log.debug(f'current_file: ``{current_file}``')
-    previous_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
-    log.debug(f'previous_file: ``{previous_file}``')
-    if not previous_file:
+    ## try to get the old-path --------------------------------------
+    if not old_path:
+        log.debug('old_path not passed in; looking for it in `requirements_backups`')
+        backup_dir: Path = project_path.parent / 'requirements_backups'
+        log.debug(f'backup_dir: ``{backup_dir}``')
+        backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+        old_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
+        log.debug(f'old_file: ``{old_file}``')
+    if not old_path:
         log.debug('no previous backups found, so changes=False.')
         changes = False
     else:
         ## compare the two files ------------------------------------
-        with current_file.open() as curr, previous_file.open() as prev:
+        with new_path.open() as curr, old_path.open() as prev:
             curr_lines = curr.readlines()
             prev_lines = prev.readlines()
             curr_lines_filtered = filter_initial_comments(curr_lines)  # removes initial comments

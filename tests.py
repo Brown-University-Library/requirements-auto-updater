@@ -20,8 +20,8 @@ class TestSelfUpdater(unittest.TestCase):
         """
         Files A and B differ only in date in comment-line, so should be considered equal.
         """
-        file_a_new_path = Path('./test_docs/file_a.txt')
-        file_b_old_path = Path('./test_docs/file_b.txt')
+        file_a_new_path = Path('./test_docs/no_differences_A/file_a.txt').resolve()
+        file_b_old_path = Path('./test_docs/no_differences_A/file_b.txt').resolve()
         expected = False
         change_check_result = self_updater.compare_with_previous_backup(file_a_new_path, file_b_old_path)
         self.assertEqual(expected, change_check_result)
