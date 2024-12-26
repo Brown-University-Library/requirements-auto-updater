@@ -497,7 +497,8 @@ def manage_update(project_path: str) -> None:
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
-    differences_found: bool = compare_with_previous_backup(project_path)
+    # differences_found: bool = compare_with_previous_backup(project_path)
+    differences_found: bool = compare_with_previous_backup(compiled_requirements, old_path=None, project_path=project_path)
     if not differences_found:
         log.debug('no differences found in dependencies.')
     else:
