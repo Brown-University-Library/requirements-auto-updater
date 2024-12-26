@@ -266,7 +266,7 @@ def compare_with_previous_backup(new_path: Path, old_path: Path | None = None, p
     Compares the newly created `requirements.txt` with the most recent one.
     Ignores initial lines starting with '#' in the comparison.
     Returns False if there are no changes, True otherwise.
-    Possible refactor: pass in the current-file.
+    (Currently the manager-script just passes in the new_path, and the old_path is determined.)
     """
     log.debug('starting compare_with_previous_backup()')
     changes = True
