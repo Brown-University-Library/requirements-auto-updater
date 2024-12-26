@@ -276,8 +276,8 @@ def compare_with_previous_backup(new_path: Path, old_path: Path | None = None, p
         backup_dir: Path = project_path.parent / 'requirements_backups'
         log.debug(f'backup_dir: ``{backup_dir}``')
         backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-        old_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
-        log.debug(f'old_file: ``{old_file}``')
+        old_path: Path | None = backup_files[1] if len(backup_files) > 1 else None
+        log.debug(f'old_file: ``{old_path}``')
     if not old_path:
         log.debug('no previous backups found, so changes=False.')
         changes = False
