@@ -1,3 +1,8 @@
+"""
+Module used by self_updater.py
+Contains code for comparing the newly-compiled `requirements.txt` with the most recent one.
+"""
+
 import difflib
 import logging
 from pathlib import Path

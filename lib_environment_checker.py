@@ -1,5 +1,6 @@
 """
-Contains functions for checking the target-project's environment.
+Module used by self_updater.py
+Contains code for checking the target-project's environment.
 """
 
 import json
