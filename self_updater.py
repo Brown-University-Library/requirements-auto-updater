@@ -31,8 +31,8 @@ from dotenv import find_dotenv, load_dotenv
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
-from self_updater_code import environment_checker  # noqa: E402  (prevents linter problem-indicator)
-from self_updater_code.compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
+from self_updater_code import lib_environment_checker  # noqa: E402  (prevents linter problem-indicator)
+from self_updater_code.lib_compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
 
 compiled_comparator = CompiledComparator()
 
@@ -247,15 +247,15 @@ def manage_update(project_path: str) -> None:
     log.debug('starting manage_update()')
     ## validate project path ----------------------------------------
     project_path: Path = Path(project_path).resolve()  # ensures an absolute path now
-    environment_checker.validate_project_path(project_path)
+    lib_environment_checker.validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
     ## get everything needed up front -------------------------------
-    python_version: str = environment_checker.determine_python_version(project_path)  # for compiling requirements
-    environment_type: str = environment_checker.determine_environment_type()  # for compiling requirements
-    uv_path: Path = environment_checker.determine_uv_path()
-    email_addresses: list[list[str, str]] = environment_checker.determine_email_addresses()
-    group: str = environment_checker.determine_group(project_path)
+    python_version: str = lib_environment_checker.determine_python_version(project_path)  # for compiling requirements
+    environment_type: str = lib_environment_checker.determine_environment_type()  # for compiling requirements
+    uv_path: Path = lib_environment_checker.determine_uv_path()
+    email_addresses: list[list[str, str]] = lib_environment_checker.determine_email_addresses()
+    group: str = lib_environment_checker.determine_group(project_path)
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------

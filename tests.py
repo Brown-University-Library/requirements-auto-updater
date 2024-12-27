@@ -18,7 +18,7 @@ from pathlib import Path
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
-from self_updater_code.compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
+from self_updater_code.lib_compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
 
 
 class TestSelfUpdater(unittest.TestCase):
