@@ -199,7 +199,12 @@ def send_email_of_diffs(project_path: Path, diff_text: str, email_addresses: lis
     EMAIL_RECIPIENTS = recipients
     HOST = socket.gethostname()
     log.debug(f'HOST: ``{HOST}``')  # if this is the same as EMAIL_HOST, combine.
-    BODY = f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}'
+    # BODY = (
+    #     f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}. The venv was updated.'
+    # )
+    BODY = (
+        f'The venv for the project ``{project_path.name}`` has been auto-updated. The requirements.txt diff:\n\n{diff_text}.'
+    )
     ## build email message ------------------------------------------
     eml = MIMEText(f'{BODY}')
     eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{project_path.name}``'
