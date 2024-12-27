@@ -60,6 +60,24 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 
 
+def run_initial_tests(uv_path: Path, project_path: Path) -> None:
+    """
+    Run initial tests to ensure that the script can run.
+    """
+    log.debug('starting run_initial_tests()')
+    run_tests_initial_path = project_path / 'run_tests.py'
+    run_tests_path = run_tests_initial_path.resolve()
+    try:
+        command = [str(uv_path), 'run', str(run_tests_path)]
+        log.debug(f'command: ``{command}``')
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError:
+        message = 'problem with initial test-run'
+        log.exception(message)
+        raise Exception(message)
+    return
+
+
 def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
     """
     Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
@@ -261,6 +279,8 @@ def manage_update(project_path: str) -> None:
     uv_path: Path = lib_environment_checker.determine_uv_path()
     email_addresses: list[list[str, str]] = lib_environment_checker.determine_email_addresses()
     group: str = lib_environment_checker.determine_group(project_path)
+    ## run initial tests --------------------------------------------
+    run_initial_tests(uv_path, project_path)
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
