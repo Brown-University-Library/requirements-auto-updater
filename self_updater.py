@@ -213,46 +213,6 @@ def send_email_of_diffs(project_path: Path, diff_text: str, project_email_addres
     return
 
 
-# def send_email_of_diffs(project_path: Path, diff_text: str, email_addresses: list[list[str, str]]) -> None:
-#     """
-#     Sends an email with the differences between the previous and current requirements files.
-#     """
-#     log.debug('starting send_email_of_diffs()')
-#     log.debug(f'email_addresses: ``{email_addresses}``')
-#     ## prep email data ----------------------------------------------
-#     EMAIL_HOST = ENVAR_EMAIL_HOST
-#     log.debug(f'EMAIL_HOST: ``{EMAIL_HOST}``')
-#     EMAIL_PORT = int(ENVAR_EMAIL_HOST_PORT)
-#     EMAIL_FROM = ENVAR_EMAIL_FROM
-#     recipients = []
-#     for name, email in email_addresses:
-#         recipients.append(f'"{name}" <{email}>')
-#     log.debug(f'recipients: {recipients}')
-#     EMAIL_RECIPIENTS = recipients
-#     HOST = socket.gethostname()
-#     log.debug(f'HOST: ``{HOST}``')  # if this is the same as EMAIL_HOST, combine.
-#     # BODY = (
-#     #     f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}. The venv was updated.'
-#     # )
-#     BODY = (
-#         f'The venv for the project ``{project_path.name}`` has been auto-updated. The requirements.txt diff:\n\n{diff_text}.'
-#     )
-#     ## build email message ------------------------------------------
-#     eml = MIMEText(f'{BODY}')
-#     eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{project_path.name}``'
-#     eml['From'] = EMAIL_FROM
-#     eml['To'] = ', '.join(EMAIL_RECIPIENTS)
-#     ## send email ---------------------------------------------------
-#     try:
-#         s = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
-#         s.sendmail(EMAIL_FROM, EMAIL_RECIPIENTS, eml.as_string())
-#     except Exception as e:
-#         err = repr(e)
-#         log.exception(f'problem sending self-updater mail, ``{err}``')
-#         raise Exception(err)
-#     return
-
-
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
     """
     Update group ownership and permissions for relevant directories.
@@ -329,7 +289,12 @@ def manage_update(project_path: str) -> None:
 if __name__ == '__main__':
     log.debug('starting dundermain')
     if len(sys.argv) != 2:
-        print('Usage: python update_packages.py <project_path>')
+        message: str = """
+        See usage instructions at:
+        <https://github.com/Brown-University-Library/self_updater_code?tab=readme-ov-file#usage>
+        """
+        message: str = message.replace('        ', '')  # removes indentation-spaces
+        print(message)
         sys.exit(1)
 
     project_path: str = sys.argv[1]
