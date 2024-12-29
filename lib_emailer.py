@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 class Emailer:
     """
-    Handles emailing sys-admins.
+    Handles emailing updater-sys-admins and project-admins.
     """
 
     def __init__(self, project_path: Path) -> None:
@@ -35,11 +35,20 @@ class Emailer:
     def create_setup_problem_message(self, message: str) -> str:
         """
         Prepares problem-email.
+        The incoming `message` parameter is the error message from the exception that was raised.
         """
         log.debug('starting create_setup_problem_message()')
-        email_message = f"""
-There was a problem running the self-updater script. Message: ``{message}``
-"""
+        email_message = f'''
+There was a problem running the self-updater script. 
+
+Message: ``{message}``.
+
+Suggestion, after fixing the problem, manually run the self-updater script again to make 
+sure there aren't other environmental setup issues. 
+
+Usage instructions are at:
+<https://github.com/Brown-University-Library/self_updater_code?tab=readme-ov-file#usage>
+'''
         return email_message
 
     def send_email(self, email_addresses: list[list[str, str]], message: str) -> None:
@@ -63,7 +72,7 @@ There was a problem running the self-updater script. Message: ``{message}``
         eml['To'] = ', '.join(EMAIL_RECIPIENTS)
         ## send email ---------------------------------------------------
         try:
-            s = smtplib.SMTP(self.email_host, self.email_host_port)
+            s = smtplib.SMTP(self.`email_host`, self.email_host_port)
             s.sendmail(self.self_updater_email_from, EMAIL_RECIPIENTS, eml.as_string())
         except Exception as e:
             err = repr(e)
