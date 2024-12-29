@@ -17,12 +17,9 @@ Usage...
 
 import logging
 import os
-import smtplib
-import socket
 import subprocess
 import sys
 from datetime import datetime
-from email.mime.text import MIMEText
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -33,6 +30,7 @@ stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
 from self_updater_code import lib_environment_checker  # noqa: E402  (prevents linter problem-indicator)
 from self_updater_code.lib_compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
+from self_updater_code.lib_emailer import Emailer  # noqa: E402  (prevents linter problem-indicator)
 
 compiled_comparator = CompiledComparator()
 
@@ -199,44 +197,60 @@ def mark_active(backup_file: Path) -> None:
     return
 
 
-def send_email_of_diffs(project_path: Path, diff_text: str, email_addresses: list[list[str, str]]) -> None:
+def send_email_of_diffs(project_path: Path, diff_text: str, project_email_addresses: list[list[str, str]]) -> None:
     """
-    Sends an email with the differences between the previous and current requirements files.
+    Manages the sending of an email with the differences between the previous and current requirements files.
+
+    Note that on error, the function logs the error and continues, so the permissions-update will still occur.
     """
-    log.debug('starting send_email_of_diffs()')
-    log.debug(f'email_addresses: ``{email_addresses}``')
-    ## prep email data ----------------------------------------------
-    EMAIL_HOST = ENVAR_EMAIL_HOST
-    log.debug(f'EMAIL_HOST: ``{EMAIL_HOST}``')
-    EMAIL_PORT = int(ENVAR_EMAIL_HOST_PORT)
-    EMAIL_FROM = ENVAR_EMAIL_FROM
-    recipients = []
-    for name, email in email_addresses:
-        recipients.append(f'"{name}" <{email}>')
-    log.debug(f'recipients: {recipients}')
-    EMAIL_RECIPIENTS = recipients
-    HOST = socket.gethostname()
-    log.debug(f'HOST: ``{HOST}``')  # if this is the same as EMAIL_HOST, combine.
-    # BODY = (
-    #     f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}. The venv was updated.'
-    # )
-    BODY = (
-        f'The venv for the project ``{project_path.name}`` has been auto-updated. The requirements.txt diff:\n\n{diff_text}.'
-    )
-    ## build email message ------------------------------------------
-    eml = MIMEText(f'{BODY}')
-    eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{project_path.name}``'
-    eml['From'] = EMAIL_FROM
-    eml['To'] = ', '.join(EMAIL_RECIPIENTS)
-    ## send email ---------------------------------------------------
+    emailer = Emailer(project_path)
+    email_message: str = emailer.create_update_ok_message(diff_text)
     try:
-        s = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
-        s.sendmail(EMAIL_FROM, EMAIL_RECIPIENTS, eml.as_string())
-    except Exception as e:
-        err = repr(e)
-        log.exception(f'problem sending self-updater mail, ``{err}``')
-        raise Exception(err)
+        emailer.send_email(project_email_addresses, email_message)
+    except Exception:
+        message = 'problem sending email'
+        log.exception(message)
     return
+
+
+# def send_email_of_diffs(project_path: Path, diff_text: str, email_addresses: list[list[str, str]]) -> None:
+#     """
+#     Sends an email with the differences between the previous and current requirements files.
+#     """
+#     log.debug('starting send_email_of_diffs()')
+#     log.debug(f'email_addresses: ``{email_addresses}``')
+#     ## prep email data ----------------------------------------------
+#     EMAIL_HOST = ENVAR_EMAIL_HOST
+#     log.debug(f'EMAIL_HOST: ``{EMAIL_HOST}``')
+#     EMAIL_PORT = int(ENVAR_EMAIL_HOST_PORT)
+#     EMAIL_FROM = ENVAR_EMAIL_FROM
+#     recipients = []
+#     for name, email in email_addresses:
+#         recipients.append(f'"{name}" <{email}>')
+#     log.debug(f'recipients: {recipients}')
+#     EMAIL_RECIPIENTS = recipients
+#     HOST = socket.gethostname()
+#     log.debug(f'HOST: ``{HOST}``')  # if this is the same as EMAIL_HOST, combine.
+#     # BODY = (
+#     #     f'The dependencies for {project_path.name} have changed. The differences are:\n\n{diff_text}. The venv was updated.'
+#     # )
+#     BODY = (
+#         f'The venv for the project ``{project_path.name}`` has been auto-updated. The requirements.txt diff:\n\n{diff_text}.'
+#     )
+#     ## build email message ------------------------------------------
+#     eml = MIMEText(f'{BODY}')
+#     eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{project_path.name}``'
+#     eml['From'] = EMAIL_FROM
+#     eml['To'] = ', '.join(EMAIL_RECIPIENTS)
+#     ## send email ---------------------------------------------------
+#     try:
+#         s = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+#         s.sendmail(EMAIL_FROM, EMAIL_RECIPIENTS, eml.as_string())
+#     except Exception as e:
+#         err = repr(e)
+#         log.exception(f'problem sending self-updater mail, ``{err}``')
+#         raise Exception(err)
+#     return
 
 
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:

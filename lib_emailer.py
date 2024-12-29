@@ -34,27 +34,47 @@ class Emailer:
 
     def create_setup_problem_message(self, message: str) -> str:
         """
-        Prepares problem-email.
+        Prepares problem-email message.
         The incoming `message` parameter is the error message from the exception that was raised.
         """
         log.debug('starting create_setup_problem_message()')
         email_message = f"""
-There was a problem running the self-updater script. 
+        There was a problem running the self-updater script. 
 
-Message: ``{message}``.
+        Message: ``{message}``.
 
-Suggestion, after fixing the problem, manually run the self-updater script again to make sure there aren't other environmental setup issues. 
+        Suggestion, after fixing the problem, manually run the self-updater script again to make sure there aren't other environmental setup issues. 
 
-Usage instructions are at:
-<https://github.com/Brown-University-Library/self_updater_code?tab=readme-ov-file#usage>
+        Usage instructions are at:
+        <https://github.com/Brown-University-Library/self_updater_code?tab=readme-ov-file#usage>
 
-(end-of-message)
-"""
+        (end-of-message)
+        """
+        email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
+        return email_message
+
+    def create_update_ok_message(self, diff_text) -> str:
+        """
+        Prepares update-ok email message.
+        Includes the differences between the previous and current requirements.
+        """
+        log.debug('starting create_update_ok_message()')
+        email_message = f"""
+        The venv for the project ``{self.project_path.name}`` has been auto-updated successfully. 
+        
+        The requirements.txt diff:\n\n{diff_text}.
+
+        (end-of-message)
+        """
+        email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
         return email_message
 
     def send_email(self, email_addresses: list[list[str, str]], message: str) -> None:
         """
-        Sends an email with the differences between the previous and current requirements files.
+        Builds and sends email.
+
+        On a successful update email, the email_addresses will be the project-admins.
+        On a setup problem email, the email_addresses will be the self-updater sys-admins.
         """
         log.debug('starting send_email_of_diffs()')
         log.debug(f'email_addresses: ``{email_addresses}``')
