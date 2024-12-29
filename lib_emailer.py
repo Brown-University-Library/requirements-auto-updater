@@ -38,17 +38,18 @@ class Emailer:
         The incoming `message` parameter is the error message from the exception that was raised.
         """
         log.debug('starting create_setup_problem_message()')
-        email_message = f'''
+        email_message = f"""
 There was a problem running the self-updater script. 
 
 Message: ``{message}``.
 
-Suggestion, after fixing the problem, manually run the self-updater script again to make 
-sure there aren't other environmental setup issues. 
+Suggestion, after fixing the problem, manually run the self-updater script again to make sure there aren't other environmental setup issues. 
 
 Usage instructions are at:
 <https://github.com/Brown-University-Library/self_updater_code?tab=readme-ov-file#usage>
-'''
+
+(end-of-message)
+"""
         return email_message
 
     def send_email(self, email_addresses: list[list[str, str]], message: str) -> None:
@@ -64,7 +65,7 @@ Usage instructions are at:
         log.debug(f'recipients: {recipients}')
         EMAIL_RECIPIENTS: list = recipients
         HOST: str = socket.gethostname()
-        log.debug( f'HOST, ``{HOST}``; self.email_host, ``{self.email_host}``; which do I want?' )
+        log.debug(f'HOST, ``{HOST}``; self.email_host, ``{self.email_host}``; which do I want?')
         ## build email message ------------------------------------------
         eml = MIMEText(message)
         eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{self.project_path.name}``'
