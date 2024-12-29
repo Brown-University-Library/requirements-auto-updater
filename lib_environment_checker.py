@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 
 import dotenv
+from self_updater_code.lib_emailer import Emailer
 
 ## set up logging ---------------------------------------------------
 logging.basicConfig(
@@ -19,6 +20,22 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
+# def validate_project_path(project_path: Path) -> None:
+#     """
+#     Validates that the provided project path exists.
+#     Exits the script if the path is invalid.
+#     """
+#     log.debug('starting validate_project_path()')
+#     log.debug(f'project_path: ``{project_path}``')
+#     if not project_path.exists():
+#         message = f'Error: The provided project_path ``{project_path}`` does not exist.'
+#         log.exception(message)
+#         raise Exception(message)
+#     else:
+#         log.debug('project_path exists')
+#     return
+
+
 def validate_project_path(project_path: Path) -> None:
     """
     Validates that the provided project path exists.
@@ -27,11 +44,16 @@ def validate_project_path(project_path: Path) -> None:
     log.debug('starting validate_project_path()')
     log.debug(f'project_path: ``{project_path}``')
     if not project_path.exists():
-        message = f'Error: The provided project_path ``{project_path}`` does not exist.'
+        message = f'Error: The provided project_path ``{project_path}`` does not exist. Halting self-update.'
         log.exception(message)
+        ## email sys-admins -----------------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        ## raise exception -----------------------------------------
         raise Exception(message)
     else:
-        log.debug('project_path exists')
+        log.debug('project_path valid')
     return
 
 

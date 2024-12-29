@@ -300,6 +300,8 @@ def manage_update(project_path: str) -> None:
         mark_active(compiled_requirements)
         ## make diff ------------------------------------------------
         diff_text: str = compiled_comparator.make_diff_text(project_path)
+        ## run post-update tests ------------------------------------
+        # TODO
         ## send diff email ------------------------------------------
         send_email_of_diffs(project_path, diff_text, email_addresses)
         log.debug('email sent')
