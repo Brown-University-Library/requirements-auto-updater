@@ -36,7 +36,10 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 ## Usage...
 
 - Directly:
-    `$ uv run ./self_update.py "/path/to/project_code_dir/"`
+    ```
+    $ cd "/path/to/scripts/self_updater_code_stuff/self_updater_code/"
+    $ ../env/bin/uv run ./self_update.py "/path/to/project_code_dir/"
+    ```
 
 - Via cron (eg to run every day at midnight) (all one line):
     `0 0 * * * cd "/path/to/self_updater_code/"; ../env/bin/uv run ./self_update.py "/path/to/project_code_dir/"`
@@ -55,8 +58,8 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
     ```
     ADMINS_JSON='
         [
-            [ "exampleFirst1 exampleLast1", "example1@domain.edu" ],
-            [ "exampleFirst2 exampleLast2", "example2@domain.edu" ]
+            [ "exampleFirstname1 exampleLastname1", "example1@domain.edu" ],
+            [ "exampleFirstname2 exampleLastname2", "example2@domain.edu" ]
         ]'
     ```
 
