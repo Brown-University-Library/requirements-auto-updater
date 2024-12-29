@@ -72,7 +72,7 @@ Usage instructions are at:
         eml['To'] = ', '.join(EMAIL_RECIPIENTS)
         ## send email ---------------------------------------------------
         try:
-            s = smtplib.SMTP(self.`email_host`, self.email_host_port)
+            s = smtplib.SMTP(self.email_host, self.email_host_port)
             s.sendmail(self.self_updater_email_from, EMAIL_RECIPIENTS, eml.as_string())
         except Exception as e:
             err = repr(e)
