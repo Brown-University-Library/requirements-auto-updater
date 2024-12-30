@@ -51,14 +51,43 @@ def determine_python_version(project_path: Path) -> str:
     if not env_python_path.exists():
         message = 'Error: Virtual environment not found.'
         log.exception(message)
+        ## email sys-admins -----------------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        ## raise exception -----------------------------------------
         raise Exception(message)
-
     python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
     if not python_version.startswith('3.'):
         message = 'Error: Invalid Python version.'
         log.exception(message)
+        ## email sys-admins -----------------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        ## raise exception -----------------------------------------
         raise Exception(message)
     return python_version
+
+
+# def determine_python_version(project_path: Path) -> str:
+#     """
+#     Determines Python version from the target-project's virtual environment.
+#     Exits the script if the virtual environment or Python version is invalid.
+#     """
+#     log.debug('starting infer_python_version()')
+#     env_python_path: Path = project_path.parent / 'env/bin/python3'
+#     if not env_python_path.exists():
+#         message = 'Error: Virtual environment not found.'
+#         log.exception(message)
+#         raise Exception(message)
+
+#     python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
+#     if not python_version.startswith('3.'):
+#         message = 'Error: Invalid Python version.'
+#         log.exception(message)
+#         raise Exception(message)
+#     return python_version
 
 
 def determine_environment_type() -> str:
