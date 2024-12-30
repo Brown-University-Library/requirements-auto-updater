@@ -248,11 +248,14 @@ def manage_update(project_path: str) -> None:
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
     ## get everything needed up front -------------------------------
-    python_version: str = lib_environment_checker.determine_python_version(project_path)  # for compiling requirements
+    project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
+    python_version: str = lib_environment_checker.determine_python_version(
+        project_path, project_email_addresses
+    )  # for compiling requirements
     environment_type: str = lib_environment_checker.determine_environment_type()  # for compiling requirements
     uv_path: Path = lib_environment_checker.determine_uv_path()
-    email_addresses: list[list[str, str]] = lib_environment_checker.determine_email_addresses()
-    group: str = lib_environment_checker.determine_group(project_path)
+    project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
+    group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## run initial tests --------------------------------------------
     run_initial_tests(uv_path, project_path)
     ## compile requirements file ------------------------------------
@@ -277,7 +280,7 @@ def manage_update(project_path: str) -> None:
         ## run post-update tests ------------------------------------
         # TODO
         ## send diff email ------------------------------------------
-        send_email_of_diffs(project_path, diff_text, email_addresses)
+        send_email_of_diffs(project_path, diff_text, project_email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
     update_permissions(project_path, compiled_requirements, group)

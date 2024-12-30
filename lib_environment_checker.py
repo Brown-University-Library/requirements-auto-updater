@@ -23,14 +23,16 @@ log = logging.getLogger(__name__)
 def validate_project_path(project_path: Path) -> None:
     """
     Validates that the provided project path exists.
-    Exits the script if the path is invalid.
+    If path is invalid:
+    - Sends an email to the self-updater sys-admins
+    - Exits the script
     """
     log.debug('starting validate_project_path()')
     log.debug(f'project_path: ``{project_path}``')
     if not project_path.exists():
         message = f'Error: The provided project_path ``{project_path}`` does not exist. Halting self-update.'
         log.exception(message)
-        ## email sys-admins -----------------------------------------
+        ## email project sys-admins ---------------------------------
         emailer = Emailer(project_path)
         email_message: str = emailer.create_setup_problem_message(message)
         emailer.send_email(emailer.sys_admin_recipients, email_message)
@@ -41,20 +43,86 @@ def validate_project_path(project_path: Path) -> None:
     return
 
 
-def determine_python_version(project_path: Path) -> str:
+def determine_project_email_addresses(project_path: Path) -> list[list[str, str]]:
+    """
+    Loads email addresses from the target-project's `.env` file.
+    Returns a list of email addresses.
+    Assumes the setting `ADMINS_JSON` structured like:
+    ADMINS_JSON='
+    [
+      [ "exampleFirstName exampleLastName", "example@domain.edu"],
+      etc...
+    ]'
+
+    If there's an error:
+    - Sends an email to the self-updater sys-admins
+    - Exits the script
+    """
+    log.debug('starting determine_project_email_addresses()')
+    try:
+        settings: dict = dotenv.dotenv_values('../.env')
+        # email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
+        email_addresses_json: str = settings['ADMINS_JSON']
+        email_addresses: list[list[str, str]] = json.loads(email_addresses_json)
+        log.debug(f'email_addresses: {email_addresses}')
+        log.debug(f'type(email_addresses): {type(email_addresses)}')
+        return email_addresses
+    except Exception as e:
+        message = f'Error determining email addresses: {e}'
+        log.exception(message)
+        ## email project sys-admins ---------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        ## raise exception -----------------------------------------
+        raise Exception(message)
+
+    ## end def determine_project_email_addresses()
+
+
+# def determine_project_email_addresses() -> list[list[str, str]]:
+#     """
+#     Loads email addresses from the target-project's `.env` file.
+#     Returns a list of email addresses.
+#     Assumes the setting `ADMINS_JSON` structured like:
+#     ADMINS_JSON='
+#     [
+#       [ "exampleFirstName exampleLastName", "example@domain.edu"],
+#       etc...
+#     ]'
+#     """
+#     log.debug('starting determine_project_email_addresses()')
+#     try:
+#         settings: dict = dotenv.dotenv_values('../.env')
+#         # email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
+#         email_addresses_json: str = settings['ADMINS_JSON']
+#         email_addresses: list[list[str, str]] = json.loads(email_addresses_json)
+#         log.debug(f'email_addresses: {email_addresses}')
+#         log.debug(f'type(email_addresses): {type(email_addresses)}')
+#         return email_addresses
+#     except Exception as e:
+#         message = f'Error determining email addresses: {e}'
+#         log.exception(message)
+#         raise Exception(message)
+
+
+def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
     """
     Determines Python version from the target-project's virtual environment.
-    Exits the script if the virtual environment or Python version is invalid.
+
+    If the virtual environment or python version is invalid:
+    - Sends an email to the project sys-admins
+    - Exits the script
     """
     log.debug('starting infer_python_version()')
     env_python_path: Path = project_path.parent / 'env/bin/python3'
     if not env_python_path.exists():
         message = 'Error: Virtual environment not found.'
         log.exception(message)
-        ## email sys-admins -----------------------------------------
+        ## email project sys-admins ---------------------------------
         emailer = Emailer(project_path)
         email_message: str = emailer.create_setup_problem_message(message)
-        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
     python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
@@ -64,7 +132,7 @@ def determine_python_version(project_path: Path) -> str:
         ## email sys-admins -----------------------------------------
         emailer = Emailer(project_path)
         email_message: str = emailer.create_setup_problem_message(message)
-        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
     return python_version
@@ -125,36 +193,14 @@ def determine_uv_path() -> Path:
     return uv_path
 
 
-def determine_email_addresses() -> list[list[str, str]]:
-    """
-    Loads email addresses from the target-project's `.env` file.
-    Returns a list of email addresses.
-    Assumes the setting `ADMINS_JSON` structured like:
-    ADMINS_JSON='
-    [
-      [ "exampleFirstName exampleLastName", "example@domain.edu"],
-      etc...
-    ]'
-    """
-    log.debug('starting determine_email_addresses()')
-    try:
-        settings: dict = dotenv.dotenv_values('../.env')
-        # email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
-        email_addresses_json: str = settings['ADMINS_JSON']
-        email_addresses: list[list[str, str]] = json.loads(email_addresses_json)
-        log.debug(f'email_addresses: {email_addresses}')
-        log.debug(f'type(email_addresses): {type(email_addresses)}')
-        return email_addresses
-    except Exception as e:
-        message = f'Error determining email addresses: {e}'
-        log.exception(message)
-        raise Exception(message)
-
-
-def determine_group(project_path: Path) -> str:
+def determine_group(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
     """
     Infers the group by examining existing files.
     Returns the most common group.
+
+    If there's an error:
+    - Sends an email to the project sys-admins
+    - Exits the script
     """
     log.debug('starting infer_group()')
     try:
@@ -166,4 +212,9 @@ def determine_group(project_path: Path) -> str:
     except Exception as e:
         message = f'Error inferring group: {e}'
         log.exception(message)
+        ## email sys-admins -----------------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        ## raise exception -----------------------------------------
         raise Exception(message)
