@@ -58,7 +58,7 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 
 
-def run_initial_tests(uv_path: Path, project_path: Path) -> None:
+def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
     """
     Run initial tests to ensure that the script can run.
     """
@@ -72,6 +72,11 @@ def run_initial_tests(uv_path: Path, project_path: Path) -> None:
     except subprocess.CalledProcessError:
         message = 'problem with initial test-run'
         log.exception(message)
+        ## email sys-admins -----------------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        ## raise exception -----------------------------------------
         raise Exception(message)
     return
 
@@ -254,10 +259,11 @@ def manage_update(project_path: str) -> None:
     )  # for compiling requirements
     environment_type: str = lib_environment_checker.determine_environment_type()  # for compiling requirements
     uv_path: Path = lib_environment_checker.determine_uv_path()
-    project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## run initial tests --------------------------------------------
-    run_initial_tests(uv_path, project_path)
+    run_initial_tests(
+        uv_path, project_path, project_email_addresses
+    )  # on failure, project-admins are emailed and script exits
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
