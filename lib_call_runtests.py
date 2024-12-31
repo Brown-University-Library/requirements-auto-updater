@@ -23,7 +23,6 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
         log.debug(f'command: ``{command}``')
         subprocess.run(command, check=True)
     except Exception as e:
-    # except subprocess.CalledProcessError as e:
         message = f'Error on initial run_tests() call: ``{e}``. Halting self-update.'
         log.exception(message)
         ## email sys-admins -----------------------------------------
