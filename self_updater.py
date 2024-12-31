@@ -255,24 +255,6 @@ def send_email_of_diffs(
     return
 
 
-# def send_email_of_diffs(
-#     project_path: Path, diff_text: str, followup_test_problems: None | str, project_email_addresses: list[list[str, str]]
-# ) -> None:
-#     """
-#     Manages the sending of an email with the differences between the previous and current requirements files.
-
-#     Note that on error, the function logs the error and continues, so the permissions-update will still occur.
-#     """
-#     emailer = Emailer(project_path)
-#     email_message: str = emailer.create_update_ok_message(diff_text)
-#     try:
-#         emailer.send_email(project_email_addresses, email_message)
-#     except Exception:
-#         message = 'problem sending email'
-#         log.exception(message)
-#     return
-
-
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
     """
     Update group ownership and permissions for relevant directories.

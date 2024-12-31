@@ -80,32 +80,6 @@ def determine_project_email_addresses(project_path: Path) -> list[list[str, str]
     ## end def determine_project_email_addresses()
 
 
-# def determine_project_email_addresses() -> list[list[str, str]]:
-#     """
-#     Loads email addresses from the target-project's `.env` file.
-#     Returns a list of email addresses.
-#     Assumes the setting `ADMINS_JSON` structured like:
-#     ADMINS_JSON='
-#     [
-#       [ "exampleFirstName exampleLastName", "example@domain.edu"],
-#       etc...
-#     ]'
-#     """
-#     log.debug('starting determine_project_email_addresses()')
-#     try:
-#         settings: dict = dotenv.dotenv_values('../.env')
-#         # email_addresses: list[list[str, str]] = settings['ADMINS_JSON']
-#         email_addresses_json: str = settings['ADMINS_JSON']
-#         email_addresses: list[list[str, str]] = json.loads(email_addresses_json)
-#         log.debug(f'email_addresses: {email_addresses}')
-#         log.debug(f'type(email_addresses): {type(email_addresses)}')
-#         return email_addresses
-#     except Exception as e:
-#         message = f'Error determining email addresses: {e}'
-#         log.exception(message)
-#         raise Exception(message)
-
-
 def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
     """
     Determines Python version from the target-project's virtual environment.
@@ -136,26 +110,6 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
         ## raise exception -----------------------------------------
         raise Exception(message)
     return python_version
-
-
-# def determine_python_version(project_path: Path) -> str:
-#     """
-#     Determines Python version from the target-project's virtual environment.
-#     Exits the script if the virtual environment or Python version is invalid.
-#     """
-#     log.debug('starting infer_python_version()')
-#     env_python_path: Path = project_path.parent / 'env/bin/python3'
-#     if not env_python_path.exists():
-#         message = 'Error: Virtual environment not found.'
-#         log.exception(message)
-#         raise Exception(message)
-
-#     python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
-#     if not python_version.startswith('3.'):
-#         message = 'Error: Invalid Python version.'
-#         log.exception(message)
-#         raise Exception(message)
-#     return python_version
 
 
 def determine_environment_type() -> str:
