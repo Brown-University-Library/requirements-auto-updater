@@ -10,15 +10,8 @@ from pathlib import Path
 
 import dotenv
 
-# from self_updater_code.lib_emailer import Emailer
 from lib_emailer import Emailer
 
-## set up logging ---------------------------------------------------
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
-    datefmt='%d/%b/%Y %H:%M:%S',
-)
 log = logging.getLogger(__name__)
 
 

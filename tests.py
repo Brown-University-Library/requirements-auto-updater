@@ -10,9 +10,18 @@ Usage:
 uv run ./tests.py
 """
 
+import logging
 import sys
 import unittest
 from pathlib import Path
+
+## set up logging ---------------------------------------------------
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
+    datefmt='%d/%b/%Y %H:%M:%S',
+)
+log = logging.getLogger(__name__)
 
 # ## add project to path ----------------------------------------------
 this_file_path = Path(__file__).resolve()
