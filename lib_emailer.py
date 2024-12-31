@@ -16,7 +16,6 @@ assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
 
 
-## prepare logger ---------------------------------------------------
 log = logging.getLogger(__name__)
 
 
@@ -77,10 +76,10 @@ class Emailer:
         log.debug('starting create_update_problem_message()')
         email_message = f"""
         The venv for the project ``{self.project_path.name}`` has been auto-updated and is active. 
-        
-        The requirements.txt diff:\n\n{diff_text}.
 
         However, the post-update run_tests() failed -- and should be reviewed.
+        
+        The requirements.txt diff:\n\n{diff_text}.
 
         (end-of-message)
         """
