@@ -61,6 +61,10 @@ log = logging.getLogger(__name__)
 def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
     """
     Run initial tests to ensure that the script can run.
+
+    On failure:
+    - Emails project-admins
+    - Raises an exception
     """
     log.debug('starting run_initial_tests()')
     run_tests_initial_path = project_path / 'run_tests.py'
@@ -70,7 +74,7 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
         log.debug(f'command: ``{command}``')
         subprocess.run(command, check=True)
     except subprocess.CalledProcessError:
-        message = 'problem with initial test-run'
+        message = 'Errors on initial test-run. Halting self-update.'
         log.exception(message)
         ## email sys-admins -----------------------------------------
         emailer = Emailer(project_path)
@@ -79,6 +83,31 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
         ## raise exception -----------------------------------------
         raise Exception(message)
     return
+
+
+def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
+    """
+    Runs followup tests on the updated venv.
+
+    If tests pass returns None.
+
+    If tests fail:
+    - returns "tests failed" message (to be add to the diff email)
+    - does not exit, so that diffs can be emailed and permissions updated
+    """
+    log.debug('starting run_followup_tests()')
+    run_tests_initial_path = project_path / 'run_tests.py'
+    run_tests_path = run_tests_initial_path.resolve()
+    try:
+        command = [str(uv_path), 'run', str(run_tests_path)]
+        log.debug(f'command: ``{command}``')
+        subprocess.run(command, check=True)
+        return_val = None
+    except subprocess.CalledProcessError:
+        message = 'tests failed after updating venv'
+        log.exception(message)
+        return_val = message
+    return return_val
 
 
 def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
@@ -202,20 +231,46 @@ def mark_active(backup_file: Path) -> None:
     return
 
 
-def send_email_of_diffs(project_path: Path, diff_text: str, project_email_addresses: list[list[str, str]]) -> None:
+def send_email_of_diffs(
+    project_path: Path, diff_text: str, followup_test_problems: None | str, project_email_addresses: list[list[str, str]]
+) -> None:
     """
     Manages the sending of an email with the differences between the previous and current requirements files.
 
-    Note that on error, the function logs the error and continues, so the permissions-update will still occur.
+    If the followup run_tests() failed, a note to that effect will be included in the email.
+
+    Note that on an email-send error, the error will be logged, but the script will continue,
+      so the permissions-update will still occur.
     """
     emailer = Emailer(project_path)
-    email_message: str = emailer.create_update_ok_message(diff_text)
+    if followup_test_problems:
+        email_message: str = emailer.create_update_problem_message(diff_text, followup_test_problems)
+    else:
+        email_message: str = emailer.create_update_ok_message(diff_text)
     try:
         emailer.send_email(project_email_addresses, email_message)
     except Exception:
         message = 'problem sending email'
         log.exception(message)
     return
+
+
+# def send_email_of_diffs(
+#     project_path: Path, diff_text: str, followup_test_problems: None | str, project_email_addresses: list[list[str, str]]
+# ) -> None:
+#     """
+#     Manages the sending of an email with the differences between the previous and current requirements files.
+
+#     Note that on error, the function logs the error and continues, so the permissions-update will still occur.
+#     """
+#     emailer = Emailer(project_path)
+#     email_message: str = emailer.create_update_ok_message(diff_text)
+#     try:
+#         emailer.send_email(project_email_addresses, email_message)
+#     except Exception:
+#         message = 'problem sending email'
+#         log.exception(message)
+#     return
 
 
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
@@ -284,9 +339,11 @@ def manage_update(project_path: str) -> None:
         ## make diff ------------------------------------------------
         diff_text: str = compiled_comparator.make_diff_text(project_path)
         ## run post-update tests ------------------------------------
-        # TODO
+        followup_tests_problems = run_followup_tests(
+            uv_path, project_path, project_email_addresses
+        )  # on failure, script does _not_ exit, so diffs can be emailed and permissions updated
         ## send diff email ------------------------------------------
-        send_email_of_diffs(project_path, diff_text, project_email_addresses)
+        send_email_of_diffs(project_path, diff_text, followup_tests_problems, project_email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
     update_permissions(project_path, compiled_requirements, group)

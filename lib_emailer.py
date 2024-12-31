@@ -53,7 +53,7 @@ class Emailer:
         email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
         return email_message
 
-    def create_update_ok_message(self, diff_text) -> str:
+    def create_update_ok_message(self, diff_text: str) -> str:
         """
         Prepares update-ok email message.
         Includes the differences between the previous and current requirements.
@@ -63,6 +63,24 @@ class Emailer:
         The venv for the project ``{self.project_path.name}`` has been auto-updated successfully. 
         
         The requirements.txt diff:\n\n{diff_text}.
+
+        (end-of-message)
+        """
+        email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
+        return email_message
+
+    def create_update_problem_message(self, diff_text: str, followup_test_problems: str) -> str:
+        """
+        Prepares "update-happened, but there are post-update test failures" email message.
+        Includes the differences between the previous and current requirements.
+        """
+        log.debug('starting create_update_problem_message()')
+        email_message = f"""
+        The venv for the project ``{self.project_path.name}`` has been auto-updated and is active. 
+        
+        The requirements.txt diff:\n\n{diff_text}.
+
+        However, the post-update run_tests() failed -- and should be reviewed.
 
         (end-of-message)
         """
