@@ -30,6 +30,7 @@ class Emailer:
         self.self_updater_email_from: str = os.environ['SLFUPDTR__EMAIL_FROM']
         self.email_host: str = os.environ['SLFUPDTR__EMAIL_HOST']
         self.email_host_port: int = int(os.environ['SLFUPDTR__EMAIL_HOST_PORT'])
+        self.server_name: str = socket.gethostname()
 
     def create_setup_problem_message(self, message: str) -> str:
         """
@@ -96,22 +97,19 @@ class Emailer:
         log.debug('starting send_email_of_diffs()')
         log.debug(f'email_addresses: ``{email_addresses}``')
         ## prep email data ----------------------------------------------
-        recipients = []
+        built_recipients = []
         for name, email in email_addresses:
-            recipients.append(f'"{name}" <{email}>')
-        log.debug(f'recipients: {recipients}')
-        EMAIL_RECIPIENTS: list = recipients
-        HOST: str = socket.gethostname()
-        log.debug(f'HOST, ``{HOST}``; self.email_host, ``{self.email_host}``; which do I want?')
+            built_recipients.append(f'"{name}" <{email}>')
+        log.debug(f'built_recipients: {built_recipients}')
         ## build email message ------------------------------------------
         eml = MIMEText(message)
-        eml['Subject'] = f'bul-self-updater info from ``{HOST.upper()}`` for project ``{self.project_path.name}``'
+        eml['Subject'] = f'bul-self-updater info from server``{self.server_name}`` for project ``{self.project_path.name}``'
         eml['From'] = self.self_updater_email_from
-        eml['To'] = ', '.join(EMAIL_RECIPIENTS)
+        eml['To'] = ', '.join(built_recipients)
         ## send email ---------------------------------------------------
         try:
             s = smtplib.SMTP(self.email_host, self.email_host_port)
-            s.sendmail(self.self_updater_email_from, EMAIL_RECIPIENTS, eml.as_string())
+            s.sendmail(self.self_updater_email_from, built_recipients, eml.as_string())
         except Exception as e:
             err = repr(e)
             log.exception(f'problem sending self-updater mail, ``{err}``')
