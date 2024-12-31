@@ -34,7 +34,7 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     return
 
 
-def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
+def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None | str:
     """
     Runs followup tests on the updated venv.
 
