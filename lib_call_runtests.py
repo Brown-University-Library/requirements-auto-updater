@@ -22,8 +22,8 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
         command = [str(uv_path), 'run', str(run_tests_path)]
         log.debug(f'command: ``{command}``')
         subprocess.run(command, check=True)
-    except subprocess.CalledProcessError:
-        message = 'Errors on initial test-run. Halting self-update.'
+    except subprocess.CalledProcessError as e:
+        message = f'Error on initial run_tests() call: ``{e}``. Halting self-update.'
         log.exception(message)
         ## email sys-admins -----------------------------------------
         emailer = Emailer(project_path)
@@ -52,8 +52,8 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
         log.debug(f'command: ``{command}``')
         subprocess.run(command, check=True)
         return_val = None
-    except subprocess.CalledProcessError:
-        message = 'tests failed after updating venv'
+    except subprocess.CalledProcessError as e:
+        message = f'Error on followup run_tests() call: ``{e}``.'
         log.exception(message)
         return_val = message
     return return_val
