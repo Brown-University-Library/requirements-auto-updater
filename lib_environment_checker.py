@@ -9,7 +9,9 @@ import subprocess
 from pathlib import Path
 
 import dotenv
-from self_updater_code.lib_emailer import Emailer
+
+# from self_updater_code.lib_emailer import Emailer
+from lib_emailer import Emailer
 
 ## set up logging ---------------------------------------------------
 logging.basicConfig(

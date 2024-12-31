@@ -24,17 +24,14 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
-# ## add project to path ----------------------------------------------
-this_file_path = Path(__file__).resolve()
-stuff_dir = this_file_path.parent.parent
-sys.path.append(str(stuff_dir))
-from self_updater_code import lib_environment_checker  # noqa: E402  (prevents linter problem-indicator)
-from self_updater_code.lib_compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
-from self_updater_code.lib_emailer import Emailer  # noqa: E402  (prevents linter problem-indicator)
-
-compiled_comparator = CompiledComparator()
+import lib_environment_checker
+from lib_call_runtests import run_followup_tests, run_initial_tests
+from lib_compilation_evaluator import CompiledComparator
+from lib_emailer import Emailer
 
 ## load envars ------------------------------------------------------
+this_file_path = Path(__file__).resolve()
+stuff_dir = this_file_path.parent.parent
 dotenv_path = stuff_dir / '.env'
 assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
@@ -56,58 +53,6 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 ## main code -- called by manage_update() ---------------------------
 ## ------------------------------------------------------------------
-
-
-def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
-    """
-    Run initial tests to ensure that the script can run.
-
-    On failure:
-    - Emails project-admins
-    - Raises an exception
-    """
-    log.debug('starting run_initial_tests()')
-    run_tests_initial_path = project_path / 'run_tests.py'
-    run_tests_path = run_tests_initial_path.resolve()
-    try:
-        command = [str(uv_path), 'run', str(run_tests_path)]
-        log.debug(f'command: ``{command}``')
-        subprocess.run(command, check=True)
-    except subprocess.CalledProcessError:
-        message = 'Errors on initial test-run. Halting self-update.'
-        log.exception(message)
-        ## email sys-admins -----------------------------------------
-        emailer = Emailer(project_path)
-        email_message: str = emailer.create_setup_problem_message(message)
-        emailer.send_email(project_email_addresses, email_message)
-        ## raise exception -----------------------------------------
-        raise Exception(message)
-    return
-
-
-def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
-    """
-    Runs followup tests on the updated venv.
-
-    If tests pass returns None.
-
-    If tests fail:
-    - returns "tests failed" message (to be add to the diff email)
-    - does not exit, so that diffs can be emailed and permissions updated
-    """
-    log.debug('starting run_followup_tests()')
-    run_tests_initial_path = project_path / 'run_tests.py'
-    run_tests_path = run_tests_initial_path.resolve()
-    try:
-        command = [str(uv_path), 'run', str(run_tests_path)]
-        log.debug(f'command: ``{command}``')
-        subprocess.run(command, check=True)
-        return_val = None
-    except subprocess.CalledProcessError:
-        message = 'tests failed after updating venv'
-        log.exception(message)
-        return_val = message
-    return return_val
 
 
 def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
@@ -306,6 +251,7 @@ def manage_update(project_path: str) -> None:
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
+    compiled_comparator = CompiledComparator()
     differences_found: bool = compiled_comparator.compare_with_previous_backup(
         compiled_requirements, old_path=None, project_path=project_path
     )
