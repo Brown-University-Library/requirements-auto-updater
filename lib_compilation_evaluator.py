@@ -7,12 +7,6 @@ import difflib
 import logging
 from pathlib import Path
 
-## set up logging ---------------------------------------------------
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
-    datefmt='%d/%b/%Y %H:%M:%S',
-)
 log = logging.getLogger(__name__)
 
 
