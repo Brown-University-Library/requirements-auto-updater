@@ -6,6 +6,9 @@
 #   <https://packaging.python.org/en/latest/specifications/inline-script-metadata/>
 # This allows files to be run like: `$ uv run ./tests.py`, with the python and dependencies versions being handled on-the-fly.
 # This `requirements.txt` exists only to enable GitHub's package vulnerabiiity scanner to work correctly.
+#
+# Temporary exception to the above: until we get `uv` installed globally, this project will install `uv` into the venv.
 # -------------------------------------------------------------------
 
 python-dotenv~=1.0.0
+uv~=0.5.0
