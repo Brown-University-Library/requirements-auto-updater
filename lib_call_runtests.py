@@ -72,6 +72,7 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
     run_tests_path = project_path / 'run_tests.py'  # no need to resolve; project_path is already resolved
     command = [str(python_path), str(run_tests_path)]
     log.debug(f'followup runtests command: ``{command}``')
+    ## run the command ----------------------------------------------
     try:
         subprocess.run(command, check=True)
         return_val = None
