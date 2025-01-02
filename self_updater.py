@@ -24,6 +24,7 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
+import lib_common
 import lib_environment_checker
 from lib_call_runtests import run_followup_tests, run_initial_tests
 from lib_compilation_evaluator import CompiledComparator
@@ -131,10 +132,13 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     """
     log.debug('starting activate_and_sync_dependencies()')
     ## prepare env-path variables -----------------------------------
-    venv_bin_path: Path = project_path.parent / 'env' / 'bin'
-    venv_path: Path = project_path.parent / 'env'
-    log.debug(f'venv_bin_path: ``{venv_bin_path}``')
-    log.debug(f'venv_path: ``{venv_path}``')
+    # venv_bin_path: Path = project_path.parent / 'env' / 'bin'
+    # venv_path: Path = project_path.parent / 'env'
+    # log.debug(f'venv_bin_path: ``{venv_bin_path}``')
+    # log.debug(f'venv_path: ``{venv_path}``')
+    venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
+    (venv_bin_path, venv_path) = venv_tuple
+    # (venv_bin_path, venv_path)
     ## set the local-env paths ---------------------------------------
     local_scoped_env = os.environ.copy()
     local_scoped_env['PATH'] = f'{venv_bin_path}:{local_scoped_env["PATH"]}'  # prioritizes venv-path
