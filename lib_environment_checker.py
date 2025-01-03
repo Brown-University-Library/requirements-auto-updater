@@ -98,7 +98,7 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
     if not python_version.startswith('3.'):
         message = 'Error: Invalid Python version.'
         log.exception(message)
-        ## email sys-admins -----------------------------------------
+        ## email project-admins -------------------------------------
         emailer = Emailer(project_path)
         email_message: str = emailer.create_setup_problem_message(message)
         emailer.send_email(project_email_addresses, email_message)
@@ -107,12 +107,26 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
     return python_version
 
 
-def determine_environment_type() -> str:
+def determine_environment_type(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
     """
     Infers environment type based on the system hostname.
     Returns 'local', 'staging', or 'production'.
     """
-    hostname: str = subprocess.check_output(['hostname'], text=True).strip()
+    ## ensure all .in files exist -----------------------------------
+    for filename in ['local.in', 'staging.in', 'production.in']:
+        try:
+            assert (project_path / filename).exists()
+        except AssertionError:
+            message = f'Error: {filename} not found'
+            log.exception(message)
+            ## email project-admins ---------------------------------
+            emailer = Emailer(project_path)
+            email_message: str = emailer.create_setup_problem_message(message)
+            emailer.send_email(project_email_addresses, email_message)
+            ## raise exception --------------------------------------
+            raise Exception(message)
+    ## determine proper one -----------------------------------------
+    hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
     if hostname.startswith('d') or hostname.startswith('q'):
         env_type: str = 'staging'
     elif hostname.startswith('p'):
@@ -121,6 +135,22 @@ def determine_environment_type() -> str:
         env_type: str = 'local'
     log.debug(f'env_type: {env_type}')
     return env_type
+
+
+# def determine_environment_type() -> str:
+#     """
+#     Infers environment type based on the system hostname.
+#     Returns 'local', 'staging', or 'production'.
+#     """
+#     hostname: str = subprocess.check_output(['hostname'], text=True).strip()
+#     if hostname.startswith('d') or hostname.startswith('q'):
+#         env_type: str = 'staging'
+#     elif hostname.startswith('p'):
+#         env_type: str = 'production'
+#     else:
+#         env_type: str = 'local'
+#     log.debug(f'env_type: {env_type}')
+#     return env_type
 
 
 def determine_uv_path() -> Path:

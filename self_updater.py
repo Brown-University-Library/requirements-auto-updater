@@ -244,7 +244,9 @@ def manage_update(project_path: str) -> None:
     python_version: str = lib_environment_checker.determine_python_version(
         project_path, project_email_addresses
     )  # for compiling requirements
-    environment_type: str = lib_environment_checker.determine_environment_type()  # for compiling requirements
+    environment_type: str = lib_environment_checker.determine_environment_type(
+        project_path, project_email_addresses
+    )  # for compiling requirements
     uv_path: Path = lib_environment_checker.determine_uv_path()
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## run initial tests --------------------------------------------
