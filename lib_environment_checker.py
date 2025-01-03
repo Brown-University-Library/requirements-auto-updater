@@ -114,10 +114,11 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     """
     ## ensure all .in files exist -----------------------------------
     for filename in ['local.in', 'staging.in', 'production.in']:
+        full_path: Path = project_path / 'requirements' / filename
         try:
-            assert (project_path / filename).exists()
+            assert full_path.exists()
         except AssertionError:
-            message = f'Error: {filename} not found'
+            message = f'Error: {full_path} not found'
             log.exception(message)
             ## email project-admins ---------------------------------
             emailer = Emailer(project_path)
