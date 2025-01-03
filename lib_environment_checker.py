@@ -133,7 +133,6 @@ def determine_uv_path() -> Path:
     try:
         uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
         uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
-        log.debug(f'uv_path: ``{uv_path}``')
     except subprocess.CalledProcessError:
         log.debug("`which` unsuccessful; accessing this script's venv")
         initial_uv_path: Path = Path(__file__).parent.parent / 'env' / 'bin' / 'uv'
