@@ -94,7 +94,7 @@ class Emailer:
         On a successful update email, the email_addresses will be the project-admins.
         On a setup problem email, the email_addresses will be the self-updater sys-admins.
         """
-        log.debug('starting send_email_of_diffs()')
+        log.debug('starting send_email()')
         log.debug(f'email_addresses: ``{email_addresses}``')
         ## prep email data ----------------------------------------------
         built_recipients = []
