@@ -66,6 +66,7 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
         message = f'Error on followup run_tests() call: ``{e}``.'
         log.exception(message)
         return_val = message
+    log.debug(f'return_val, ``{return_val}``')
     return return_val
 
 

@@ -192,7 +192,6 @@ def send_email_of_diffs(
       so the permissions-update will still occur.
     """
     emailer = Emailer(project_path)
-    followup_test_problems = 'failed'  # TEMP
     if followup_test_problems:
         email_message: str = emailer.create_update_problem_message(diff_text, followup_test_problems)
     else:
