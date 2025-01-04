@@ -244,15 +244,12 @@ def manage_update(project_path: str) -> None:
         project_path, project_email_addresses
     )  # ie, ('3.12.4', '~=3.12.0')
     python_version: str = version_info[1]
-    environment_type: str = lib_environment_checker.determine_environment_type(
-        project_path, project_email_addresses
-    )  # for compiling requirements
+    environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     uv_path: Path = lib_environment_checker.determine_uv_path()
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## run initial tests --------------------------------------------
-    run_initial_tests(
-        uv_path, project_path, project_email_addresses
-    )  # on failure, project-admins are emailed and script exits
+    if environment_type != 'production':
+        run_initial_tests(uv_path, project_path, project_email_addresses)
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
@@ -274,9 +271,9 @@ def manage_update(project_path: str) -> None:
         ## make diff ------------------------------------------------
         diff_text: str = compiled_comparator.make_diff_text(project_path)
         ## run post-update tests ------------------------------------
-        followup_tests_problems = run_followup_tests(
-            uv_path, project_path, project_email_addresses
-        )  # on failure, script does _not_ exit, so diffs can be emailed and permissions updated
+        followup_tests_problems: None | str = None
+        if environment_type != 'production':
+            followup_tests_problems = run_followup_tests(uv_path, project_path, project_email_addresses)
         ## send diff email ------------------------------------------
         send_email_of_diffs(project_path, diff_text, followup_tests_problems, project_email_addresses)
         log.debug('email sent')
