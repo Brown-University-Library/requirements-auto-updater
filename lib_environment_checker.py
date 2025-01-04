@@ -75,7 +75,7 @@ def determine_project_email_addresses(project_path: Path) -> list[list[str, str]
     ## end def determine_project_email_addresses()
 
 
-def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
+def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str]:
     """
     Determines Python version from the target-project's virtual environment.
 
@@ -95,6 +95,11 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
         ## raise exception -----------------------------------------
         raise Exception(message)
     python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
+    log.debug(f'python_version: {python_version}')
+    ## tildify ------------------------------------------------------
+    parts: list = python_version.split('.')
+    tilde_notation: str = f'~={parts[0]}.{parts[1]}.0'  # converts, eg, '3.8.10' to '~=3.8.0'
+    log.debug(f'tilde_notation: {tilde_notation}')
     if not python_version.startswith('3.'):
         message = 'Error: Invalid Python version.'
         log.exception(message)
@@ -104,7 +109,7 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
         emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
-    return python_version
+    return (python_version, tilde_notation)
 
 
 def determine_environment_type(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:

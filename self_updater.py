@@ -240,9 +240,10 @@ def manage_update(project_path: str) -> None:
     os.chdir(project_path)
     ## get everything needed up front -------------------------------
     project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
-    python_version: str = lib_environment_checker.determine_python_version(
+    version_info: tuple[str, str] = lib_environment_checker.determine_python_version(
         project_path, project_email_addresses
-    )  # for compiling requirements
+    )  # ie, ('3.12.4', '~=3.12.0')
+    python_version: str = version_info[1]
     environment_type: str = lib_environment_checker.determine_environment_type(
         project_path, project_email_addresses
     )  # for compiling requirements
