@@ -75,7 +75,7 @@ def determine_project_email_addresses(project_path: Path) -> list[list[str, str]
     ## end def determine_project_email_addresses()
 
 
-def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str]:
+def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str, str]:
     """
     Determines Python version from the target-project's virtual environment.
 
@@ -85,6 +85,9 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
     """
     log.debug('starting infer_python_version()')
     env_python_path: Path = project_path.parent / 'env/bin/python3'
+    log.debug(f'env_python_path before resolve: ``{env_python_path}``')
+    env_python_path_resolved: str = str(env_python_path.resolve())
+    log.debug(f'env_python_path_resolved: ``{env_python_path_resolved}``')
     if not env_python_path.exists():
         message = 'Error: Virtual environment not found.'
         log.exception(message)
@@ -109,7 +112,7 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
         emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
-    return (python_version, tilde_notation)
+    return (python_version, tilde_notation, env_python_path_resolved)
 
 
 def determine_environment_type(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:

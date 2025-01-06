@@ -240,10 +240,11 @@ def manage_update(project_path: str) -> None:
     os.chdir(project_path)
     ## get everything needed up front -------------------------------
     project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
-    version_info: tuple[str, str] = lib_environment_checker.determine_python_version(
+    version_info: tuple[str, str, str] = lib_environment_checker.determine_python_version(
         project_path, project_email_addresses
-    )  # ie, ('3.12.4', '~=3.12.0')
-    python_version: str = version_info[1]
+    )  # ie, ('3.12.4', '~=3.12.0', '/path/to/python3.12')
+    # python_version: str = version_info[1]
+    env_python_path_resolved = version_info[2]
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     uv_path: Path = lib_environment_checker.determine_uv_path()
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
@@ -251,7 +252,7 @@ def manage_update(project_path: str) -> None:
     if environment_type != 'production':
         run_initial_tests(uv_path, project_path, project_email_addresses)
     ## compile requirements file ------------------------------------
-    compiled_requirements: Path = compile_requirements(project_path, python_version, environment_type, uv_path)
+    compiled_requirements: Path = compile_requirements(project_path, env_python_path_resolved, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
