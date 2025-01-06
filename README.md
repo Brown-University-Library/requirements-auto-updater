@@ -20,6 +20,8 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 - determines the group
 - determines a `uv` path
 - determines the admin-emails
+- calls project's run_tests.py (on local and dev-servers)
+- if any of the above steps fail, emails project-admins (or updater-admins)
 - compiles and saves appropriate requirements file
     - will create the `requirements_backups` directory in the "outer-stuff" directory if needed
 - checks it to see if anything is new
@@ -27,7 +29,8 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
     - updates the project's virtual-environment
     - makes the changes active
     - performs a diff showing the change
-    - emails the diff to the project-admins
+    - calls project's run_tests.py again (on local and dev servers)
+    - emails the diff (and any test-issues) to the project-admins
 - updates permissions on the venv and the `requirements_backups` directory
 
 ---
@@ -79,7 +82,7 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
     - Checks the `which uv` path. If nothing found, will then look for `uv` at `../env/bin/uv`. So add `uv` to the `requirements.in` file if uv isn't available via `which` on your server _(note that the venv does not need to be activated, it just exists to get `uv` on the servers)_
     - (We should get `uv` installed globally on all our servers. It's that good.)
 
-- Suggestion: we do not tweak this script for different project-structures; rather, we restructure our apps to fit these assumptions (to keep this script simple).
+- Suggestion: we do not tweak this script for different project-structures; rather, we restructure our apps to fit these assumptions (to keep this script simple, and for the benefits of a more standardized project structure).
 
 - The `backup_requirements` dir defaults to storing the last 30 compiled requirements files. With a cron-job running once-a-day, that gives us a month to detect a problem and be able to access the previously-active `requirement.txt` file. You can tell which were active because they'll contain the string `# ACTIVE` at the top.
 
