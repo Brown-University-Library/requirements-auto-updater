@@ -243,7 +243,6 @@ def manage_update(project_path: str) -> None:
     version_info: tuple[str, str, str] = lib_environment_checker.determine_python_version(
         project_path, project_email_addresses
     )  # ie, ('3.12.4', '~=3.12.0', '/path/to/python3.12')
-    # python_version: str = version_info[1]
     env_python_path_resolved = version_info[2]
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     uv_path: Path = lib_environment_checker.determine_uv_path()

@@ -78,16 +78,26 @@ def determine_project_email_addresses(project_path: Path) -> list[list[str, str]
 def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str, str]:
     """
     Determines Python version from the target-project's virtual environment.
+    The purpose is to later run the `uv pip compile ...` command, to add the --python version
 
     If the virtual environment or python version is invalid:
     - Sends an email to the project sys-admins
     - Exits the script
+
+    Of the returned info, only the resolved-python-path is currently used.
+
+    History:
+    - Initially I just grabbed the python version.
+    - But `uv pip compile ... --python version` could fail if uv didn't find that python version.
+    - I thought the tilde-notation would resolve this, but it didn't.
+    - Grabbing the actual resolved-path to the venv's python executable works.
+
+    TODO: eventually remove the unneed code.
     """
-    log.debug('starting infer_python_version()')
+    log.debug('starting determine_python_version()')
+    ## get env_python_path ------------------------------------------
     env_python_path: Path = project_path.parent / 'env/bin/python3'
     log.debug(f'env_python_path before resolve: ``{env_python_path}``')
-    env_python_path_resolved: str = str(env_python_path.resolve())
-    log.debug(f'env_python_path_resolved: ``{env_python_path_resolved}``')
     if not env_python_path.exists():
         message = 'Error: Virtual environment not found.'
         log.exception(message)
@@ -97,12 +107,17 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
         emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
+    ## get version --------------------------------------------------
     python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
     log.debug(f'python_version: {python_version}')
-    ## tildify ------------------------------------------------------
+    ## tildify version ----------------------------------------------
     parts: list = python_version.split('.')
     tilde_notation: str = f'~={parts[0]}.{parts[1]}.0'  # converts, eg, '3.8.10' to '~=3.8.0'
     log.debug(f'tilde_notation: {tilde_notation}')
+    ## resolve env_python_path --------------------------------------
+    env_python_path_resolved: str = str(env_python_path.resolve())  # only this is used by the calling code
+    log.debug(f'env_python_path_resolved: ``{env_python_path_resolved}``')
+    ## confirm Python 3 ---------------------------------------------
     if not python_version.startswith('3.'):
         message = 'Error: Invalid Python version.'
         log.exception(message)
@@ -113,6 +128,8 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
         ## raise exception -----------------------------------------
         raise Exception(message)
     return (python_version, tilde_notation, env_python_path_resolved)
+
+    ## end def determine_python_version()
 
 
 def determine_environment_type(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
