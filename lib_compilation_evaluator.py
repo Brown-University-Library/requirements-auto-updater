@@ -6,6 +6,7 @@ Contains code for comparing the newly-compiled `requirements.txt` with the most 
 import difflib
 import logging
 import shutil
+import subprocess
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -91,18 +92,63 @@ class CompiledComparator:
         log.debug(f'diff_text: ``{diff_text}``')
         return diff_text
 
-    def copy_new_compile_to_codebase(compiled_requirements: Path, project_path: Path, environment_type: str) -> None:
+    def copy_new_compile_to_codebase(self, compiled_requirements: Path, project_path: Path, environment_type: str) -> str:
         """
         Copies the newly compiled requirements file to the project's codebase.
         Called by self_updater.py.
         """
         log.debug('starting copy_new_compile_to_codebase()')
-        assert environment_type in ['local', 'staging', 'production']
-        ## make save-path -------------------------------------------
-        save_path: Path = project_path / 'requirements' / f'{environment_type}.txt'
-        ## copy the new requirements file to the project --------------
-        shutil.copy(compiled_requirements, save_path)
-        log.debug('new requirements file copied to project.')
+        problem_message = ''
+        try:
+            assert environment_type in ['local', 'staging', 'production']
+            ## make save-path -------------------------------------------
+            save_path: Path = project_path / 'requirements' / f'{environment_type}.txt'
+            ## copy the new requirements file to the project --------------
+            shutil.copy(compiled_requirements, save_path)
+            log.debug('new requirements file copied to project.')
+        except Exception as e:
+            problem_message = f'Error copying new requirements file to project; error: ``{e}``'
+            log.exception(problem_message)
+        try:
+            ## run a git-commit via subprocess ----------------------
+            subprocess.run(['git', 'add', save_path], cwd=project_path)
+            subprocess.run(['git', 'commit', '-m', 'auto-update of requirements'], cwd=project_path)
+            ## run a git-push via subprocess ------------------------
+            branch = self.fetch_branch_data(project_path)
+            if branch not in ['detached', 'project_branch_not_found']:
+                subprocess.run(['git', 'push', 'origin', branch], cwd=project_path)
+            else:
+                subprocess.run(['git', 'push', 'origin'], cwd=project_path)
+        except Exception as e:
+            git_problem_message = f'Error with git-commit or git-push; error: ``{e}``'
+            log.exception(git_problem_message)
+            if problem_message:
+                problem_message += f' Also: {git_problem_message}'
+        log.debug(f'problem_message: ``{problem_message}``')
+        return problem_message
+
+    def fetch_branch_data(self, project_path: Path) -> str:
+        """
+        Fetches branch-data by reading the `.git/HEAD` file (avoiding calling git via subprocess due to `dubious ownership` issue).
+        Called by copy_new_compile_to_codebase()
+        """
+        log.debug('starting fetch_branch_data')
+        git_dir = project_path / '.git'
+        try:
+            ## read the HEAD file to find the project branch --------
+            head_file = git_dir / 'HEAD'
+            ref_line = head_file.read_text().strip()
+            if ref_line.startswith('ref:'):
+                project_branch = ref_line.split('/')[-1]  # extract the project_branch name
+            else:
+                project_branch = 'detached'
+        except FileNotFoundError:
+            log.warning('no `.git` directory or HEAD file found.')
+            project_branch = 'project_branch_not_found'
+        except Exception:
+            log.exception('other problem fetching project_branch data')
+            project_branch = 'project_branch_not_found'
+        log.debug(f'project_branch: ``{project_branch}``')
         return
 
     ## end class CompiledComparator

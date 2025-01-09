@@ -181,19 +181,28 @@ def mark_active(backup_file: Path) -> None:
 
 
 def send_email_of_diffs(
-    project_path: Path, diff_text: str, followup_test_problems: None | str, project_email_addresses: list[list[str, str]]
+    project_path: Path, diff_text: str, followup_problems: dict, project_email_addresses: list[list[str, str]]
 ) -> None:
     """
     Manages the sending of an email with the differences between the previous and current requirements files.
 
-    If the followup run_tests() failed, a note to that effect will be included in the email.
+    If the followup copy-new-requirements.in file or run-tests failed, a note to that effect will be included in the email.
 
     Note that on an email-send error, the error will be logged, but the script will continue,
       so the permissions-update will still occur.
     """
+    ## prepare problem-message --------------------------------------
+    problem_message: str = ''
+    if followup_problems['copy_problems']:
+        problem_message = followup_problems['copy_problems']
+    if followup_problems['test_problems']:
+        if problem_message:
+            problem_message += '\n\n'
+        problem_message += followup_problems['test_problems']
+    ## send email ---------------------------------------------------
     emailer = Emailer(project_path)
-    if followup_test_problems:
-        email_message: str = emailer.create_update_problem_message(diff_text, followup_test_problems)
+    if problem_message:
+        email_message: str = emailer.create_update_problem_message(diff_text, followup_problems)
     else:
         email_message: str = emailer.create_update_ok_message(diff_text)
     try:
@@ -202,6 +211,30 @@ def send_email_of_diffs(
         message = 'problem sending email'
         log.exception(message)
     return
+
+
+# def send_email_of_diffs(
+#     project_path: Path, diff_text: str, followup_test_problems: None | str, project_email_addresses: list[list[str, str]]
+# ) -> None:
+#     """
+#     Manages the sending of an email with the differences between the previous and current requirements files.
+
+#     If the followup run_tests() failed, a note to that effect will be included in the email.
+
+#     Note that on an email-send error, the error will be logged, but the script will continue,
+#       so the permissions-update will still occur.
+#     """
+#     emailer = Emailer(project_path)
+#     if followup_test_problems:
+#         email_message: str = emailer.create_update_problem_message(diff_text, followup_test_problems)
+#     else:
+#         email_message: str = emailer.create_update_ok_message(diff_text)
+#     try:
+#         emailer.send_email(project_email_addresses, email_message)
+#     except Exception:
+#         message = 'problem sending email'
+#         log.exception(message)
+#     return
 
 
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
@@ -261,9 +294,7 @@ def manage_update(project_path: str) -> None:
     )
     if not differences_found:
         log.debug('no differences found in dependencies.')
-    else: ## since it's different... --------------------------------
-        ## copy new compile to codebase -----------------------------
-        compiled_comparator.copy_new_compile_to_codebase(compiled_requirements, project_path, environment_type)
+    else:  ## since it's different... --------------------------------
         ## since it's different, update the venv --------------------
         log.debug('differences found in dependencies; updating venv')
         sync_dependencies(project_path, compiled_requirements, uv_path)
@@ -272,12 +303,18 @@ def manage_update(project_path: str) -> None:
         mark_active(compiled_requirements)
         ## make diff ------------------------------------------------
         diff_text: str = compiled_comparator.make_diff_text(project_path)
+        ## copy new compile to codebase -----------------------------
+        followup_copy_problems: None | str = None
+        followup_copy_problems = compiled_comparator.copy_new_compile_to_codebase(
+            compiled_requirements, project_path, environment_type
+        )
         ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
         if environment_type != 'production':
             followup_tests_problems = run_followup_tests(uv_path, project_path, project_email_addresses)
         ## send diff email ------------------------------------------
-        send_email_of_diffs(project_path, diff_text, followup_tests_problems, project_email_addresses)
+        followup_problems = {'copy_problems': followup_copy_problems, 'test_problems': followup_tests_problems}
+        send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
     update_permissions(project_path, compiled_requirements, group)
