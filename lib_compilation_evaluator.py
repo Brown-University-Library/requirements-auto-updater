@@ -95,6 +95,7 @@ class CompiledComparator:
     def copy_new_compile_to_codebase(self, compiled_requirements: Path, project_path: Path, environment_type: str) -> str:
         """
         Copies the newly compiled requirements file to the project's codebase.
+        Then commits and pushes the changes to the project's git repository.
         Called by self_updater.py.
         """
         log.debug('starting copy_new_compile_to_codebase()')
@@ -116,9 +117,12 @@ class CompiledComparator:
             ## run a git-push via subprocess ------------------------
             branch = self.fetch_branch_data(project_path)
             if branch not in ['detached', 'project_branch_not_found']:
-                subprocess.run(['git', 'push', 'origin', branch], cwd=project_path)
+                command = ['git', 'push', 'origin', branch]
+                log.debug(f'command, given valid branch was found: ``{command}``')
             else:
-                subprocess.run(['git', 'push', 'origin'], cwd=project_path)
+                command = ['git', 'push', 'origin']
+                log.debug(f'command, given valid branch was not found: ``{command}``')
+            subprocess.run(command, cwd=project_path)
         except Exception as e:
             git_problem_message = f'Error with git-commit or git-push; error: ``{e}``'
             log.exception(git_problem_message)
@@ -135,7 +139,7 @@ class CompiledComparator:
         log.debug('starting fetch_branch_data')
         git_dir = project_path / '.git'
         try:
-            ## read the HEAD file to find the project branch --------
+            ## read HEAD file to find the project branch ------------
             head_file = git_dir / 'HEAD'
             ref_line = head_file.read_text().strip()
             if ref_line.startswith('ref:'):
@@ -149,6 +153,6 @@ class CompiledComparator:
             log.exception('other problem fetching project_branch data')
             project_branch = 'project_branch_not_found'
         log.debug(f'project_branch: ``{project_branch}``')
-        return
+        return project_branch
 
     ## end class CompiledComparator
