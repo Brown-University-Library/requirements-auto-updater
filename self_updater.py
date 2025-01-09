@@ -320,7 +320,7 @@ def manage_update(project_path: str) -> None:
     update_permissions(project_path, compiled_requirements, group)
     return
 
-    ## end def manage_update()
+    ## end def manage_update() zz
 
 
 if __name__ == '__main__':
