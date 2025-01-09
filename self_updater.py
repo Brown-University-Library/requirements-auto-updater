@@ -261,7 +261,9 @@ def manage_update(project_path: str) -> None:
     )
     if not differences_found:
         log.debug('no differences found in dependencies.')
-    else:
+    else: ## since it's different... --------------------------------
+        ## copy new compile to codebase -----------------------------
+        compiled_comparator.copy_new_compile_to_codebase(compiled_requirements, project_path, environment_type)
         ## since it's different, update the venv --------------------
         log.debug('differences found in dependencies; updating venv')
         sync_dependencies(project_path, compiled_requirements, uv_path)

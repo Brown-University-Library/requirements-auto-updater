@@ -5,6 +5,7 @@ Contains code for comparing the newly-compiled `requirements.txt` with the most 
 
 import difflib
 import logging
+import shutil
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -89,5 +90,19 @@ class CompiledComparator:
             diff_text = ''.join(diff_lines)
         log.debug(f'diff_text: ``{diff_text}``')
         return diff_text
+
+    def copy_new_compile_to_codebase(compiled_requirements: Path, project_path: Path, environment_type: str) -> None:
+        """
+        Copies the newly compiled requirements file to the project's codebase.
+        Called by self_updater.py.
+        """
+        log.debug('starting copy_new_compile_to_codebase()')
+        assert environment_type in ['local', 'staging', 'production']
+        ## make save-path -------------------------------------------
+        save_path: Path = project_path / 'requirements' / f'{environment_type}.txt'
+        ## copy the new requirements file to the project --------------
+        shutil.copy(compiled_requirements, save_path)
+        log.debug('new requirements file copied to project.')
+        return
 
     ## end class CompiledComparator
