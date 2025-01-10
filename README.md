@@ -30,6 +30,7 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
     - makes the changes active
     - performs a diff showing the change
     - calls project's run_tests.py again (on local and dev servers)
+    - commits and pushes the new requirements `.txt` file.
     - emails the diff (and any test-issues) to the project-admins
 - updates permissions on the venv and the `requirements_backups` directory
 
