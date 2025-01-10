@@ -5,7 +5,6 @@ Contains code for comparing the newly-compiled `requirements.txt` with the most 
 
 import difflib
 import logging
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -96,6 +95,9 @@ class CompiledComparator:
         """
         Copies the newly compiled requirements file to the project's codebase.
         Then commits and pushes the changes to the project's git repository.
+
+        Note: reads and writes the requirements `.txt` file to avoid explicit full-path references.
+
         Called by self_updater.py.
         """
         log.debug('starting copy_new_compile_to_codebase()')
@@ -105,7 +107,9 @@ class CompiledComparator:
             ## make save-path -------------------------------------------
             save_path: Path = project_path / 'requirements' / f'{environment_type}.txt'
             ## copy the new requirements file to the project --------------
-            shutil.copy(compiled_requirements, save_path)
+            compiled_requirements_lines = compiled_requirements.read_text().splitlines()
+            compiled_requirements_lines = [line for line in compiled_requirements_lines if not line.startswith('#')]
+            save_path.write_text('\n'.join(compiled_requirements_lines))
             log.debug('new requirements file copied to project.')
         except Exception as e:
             problem_message = f'Error copying new requirements file to project; error: ``{e}``'
