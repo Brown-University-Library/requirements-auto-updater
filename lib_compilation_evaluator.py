@@ -115,9 +115,16 @@ class CompiledComparator:
             problem_message = f'Error copying new requirements file to project; error: ``{e}``'
             log.exception(problem_message)
         try:
-            ## run a git-commit via subprocess ----------------------
-            subprocess.run(['git', 'add', save_path], cwd=project_path)
-            subprocess.run(['git', 'commit', '-m', 'auto-update of requirements'], cwd=project_path)
+            ## run a git-add via subprocess -------------------------
+            command = ['git', 'add', save_path]
+            log.debug(f'git-add-command, ``{command}``')
+            subprocess.run(command, cwd=project_path)
+            # subprocess.run(['git', 'add', save_path], cwd=project_path)
+            ## run a git-commit via subprocess ------------------------
+            command = ['git', 'commit', '-m', 'auto-update of requirements']
+            log.debug(f'git-commit-command, ``{command}``')
+            subprocess.run(command, cwd=project_path)
+            # subprocess.run(['git', 'commit', '-m', 'auto-update of requirements'], cwd=project_path)
             ## run a git-push via subprocess ------------------------
             branch = self.fetch_branch_data(project_path)
             if branch not in ['detached', 'project_branch_not_found']:
