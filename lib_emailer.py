@@ -19,6 +19,41 @@ load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), overri
 log = logging.getLogger(__name__)
 
 
+def send_email_of_diffs(
+    project_path: Path, diff_text: str, followup_problems: dict, project_email_addresses: list[list[str, str]]
+) -> None:
+    """
+    Manages the sending of an email with the differences between the previous and current requirements files.
+
+    If the followup copy-new-requirements.in file or run-tests failed, a note to that effect will be included in the email.
+
+    Note that on an email-send error, the error will be logged, but the script will continue,
+      so the permissions-update will still occur.
+
+    Called by: self_updater.manage_update()
+    """
+    ## prepare problem-message --------------------------------------
+    problem_message: str = ''
+    if followup_problems['copy_problems']:
+        problem_message = followup_problems['copy_problems']
+    if followup_problems['test_problems']:
+        if problem_message:
+            problem_message += '\n\n'
+        problem_message += followup_problems['test_problems']
+    ## send email ---------------------------------------------------
+    emailer = Emailer(project_path)
+    if problem_message:
+        email_message: str = emailer.create_update_problem_message(diff_text, followup_problems)
+    else:
+        email_message: str = emailer.create_update_ok_message(diff_text)
+    try:
+        emailer.send_email(project_email_addresses, email_message)
+    except Exception:
+        message = 'problem sending email'
+        log.exception(message)
+    return
+
+
 class Emailer:
     """
     Handles emailing updater-sys-admins and project-admins.

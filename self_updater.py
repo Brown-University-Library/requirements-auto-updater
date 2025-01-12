@@ -28,7 +28,7 @@ import lib_common
 import lib_environment_checker
 from lib_call_runtests import run_followup_tests, run_initial_tests
 from lib_compilation_evaluator import CompiledComparator
-from lib_emailer import Emailer
+from lib_emailer import send_email_of_diffs
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
@@ -132,13 +132,8 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     """
     log.debug('starting activate_and_sync_dependencies()')
     ## prepare env-path variables -----------------------------------
-    # venv_bin_path: Path = project_path.parent / 'env' / 'bin'
-    # venv_path: Path = project_path.parent / 'env'
-    # log.debug(f'venv_bin_path: ``{venv_bin_path}``')
-    # log.debug(f'venv_path: ``{venv_path}``')
     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
     (venv_bin_path, venv_path) = venv_tuple
-    # (venv_bin_path, venv_path)
     ## set the local-env paths ---------------------------------------
     local_scoped_env = os.environ.copy()
     local_scoped_env['PATH'] = f'{venv_bin_path}:{local_scoped_env["PATH"]}'  # prioritizes venv-path
@@ -178,63 +173,6 @@ def mark_active(backup_file: Path) -> None:
     with backup_file.open('w') as file:  # write the file
         file.writelines(content)
     return
-
-
-def send_email_of_diffs(
-    project_path: Path, diff_text: str, followup_problems: dict, project_email_addresses: list[list[str, str]]
-) -> None:
-    """
-    Manages the sending of an email with the differences between the previous and current requirements files.
-
-    If the followup copy-new-requirements.in file or run-tests failed, a note to that effect will be included in the email.
-
-    Note that on an email-send error, the error will be logged, but the script will continue,
-      so the permissions-update will still occur.
-    """
-    ## prepare problem-message --------------------------------------
-    problem_message: str = ''
-    if followup_problems['copy_problems']:
-        problem_message = followup_problems['copy_problems']
-    if followup_problems['test_problems']:
-        if problem_message:
-            problem_message += '\n\n'
-        problem_message += followup_problems['test_problems']
-    ## send email ---------------------------------------------------
-    emailer = Emailer(project_path)
-    if problem_message:
-        email_message: str = emailer.create_update_problem_message(diff_text, followup_problems)
-    else:
-        email_message: str = emailer.create_update_ok_message(diff_text)
-    try:
-        emailer.send_email(project_email_addresses, email_message)
-    except Exception:
-        message = 'problem sending email'
-        log.exception(message)
-    return
-
-
-# def send_email_of_diffs(
-#     project_path: Path, diff_text: str, followup_test_problems: None | str, project_email_addresses: list[list[str, str]]
-# ) -> None:
-#     """
-#     Manages the sending of an email with the differences between the previous and current requirements files.
-
-#     If the followup run_tests() failed, a note to that effect will be included in the email.
-
-#     Note that on an email-send error, the error will be logged, but the script will continue,
-#       so the permissions-update will still occur.
-#     """
-#     emailer = Emailer(project_path)
-#     if followup_test_problems:
-#         email_message: str = emailer.create_update_problem_message(diff_text, followup_test_problems)
-#     else:
-#         email_message: str = emailer.create_update_ok_message(diff_text)
-#     try:
-#         emailer.send_email(project_email_addresses, email_message)
-#     except Exception:
-#         message = 'problem sending email'
-#         log.exception(message)
-#     return
 
 
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
