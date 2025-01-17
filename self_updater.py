@@ -211,6 +211,7 @@ def manage_update(project_path: str) -> None:
     os.chdir(project_path)
     ## get everything needed up front -------------------------------
     project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
+    lib_environment_checker.check_branch(project_path, project_email_addresses)  # emails admins and exits if not on main
     version_info: tuple[str, str, str] = lib_environment_checker.determine_python_version(
         project_path, project_email_addresses
     )  # ie, ('3.12.4', '~=3.12.0', '/path/to/python3.12')

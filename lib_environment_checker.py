@@ -75,6 +75,48 @@ def determine_project_email_addresses(project_path: Path) -> list[list[str, str]
     ## end def determine_project_email_addresses()
 
 
+def check_branch(project_path, project_email_addresses) -> None:
+    """
+    Checks that the project is on the `main` branch.
+    If not, sends an email to the project sys-admins, then exits.
+    """
+    branch = fetch_branch_data(project_path)
+    if branch != 'main':
+        message = f'Error: Project is on branch ``{branch}`` instead of ``main``'
+        log.exception(message)
+        ## email project sys-admins ---------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        ## raise exception -----------------------------------------
+        raise Exception(message)
+
+
+def fetch_branch_data(project_path: Path) -> str:
+    """
+    Fetches branch-data by reading the `.git/HEAD` file (avoiding calling git via subprocess due to `dubious ownership` issue).
+    Called by copy_new_compile_to_codebase()
+    """
+    log.debug('starting fetch_branch_data')
+    git_dir = project_path / '.git'
+    try:
+        ## read HEAD file to find the project branch ------------
+        head_file = git_dir / 'HEAD'
+        ref_line = head_file.read_text().strip()
+        if ref_line.startswith('ref:'):
+            project_branch = ref_line.split('/')[-1]  # extract the project_branch name
+        else:
+            project_branch = 'detached'
+    except FileNotFoundError:
+        log.warning('no `.git` directory or HEAD file found.')
+        project_branch = 'project_branch_not_found'
+    except Exception:
+        log.exception('other problem fetching project_branch data')
+        project_branch = 'project_branch_not_found'
+    log.debug(f'project_branch: ``{project_branch}``')
+    return project_branch
+
+
 def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str, str]:
     """
     Determines Python version from the target-project's virtual environment.
@@ -161,22 +203,6 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
         env_type: str = 'local'
     log.debug(f'env_type: {env_type}')
     return env_type
-
-
-# def determine_environment_type() -> str:
-#     """
-#     Infers environment type based on the system hostname.
-#     Returns 'local', 'staging', or 'production'.
-#     """
-#     hostname: str = subprocess.check_output(['hostname'], text=True).strip()
-#     if hostname.startswith('d') or hostname.startswith('q'):
-#         env_type: str = 'staging'
-#     elif hostname.startswith('p'):
-#         env_type: str = 'production'
-#     else:
-#         env_type: str = 'local'
-#     log.debug(f'env_type: {env_type}')
-#     return env_type
 
 
 def determine_uv_path() -> Path:
