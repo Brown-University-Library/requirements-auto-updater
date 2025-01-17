@@ -126,13 +126,8 @@ class CompiledComparator:
             subprocess.run(command, cwd=project_path)
             # subprocess.run(['git', 'commit', '-m', 'auto-update of requirements'], cwd=project_path)
             ## run a git-push via subprocess ------------------------
-            branch = self.fetch_branch_data(project_path)
-            if branch not in ['detached', 'project_branch_not_found']:
-                command = ['git', 'push', 'origin', branch]
-                log.debug(f'command, given valid branch was found: ``{command}``')
-            else:
-                command = ['git', 'push', 'origin']
-                log.debug(f'command, given valid branch was not found: ``{command}``')
+            command = ['git', 'push', 'origin', 'main']
+            log.debug(f'git-push command, ``{command}``')
             subprocess.run(command, cwd=project_path)
         except Exception as e:
             git_problem_message = f'Error with git-commit or git-push; error: ``{e}``'
@@ -142,28 +137,6 @@ class CompiledComparator:
         log.debug(f'problem_message: ``{problem_message}``')
         return problem_message
 
-    def fetch_branch_data(self, project_path: Path) -> str:
-        """
-        Fetches branch-data by reading the `.git/HEAD` file (avoiding calling git via subprocess due to `dubious ownership` issue).
-        Called by copy_new_compile_to_codebase()
-        """
-        log.debug('starting fetch_branch_data')
-        git_dir = project_path / '.git'
-        try:
-            ## read HEAD file to find the project branch ------------
-            head_file = git_dir / 'HEAD'
-            ref_line = head_file.read_text().strip()
-            if ref_line.startswith('ref:'):
-                project_branch = ref_line.split('/')[-1]  # extract the project_branch name
-            else:
-                project_branch = 'detached'
-        except FileNotFoundError:
-            log.warning('no `.git` directory or HEAD file found.')
-            project_branch = 'project_branch_not_found'
-        except Exception:
-            log.exception('other problem fetching project_branch data')
-            project_branch = 'project_branch_not_found'
-        log.debug(f'project_branch: ``{project_branch}``')
-        return project_branch
+        ## end def copy_new_compile_to_codebase()
 
     ## end class CompiledComparator
