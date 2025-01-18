@@ -57,7 +57,7 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
     local_scoped_env = make_local_scoped_env(project_path, venv_bin_path, venv_path)
     ## prep the command ---------------------------------------------
     command = make_run_tests_command(project_path, venv_bin_path)
-    log.debug(f'initial runtests command: ``{command}``')
+    log.debug(f'followup runtests command: ``{command}``')
     ## run the command ----------------------------------------------
     try:
         subprocess.run(command, check=True, env=local_scoped_env)
