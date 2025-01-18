@@ -120,7 +120,7 @@ class CompiledComparator:
             log.debug(f'git-pull-command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True)
             ## run a git-add via subprocess -------------------------
-            command = ['git', 'add', save_path]
+            command = ['git', 'add', str(save_path)]
             log.debug(f'git-add-command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True)
             ## run a git-commit via subprocess ------------------------
