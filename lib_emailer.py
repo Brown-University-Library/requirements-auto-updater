@@ -138,7 +138,7 @@ class Emailer:
         log.debug(f'built_recipients: {built_recipients}')
         ## build email message ------------------------------------------
         eml = MIMEText(message)
-        eml['Subject'] = f'bul-self-updater info from server``{self.server_name}`` for project ``{self.project_path.name}``'
+        eml['Subject'] = f'bul-self-updater info from server ``{self.server_name}`` for project ``{self.project_path.name}``'
         eml['From'] = self.self_updater_email_from
         eml['To'] = ', '.join(built_recipients)
         ## send email ---------------------------------------------------
