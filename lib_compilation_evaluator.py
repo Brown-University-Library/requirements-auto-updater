@@ -115,20 +115,22 @@ class CompiledComparator:
             problem_message = f'Error copying new requirements file to project; error: ``{e}``'
             log.exception(problem_message)
         try:
+            ## run a git-pull via subprocess ------------------------
+            command = ['git', 'pull']
+            log.debug(f'git-pull-command, ``{command}``')
+            subprocess.run(command, cwd=project_path, check=True)
             ## run a git-add via subprocess -------------------------
             command = ['git', 'add', save_path]
             log.debug(f'git-add-command, ``{command}``')
-            subprocess.run(command, cwd=project_path)
-            # subprocess.run(['git', 'add', save_path], cwd=project_path)
+            subprocess.run(command, cwd=project_path, check=True)
             ## run a git-commit via subprocess ------------------------
             command = ['git', 'commit', '-m', 'auto-update of requirements']
             log.debug(f'git-commit-command, ``{command}``')
-            subprocess.run(command, cwd=project_path)
-            # subprocess.run(['git', 'commit', '-m', 'auto-update of requirements'], cwd=project_path)
+            subprocess.run(command, cwd=project_path, check=True)
             ## run a git-push via subprocess ------------------------
             command = ['git', 'push', 'origin', 'main']
             log.debug(f'git-push command, ``{command}``')
-            subprocess.run(command, cwd=project_path)
+            subprocess.run(command, cwd=project_path, check=True)
         except Exception as e:
             git_problem_message = f'Error with git-commit or git-push; error: ``{e}``'
             log.exception(git_problem_message)
