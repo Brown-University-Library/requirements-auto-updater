@@ -132,7 +132,8 @@ class CompiledComparator:
             log.debug(f'git-push command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True)
         except Exception as e:
-            git_problem_message = f'Error with git-commit or git-push; error: ``{e}``'
+            git_problem_message = f'Error with git-pull or git-commit or git-push; error: ``{e}``'
+            log.debug(f'git_problem_message: ``{git_problem_message}``')
             log.exception(git_problem_message)
             if problem_message:
                 problem_message += f' Also: {git_problem_message}'
