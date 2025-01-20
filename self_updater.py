@@ -25,6 +25,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 import lib_common
+import lib_django_updater
 import lib_environment_checker
 from lib_call_runtests import run_followup_tests, run_initial_tests
 from lib_compilation_evaluator import CompiledComparator
