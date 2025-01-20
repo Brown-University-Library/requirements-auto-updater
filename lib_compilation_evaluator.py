@@ -132,7 +132,10 @@ class CompiledComparator:
             log.debug(f'git-push command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True)
         except Exception as e:
-            git_problem_message = f'Error with git-pull or git-commit or git-push; error: ``{e}``'
+            if e.returncode == 1 and 'nothing to commit' in e.stderr.decode('utf-8').lower():
+                log.debug('no real commit error')
+            else:
+                git_problem_message = f'Error with git-pull or git-commit or git-push; error: ``{e}``'
             log.debug(f'git_problem_message: ``{git_problem_message}``')
             log.exception(git_problem_message)
             if problem_message:
@@ -141,5 +144,56 @@ class CompiledComparator:
         return problem_message
 
         ## end def copy_new_compile_to_codebase()
+
+    # def copy_new_compile_to_codebase(self, compiled_requirements: Path, project_path: Path, environment_type: str) -> str:
+    #     """
+    #     Copies the newly compiled requirements file to the project's codebase.
+    #     Then commits and pushes the changes to the project's git repository.
+
+    #     Note: reads and writes the requirements `.txt` file to avoid explicit full-path references.
+
+    #     Called by self_updater.py.
+    #     """
+    #     log.debug('starting copy_new_compile_to_codebase()')
+    #     problem_message = ''
+    #     try:
+    #         assert environment_type in ['local', 'staging', 'production']
+    #         ## make save-path -------------------------------------------
+    #         save_path: Path = project_path / 'requirements' / f'{environment_type}.txt'
+    #         ## copy the new requirements file to the project --------------
+    #         compiled_requirements_lines = compiled_requirements.read_text().splitlines()
+    #         compiled_requirements_lines = [line for line in compiled_requirements_lines if not line.startswith('#')]
+    #         save_path.write_text('\n'.join(compiled_requirements_lines))
+    #         log.debug('new requirements file copied to project.')
+    #     except Exception as e:
+    #         problem_message = f'Error copying new requirements file to project; error: ``{e}``'
+    #         log.exception(problem_message)
+    #     try:
+    #         ## run a git-pull via subprocess ------------------------
+    #         command = ['git', 'pull']
+    #         log.debug(f'git-pull-command, ``{command}``')
+    #         subprocess.run(command, cwd=project_path, check=True)
+    #         ## run a git-add via subprocess -------------------------
+    #         command = ['git', 'add', str(save_path)]
+    #         log.debug(f'git-add-command, ``{command}``')
+    #         subprocess.run(command, cwd=project_path, check=True)
+    #         ## run a git-commit via subprocess ------------------------
+    #         command = ['git', 'commit', '-m', 'auto-update of requirements']
+    #         log.debug(f'git-commit-command, ``{command}``')
+    #         subprocess.run(command, cwd=project_path, check=True)
+    #         ## run a git-push via subprocess ------------------------
+    #         command = ['git', 'push', 'origin', 'main']
+    #         log.debug(f'git-push command, ``{command}``')
+    #         subprocess.run(command, cwd=project_path, check=True)
+    #     except Exception as e:
+    #         git_problem_message = f'Error with git-pull or git-commit or git-push; error: ``{e}``'
+    #         log.debug(f'git_problem_message: ``{git_problem_message}``')
+    #         log.exception(git_problem_message)
+    #         if problem_message:
+    #             problem_message += f' Also: {git_problem_message}'
+    #     log.debug(f'problem_message: ``{problem_message}``')
+    #     return problem_message
+
+    #     ## end def copy_new_compile_to_codebase()
 
     ## end class CompiledComparator
