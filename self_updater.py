@@ -243,9 +243,10 @@ def manage_update(project_path: str) -> None:
         ## make diff ------------------------------------------------
         diff_text: str = compiled_comparator.make_diff_text(project_path)
         ## check for django update ----------------------------------
+        followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
-            lib_django_updater.run_collectstatic()
+            followup_collectstatic_problems = lib_django_updater.run_collectstatic()
         ## copy new compile to codebase -----------------------------
         followup_copy_problems: None | str = None
         followup_copy_problems = compiled_comparator.copy_new_compile_to_codebase(
@@ -256,7 +257,11 @@ def manage_update(project_path: str) -> None:
         if environment_type != 'production':
             followup_tests_problems = run_followup_tests(uv_path, project_path, project_email_addresses)
         ## send diff email ------------------------------------------
-        followup_problems = {'copy_problems': followup_copy_problems, 'test_problems': followup_tests_problems}
+        followup_problems = {
+            'collectstatic_problems': followup_collectstatic_problems,
+            'copy_problems': followup_copy_problems,
+            'test_problems': followup_tests_problems,
+        }
         send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
