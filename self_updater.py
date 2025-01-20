@@ -242,6 +242,10 @@ def manage_update(project_path: str) -> None:
         mark_active(compiled_requirements)
         ## make diff ------------------------------------------------
         diff_text: str = compiled_comparator.make_diff_text(project_path)
+        ## check for django update ----------------------------------
+        django_update: bool = lib_django_updater.check_for_django_update(diff_text)
+        if django_update:
+            lib_django_updater.run_collectstatic()
         ## copy new compile to codebase -----------------------------
         followup_copy_problems: None | str = None
         followup_copy_problems = compiled_comparator.copy_new_compile_to_codebase(
