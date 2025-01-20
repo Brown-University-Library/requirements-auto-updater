@@ -31,7 +31,7 @@ def run_collectstatic() -> None | str:
     try:
         ## log cwd
         log.debug(f'cwd: {os.getcwd()}')
-        command = ['bash', '-c', 'source ..env/bin/activate && python ./manage.py collectstatic --noinput']
+        command = ['bash', '-c', 'source ../env/bin/activate && python ./manage.py collectstatic --noinput']
         log.debug(f'command: {command}')
         subprocess.run(command, check=True)
         message = None
