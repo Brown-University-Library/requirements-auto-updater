@@ -263,6 +263,7 @@ def manage_update(project_path: str) -> None:
             'copy_problems': followup_copy_problems,
             'test_problems': followup_tests_problems,
         }
+        log.debug(f'followup_problems, ``{followup_problems}``')
         send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
         log.debug('email sent')
     ## update group and permissions ---------------------------------
