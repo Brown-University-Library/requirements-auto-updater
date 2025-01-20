@@ -1,11 +1,12 @@
 import logging
+import subprocess
 
 log = logging.getLogger(__name__)
 
 
 def check_for_django_update(incoming_text: str) -> bool:
     """
-    Check if incoming text contains a Django version.
+    Checks if incoming diff-text indicates a django update.
 
     Iterates through lines of incoming text.
     - first strips whitespace from each line
@@ -20,3 +21,19 @@ def check_for_django_update(incoming_text: str) -> bool:
             break
     log.debug(f'return_val: {return_val}')
     return return_val
+
+
+def run_collectstatic() -> None | str:
+    """
+    Runs collectstatic command.
+    """
+    try:
+        command = ['bash', '-c', 'source venv/bin/activate && python ./manage.py collectstatic --noinput']
+        log.debug(f'command: {command}')
+        subprocess.run(command, check=True)
+        message = None
+    except subprocess.CalledProcessError as e:
+        message = f'Error running collectstatic: {e}'
+        log.exception(message)
+    log.debug(f'message: {message}')
+    return message
