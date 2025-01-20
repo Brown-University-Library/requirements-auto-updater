@@ -48,7 +48,7 @@ def send_email_of_diffs(
     ## send email ---------------------------------------------------
     emailer = Emailer(project_path)
     if problem_message:
-        email_message: str = emailer.create_update_problem_message(diff_text, followup_problems)
+        email_message: str = emailer.create_update_problem_message(diff_text, problem_message)
     else:
         email_message: str = emailer.create_update_ok_message(diff_text)
     try:
@@ -118,7 +118,8 @@ class Emailer:
         email_message = f"""
         The venv for the project ``{self.project_path.name}`` has been auto-updated and is active. 
 
-        However, the post-update run_tests() failed -- and should be reviewed.
+        However, there were post-update problems which should be reviewed:
+        {followup_test_problems}
         
         The requirements.txt diff:\n\n{diff_text}.
 
