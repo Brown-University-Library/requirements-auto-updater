@@ -126,13 +126,16 @@ class CompiledComparator:
             ## run a git-commit via subprocess ------------------------
             command = ['git', 'commit', '-m', 'auto-update of requirements']
             log.debug(f'git-commit-command, ``{command}``')
-            subprocess.run(command, cwd=project_path, check=True)
+            subprocess.run(command, cwd=project_path, check=True, capture_output=True, text=True)
             ## run a git-push via subprocess ------------------------
             command = ['git', 'push', 'origin', 'main']
             log.debug(f'git-push command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True)
         except Exception as e:
-            if e.returncode == 1 and 'nothing to commit' in e.stderr.decode('utf-8').lower():
+            log.debug(f'e.returncode, ``{e.returncode}``')
+            stderr_output = e.stderr or ''  # safeguard against None
+            log.debug(f'stderr_output, ``{stderr_output}``')
+            if e.returncode == 1 and 'nothing to commit' in stderr_output.lower():
                 log.debug('no real commit error')
             else:
                 git_problem_message = f'Error with git-pull or git-commit or git-push; error: ``{e}``'
