@@ -8,6 +8,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+from self_updater_code import lib_git_handler
+
 log = logging.getLogger(__name__)
 
 
@@ -101,12 +103,13 @@ class CompiledComparator:
         Called by self_updater.py.
         """
         log.debug('starting copy_new_compile_to_codebase()')
+        ## copy new requirements file to project --------------------
         problem_message = ''
         try:
             assert environment_type in ['local', 'staging', 'production']
-            ## make save-path -------------------------------------------
+            ## make save-path ---------------------------------------
             save_path: Path = project_path / 'requirements' / f'{environment_type}.txt'
-            ## copy the new requirements file to the project --------------
+            ## copy the new requirements file to the project --------
             compiled_requirements_lines = compiled_requirements.read_text().splitlines()
             compiled_requirements_lines = [line for line in compiled_requirements_lines if not line.startswith('#')]
             save_path.write_text('\n'.join(compiled_requirements_lines))
@@ -114,15 +117,11 @@ class CompiledComparator:
         except Exception as e:
             problem_message = f'Error copying new requirements file to project; error: ``{e}``'
             log.exception(problem_message)
+        ## run git-pull ---------------------------------------------
+        lib_git_handler.run_git_pull(project_path)
+        ## run git-add ----------------------------------------------
+        lib_git_handler.run_git_add(save_path, project_path)
         try:
-            ## run a git-pull via subprocess ------------------------
-            command = ['git', 'pull']
-            log.debug(f'git-pull-command, ``{command}``')
-            subprocess.run(command, cwd=project_path, check=True)
-            ## run a git-add via subprocess -------------------------
-            command = ['git', 'add', str(save_path)]
-            log.debug(f'git-add-command, ``{command}``')
-            subprocess.run(command, cwd=project_path, check=True)
             ## run a git-commit via subprocess ------------------------
             command = ['git', 'commit', '-m', 'auto-update of requirements']
             log.debug(f'git-commit-command, ``{command}``')
