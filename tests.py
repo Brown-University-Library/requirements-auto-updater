@@ -44,11 +44,12 @@ class TestGitCommands(unittest.TestCase):
     def test_git_pull__A(self):
         """
         Checks that `Already up to date.` is detected properly.
+        Assumes current-project is, actually, already up-to-date.
         """
-        git_result = lib_git_handler.run_git_pull()
-        expected = True
-        result = 'Already up to date.' in git_result
-        self.assertEqual(expected, result)
+        git_result: tuple[bool, dict] = lib_git_handler.run_git_pull()
+        (ok, output) = git_result
+        self.assertTrue(ok is True)
+        self.assertIn('Already up to date.', output['stdout'])
 
 
 class TestMiscellaneous(unittest.TestCase):
