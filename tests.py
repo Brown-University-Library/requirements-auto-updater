@@ -27,8 +27,28 @@ log = logging.getLogger(__name__)
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
-from self_updater_code import lib_django_updater  # noqa: E402  (prevents linter problem-indicator)
+from self_updater_code import (
+    lib_django_updater,  # noqa: E402  (prevents linter problem-indicator)
+    lib_git_handler,  # noqa: E402  (prevents linter problem-indicator)
+)
 from self_updater_code.lib_compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
+
+
+class TestGitCommands(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_git_pull__A(self):
+        """
+        Checks that `Already up to date.` is detected properly.
+        """
+        git_result = lib_git_handler.run_git_pull()
+        expected = True
+        result = 'Already up to date.' in git_result
+        self.assertEqual(expected, result)
 
 
 class TestMiscellaneous(unittest.TestCase):
