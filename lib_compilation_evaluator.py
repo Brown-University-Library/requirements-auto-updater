@@ -8,7 +8,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-from self_updater_code import lib_git_handler
+import lib_git_handler
 
 log = logging.getLogger(__name__)
 
