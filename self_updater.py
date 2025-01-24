@@ -44,10 +44,14 @@ ENVAR_EMAIL_HOST = os.environ['SLFUPDTR__EMAIL_HOST']
 ENVAR_EMAIL_HOST_PORT = os.environ['SLFUPDTR__EMAIL_HOST_PORT']
 
 ## set up logging ---------------------------------------------------
+log_dir: Path = stuff_dir / 'logs'
+log_dir.mkdir(parents=True, exist_ok=True)  # creates the log-directory inside the stuff-directory if it doesn't exist
+log_file_path: Path = log_dir / 'self_updater.log'
 logging.basicConfig(
     level=logging.DEBUG,
     format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
     datefmt='%d/%b/%Y %H:%M:%S',
+    filename=log_file_path,
 )
 log = logging.getLogger(__name__)
 
