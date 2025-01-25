@@ -61,6 +61,7 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
     ## run the command ----------------------------------------------
     try:
         subprocess.run(command, check=True, env=local_scoped_env)
+        log.debug('followup tests passed')
         return_val = None
     except subprocess.CalledProcessError as e:
         message = f'Error on followup run_tests() call: ``{e}``.'
