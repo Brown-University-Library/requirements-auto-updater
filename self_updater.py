@@ -278,7 +278,7 @@ def manage_update(project_path: str) -> None:
 
 
 if __name__ == '__main__':
-    log.debug('starting dundermain')
+    log.debug('\n\nstarting dundermain')
     if len(sys.argv) != 2:
         message: str = """
         See usage instructions at:
