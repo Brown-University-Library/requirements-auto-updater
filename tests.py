@@ -53,6 +53,30 @@ class TestGitCommands(unittest.TestCase):
         self.assertTrue(ok is True)
         self.assertIn('Already up to date.', output['stdout'])
 
+    def test_git_status_clean(self):
+        """
+        Checks that `On branch main` is detected properly.
+        Assumes current-project is on branch `main`.
+        """
+        cur_dir = Path('./').resolve()
+        log.debug(f'cur_dir: {cur_dir}')
+        git_result: tuple[bool, dict] = lib_git_handler.run_git_status(cur_dir)
+        (ok, output) = git_result
+        self.assertTrue(ok is True)
+        self.assertIn('On branch master', output['stdout'])
+
+    def test_git_status_not_clean(self):
+        """
+        Checks that `Changes not staged for commit` is detected properly.
+        Assumes current-project is on branch `main`.
+        """
+        target_dir = Path('../git_tests/check_changes_not_staged/').resolve()
+        log.debug(f'cur_dir: {target_dir}')
+        git_result: tuple[bool, dict] = lib_git_handler.run_git_status(target_dir)
+        (ok, output) = git_result
+        self.assertTrue(ok is True)
+        self.assertIn('On branch master', output['stdout'])
+
 
 class TestMiscellaneous(unittest.TestCase):
     def setUp(self):

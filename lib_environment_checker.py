@@ -10,6 +10,7 @@ from pathlib import Path
 
 import dotenv
 
+import lib_git_handler
 from lib_emailer import Emailer
 
 log = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ def check_branch(project_path, project_email_addresses) -> None:
 def fetch_branch_data(project_path: Path) -> str:
     """
     Fetches branch-data by reading the `.git/HEAD` file (avoiding calling git via subprocess due to `dubious ownership` issue).
-    Called by copy_new_compile_to_codebase()
+    Called by check_branch()
     """
     log.debug('starting fetch_branch_data')
     git_dir = project_path / '.git'
@@ -115,6 +116,29 @@ def fetch_branch_data(project_path: Path) -> str:
         project_branch = 'project_branch_not_found'
     log.debug(f'project_branch: ``{project_branch}``')
     return project_branch
+
+
+def check_git_status(project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
+    """
+    Checks that the project has no uncommitted changes.
+    If there are uncommitted changes:
+    - Sends an email to the project sys-admins
+    - Exits the script
+    """
+    log.debug('starting check_git_status()')
+    ## check for uncommitted changes --------------------------
+    call_result: tuple[bool, dict] = lib_git_handler.run_git_status(project_path)
+    (ok, output) = call_result
+    if 'nothing to commit, working tree clean' not in output['stdout']:
+        message = 'Error: Uncommitted changes found.'
+        log.exception(message)
+        ## email project sys-admins ---------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        ## raise exception -----------------------------------------
+        raise Exception(message)
+    return
 
 
 def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str, str]:
