@@ -67,7 +67,7 @@ class TestGitCommands(unittest.TestCase):
 
     def test_git_status_not_clean(self):
         """
-        Checks that `Changes not staged for commit` is detected properly.
+        Checks that various non-"clean" states are detected properly.
         Assumes current-project is on branch `main`.
         """
         target_dir = Path('../git_tests/check_changes_not_staged/').resolve()

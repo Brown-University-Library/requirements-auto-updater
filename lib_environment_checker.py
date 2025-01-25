@@ -129,8 +129,8 @@ def check_git_status(project_path: Path, project_email_addresses: list[list[str,
     ## check for uncommitted changes --------------------------
     call_result: tuple[bool, dict] = lib_git_handler.run_git_status(project_path)
     (ok, output) = call_result
-    if 'nothing to commit, working tree clean' not in output['stdout']:
-        message = 'Error: Uncommitted changes found.'
+    if 'working tree clean' not in output['stdout']:
+        message = 'Error: git-status check failed.'
         log.exception(message)
         ## email project sys-admins ---------------------------------
         emailer = Emailer(project_path)
