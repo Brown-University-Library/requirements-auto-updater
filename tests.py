@@ -63,7 +63,7 @@ class TestGitCommands(unittest.TestCase):
         git_result: tuple[bool, dict] = lib_git_handler.run_git_status(cur_dir)
         (ok, output) = git_result
         self.assertTrue(ok is True)
-        self.assertIn('clean', output['stdout'])
+        self.assertIn('working tree clean', output['stdout'])
 
     def test_git_status_not_clean(self):
         """
@@ -75,7 +75,7 @@ class TestGitCommands(unittest.TestCase):
         git_result: tuple[bool, dict] = lib_git_handler.run_git_status(target_dir)
         (ok, output) = git_result
         self.assertTrue(ok is True)
-        self.assertNotIn('clean', output['stdout'])
+        self.assertNotIn('working tree clean', output['stdout'])
 
 
 class TestMiscellaneous(unittest.TestCase):
