@@ -124,12 +124,15 @@ def check_git_status(project_path: Path, project_email_addresses: list[list[str,
     If there are uncommitted changes:
     - Sends an email to the project sys-admins
     - Exits the script
+
+    Note: just looking for the word 'clean' because one version of git says "working tree clean"
+        and another says "working directory clean". TODO: consider just checking the ok boolean.
     """
     log.debug('starting check_git_status()')
     ## check for uncommitted changes --------------------------
     call_result: tuple[bool, dict] = lib_git_handler.run_git_status(project_path)
     (ok, output) = call_result
-    if 'working tree clean' not in output['stdout']:
+    if 'clean' not in output['stdout']:
         message = 'Error: git-status check failed.'
         log.exception(message)
         ## email project sys-admins ---------------------------------
