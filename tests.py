@@ -57,6 +57,9 @@ class TestGitCommands(unittest.TestCase):
         """
         Checks that `On branch main` is detected properly.
         Assumes current-project is on branch `main`.
+
+        Note: just looking for the word 'clean' because one version of git says "working tree clean"
+            and another says "working directory clean". TODO: consider just checking the ok boolean.
         """
         cur_dir = Path('./').resolve()
         log.debug(f'cur_dir: {cur_dir}')
