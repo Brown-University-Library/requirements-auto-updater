@@ -17,7 +17,7 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     - Emails project-admins
     - Raises an exception
     """
-    log.debug('starting run_initial_tests()')
+    log.info('::: running initial tests ----------')
     ## set the venv -------------------------------------------------
     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)  # these are resolved-paths
     (venv_bin_path, venv_path) = venv_tuple
@@ -28,6 +28,7 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     ## run the command ----------------------------------------------
     try:
         subprocess.run(command, check=True, env=local_scoped_env)
+        log.info('ok / initial tests passed')
     except Exception as e:
         message = f'Error on initial run_tests() call: ``{e}``. Halting self-update.'
         log.exception(message)
@@ -50,7 +51,7 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
     - returns "tests failed" message (to be add to the diff email)
     - does not exit, so that diffs can be emailed and permissions updated
     """
-    log.debug('starting run_followup_tests()')
+    log.info('::: running followup tests ----------')
     ## set the venv -------------------------------------------------
     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)  # these are resolved-paths
     (venv_bin_path, venv_path) = venv_tuple
@@ -61,7 +62,7 @@ def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresse
     ## run the command ----------------------------------------------
     try:
         subprocess.run(command, check=True, env=local_scoped_env)
-        log.debug('followup tests passed')
+        log.info('ok / followup tests passed')
         return_val = None
     except subprocess.CalledProcessError as e:
         message = f'Error on followup run_tests() call: ``{e}``.'

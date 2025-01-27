@@ -26,7 +26,7 @@ class CompiledComparator:
         Returns False if there are no changes, True otherwise.
         (Currently the manager-script just passes in the new_path, and the old_path is determined.)
         """
-        log.debug('starting compare_with_previous_backup()')
+        log.info('::: starting compare to check for changes ----------')
         changes = True
         ## try to get the old-path --------------------------------------
         if not old_path:
@@ -49,7 +49,7 @@ class CompiledComparator:
                 if curr_lines_filtered == prev_lines_filtered:
                     log.debug('no differences found in dependencies.')
                     changes = False
-        log.debug(f'changes: ``{changes}``')
+        log.info(f'ok / changes, ``{changes}``')
         return changes  # just the boolean
 
     def filter_initial_comments(self, lines: list[str]) -> list[str]:
@@ -70,7 +70,7 @@ class CompiledComparator:
         Creates a diff from the two most recent requirements files.
         Called by send_email_of_diffs().
         """
-        log.debug('starting make_diff_text()')
+        log.info('::: making diff-text ----------')
         ## get the two most recent backup files -------------------------
         backup_dir: Path = project_path.parent / 'requirements_backups'
         log.debug(f'backup_dir: ``{backup_dir}``')
@@ -90,7 +90,7 @@ class CompiledComparator:
             diff_lines = [f'--- {previous_file.name}\n', f'+++ {current_file.name}\n']
             diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
             diff_text = ''.join(diff_lines)
-        log.debug(f'diff_text: ``{diff_text}``')
+        log.info(f'ok / diff_text, ``{diff_text}``')
         return diff_text
 
     def copy_new_compile_to_codebase(self, compiled_requirements: Path, project_path: Path, environment_type: str) -> str:
@@ -102,7 +102,7 @@ class CompiledComparator:
 
         Called by self_updater.py.
         """
-        log.debug('starting copy_new_compile_to_codebase()')
+        log.info('::: copying new compile to codebase ----------')
         ## copy new requirements file to project --------------------
         problem_message = ''
         try:
@@ -113,7 +113,7 @@ class CompiledComparator:
             compiled_requirements_lines = compiled_requirements.read_text().splitlines()
             compiled_requirements_lines = [line for line in compiled_requirements_lines if not line.startswith('#')]
             save_path.write_text('\n'.join(compiled_requirements_lines))
-            log.debug('new requirements file copied to project.')
+            log.info('ok / new requirements file copied to project.')
         except Exception as e:
             problem_message = f'Error copying new requirements file to project; error: ``{e}``'
             log.exception(problem_message)
@@ -123,13 +123,17 @@ class CompiledComparator:
         lib_git_handler.run_git_add(save_path, project_path)
         try:
             ## run a git-commit via subprocess ------------------------
+            log.info('::: running git-commit ----------')
             command = ['git', 'commit', '-m', 'auto-update of requirements']
             log.debug(f'git-commit-command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True, capture_output=True, text=True)
+            log.info('ok / git-commit successful')
             ## run a git-push via subprocess ------------------------
+            log.info('::: running git-push ----------')
             command = ['git', 'push', 'origin', 'main']
             log.debug(f'git-push command, ``{command}``')
             subprocess.run(command, cwd=project_path, check=True)
+            log.info('ok / git-push successful')
         except Exception as e:
             log.debug(f'e.returncode, ``{e.returncode}``')
             stderr_output = e.stderr or ''  # safeguard against None

@@ -66,7 +66,7 @@ def compile_requirements(project_path: Path, python_version: str, environment_ty
     Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
     Returns the path to the newly created backup file.
     """
-    log.debug('starting compile_requirements()')
+    log.info('::: compiling requirements ----------')
     ## prepare requirements.in filepath -----------------------------
     requirements_in: Path = project_path / 'requirements' / f'{environment_type}.in'  # local.in, staging.in, production.in
     log.debug(f'requirements.in path, ``{requirements_in}``')
@@ -94,7 +94,7 @@ def compile_requirements(project_path: Path, python_version: str, environment_ty
     ## run compile command ------------------------------------------
     try:
         subprocess.run(compile_command, check=True)
-        log.debug('uv pip compile was successful')
+        log.info('ok / uv pip compile was successful')
     except subprocess.CalledProcessError:
         message = 'Error during pip compile'
         log.exception(message)
@@ -108,14 +108,14 @@ def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
     """
     Removes all files in the backup directory other than the most-recent files.
     """
-    log.debug('starting remove_old_backups()')
+    log.info('::: removing old backups ----------')
     backup_dir: Path = project_path.parent / 'requirements_backups'
     backups: list[Path] = sorted([f for f in backup_dir.iterdir() if f.is_file() and f.suffix == '.txt'], reverse=True)
     old_backups: list[Path] = backups[keep_recent:]
-
     for old_backup in old_backups:
         log.debug(f'removing old backup: {old_backup}')
         old_backup.unlink()
+    log.info('ok / old backups removed')
     return
 
 
@@ -135,7 +135,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     This code mimicks that environment modification by explicitly setting
     the PATH and VIRTUAL_ENV environment variables before running the command.
     """
-    log.debug('starting activate_and_sync_dependencies()')
+    log.info('::: syncing dependencies ----------') 
     ## prepare env-path variables -----------------------------------
     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
     (venv_bin_path, venv_path) = venv_tuple
@@ -149,7 +149,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     try:
         ## run sync command ------------------------------------------
         subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
-        log.debug('uv pip sync was successful')
+        log.info('ok / uv pip sync was successful')
     except subprocess.CalledProcessError:
         message = 'Error during pip sync'
         log.exception(message)
@@ -157,7 +157,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     try:
         ## run `touch` to make the changes take effect ---------------
         subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
-        log.debug('ran `touch`')
+        log.info('ok / ran `touch`')
     except subprocess.CalledProcessError:
         message = 'Error during pip sync or touch'
         log.exception(message)
@@ -171,12 +171,13 @@ def mark_active(backup_file: Path) -> None:
     """
     Marks the backup file as active by adding a header comment.
     """
-    log.debug('starting mark_active()')
+    log.info('::: marking recent-backup as active ----------')
     with backup_file.open('r') as file:  # read the file
         content: list[str] = file.readlines()
     content.insert(0, '# ACTIVE\n')
     with backup_file.open('w') as file:  # write the file
         file.writelines(content)
+    log.info('ok / marked recent-backup as active')
     return
 
 
@@ -185,7 +186,7 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
     Update group ownership and permissions for relevant directories.
     Mark the backup file as active by adding a header comment.
     """
-    log.debug('starting update_permissions_and_mark_active()')
+    log.info('::: updating group and permissions ----------')
     backup_dir: Path = project_path.parent / 'requirements_backups'
     log.debug(f'backup_dir: ``{backup_dir}``')
     relative_env_path = project_path / '../env'
@@ -195,6 +196,7 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
         log.debug(f'updating group and permissions for path: ``{path}``')
         subprocess.run(['chgrp', '-R', group, str(path)], check=True)
         subprocess.run(['chmod', '-R', 'g=rwX', str(path)], check=True)
+    log.info('ok / updated group and permissions')
     return
 
 
@@ -209,25 +211,36 @@ def manage_update(project_path: str) -> None:
     Calls various helper functions to validate, compile, compare, sync, and update permissions.
     """
     log.debug('starting manage_update()')
+
+    ## ::: run environmental checks :::
     ## validate project path ----------------------------------------
     project_path: Path = Path(project_path).resolve()  # ensures an absolute path now
     lib_environment_checker.validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
-    ## get/check everything needed up front -------------------------
+    ## get email addresses ------------------------------------------
     project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
+    ## check branch -------------------------------------------------
     lib_environment_checker.check_branch(project_path, project_email_addresses)  # emails admins and exits if not on main
+    ## check git status ---------------------------------------------
     lib_environment_checker.check_git_status(project_path, project_email_addresses)  # emails admins and exits if not clean
+    ## get python version -------------------------------------------
     version_info: tuple[str, str, str] = lib_environment_checker.determine_python_version(
         project_path, project_email_addresses
     )  # ie, ('3.12.4', '~=3.12.0', '/path/to/python3.12')
     env_python_path_resolved = version_info[2]
+    ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
+    ## get uv path --------------------------------------------------
     uv_path: Path = lib_environment_checker.determine_uv_path()
+    ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
+
     ## run initial tests --------------------------------------------
     if environment_type != 'production':
         run_initial_tests(uv_path, project_path, project_email_addresses)
+
+    ## ::: compileation :::
     ## compile requirements file ------------------------------------
     compiled_requirements: Path = compile_requirements(project_path, env_python_path_resolved, environment_type, uv_path)
     ## cleanup old backups ------------------------------------------
@@ -237,11 +250,10 @@ def manage_update(project_path: str) -> None:
     differences_found: bool = compiled_comparator.compare_with_previous_backup(
         compiled_requirements, old_path=None, project_path=project_path
     )
-    if not differences_found:
-        log.debug('no differences found in dependencies.')
-    else:  ## since it's different... --------------------------------
+
+    ## ::: act on differences :::
+    if differences_found:
         ## since it's different, update the venv --------------------
-        log.debug('differences found in dependencies; updating venv')
         sync_dependencies(project_path, compiled_requirements, uv_path)
         log.debug('dependencies updated successfully.')
         ## mark new-compile as active -------------------------------
@@ -271,6 +283,8 @@ def manage_update(project_path: str) -> None:
         log.debug(f'followup_problems, ``{followup_problems}``')
         send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
         log.debug('email sent')
+
+    ## ::: clean up :::
     ## update group and permissions ---------------------------------
     update_permissions(project_path, compiled_requirements, group)
     return
