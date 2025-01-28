@@ -33,6 +33,7 @@ def send_email_of_diffs(
     Called by: self_updater.manage_update()
     """
     ## prepare problem-message --------------------------------------
+    log.info('::: preparing problem-message ----------')
     problem_message: str = ''
     if followup_problems['collectstatic_problems']:
         problem_message = followup_problems['collectstatic_problems']
@@ -44,7 +45,10 @@ def send_email_of_diffs(
         if problem_message:
             problem_message += '\n\n'
         problem_message += followup_problems['test_problems']
-    log.debug(f'emailer problem_message, ``{problem_message}``')
+    if problem_message:
+        log.info(f'ok / problem_message, ``{problem_message}``')
+    else:
+        log.info('ok / no problem_message')
     ## send email ---------------------------------------------------
     emailer = Emailer(project_path)
     if problem_message:
@@ -135,7 +139,7 @@ class Emailer:
         On a successful update email, the email_addresses will be the project-admins.
         On a setup problem email, the email_addresses will be the self-updater sys-admins.
         """
-        log.debug('starting send_email()')
+        log.info('::: sending email ----------')
         log.debug(f'email_addresses: ``{email_addresses}``')
         ## prep email data ----------------------------------------------
         built_recipients = []
@@ -151,6 +155,7 @@ class Emailer:
         try:
             s = smtplib.SMTP(self.email_host, self.email_host_port)
             s.sendmail(self.self_updater_email_from, built_recipients, eml.as_string())
+            log.info('ok / email sent')
         except Exception as e:
             err = repr(e)
             log.exception(f'problem sending self-updater mail, ``{err}``')
