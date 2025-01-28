@@ -135,7 +135,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     This code mimicks that environment modification by explicitly setting
     the PATH and VIRTUAL_ENV environment variables before running the command.
     """
-    log.info('::: syncing dependencies ----------') 
+    log.info('::: syncing dependencies ----------')
     ## prepare env-path variables -----------------------------------
     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
     (venv_bin_path, venv_path) = venv_tuple
@@ -156,6 +156,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
         raise Exception(message)
     try:
         ## run `touch` to make the changes take effect ---------------
+        log.info('::: running `touch` ----------')
         subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
         log.info('ok / ran `touch`')
     except subprocess.CalledProcessError:
@@ -255,7 +256,6 @@ def manage_update(project_path: str) -> None:
     if differences_found:
         ## since it's different, update the venv --------------------
         sync_dependencies(project_path, compiled_requirements, uv_path)
-        log.debug('dependencies updated successfully.')
         ## mark new-compile as active -------------------------------
         mark_active(compiled_requirements)
         ## make diff ------------------------------------------------
@@ -264,7 +264,7 @@ def manage_update(project_path: str) -> None:
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
-            followup_collectstatic_problems = lib_django_updater.run_collectstatic()
+            followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path)
         ## copy new compile to codebase -----------------------------
         followup_copy_problems: None | str = None
         followup_copy_problems = compiled_comparator.copy_new_compile_to_codebase(
