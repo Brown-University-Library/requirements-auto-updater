@@ -35,7 +35,7 @@ def run_collectstatic(project_path: Path) -> None | str:
     log.debug(f'cwd: {os.getcwd()}')
     command = ['bash', '-c', 'source ../env/bin/activate && python ./manage.py collectstatic --noinput']
     log.debug(f'command: {command}')
-    subprocess.run(command, check=True)
+    # subprocess.run(command, check=True)
     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
     log.debug(f'result: {result}')
     ok = True if result.returncode == 0 else False
@@ -46,22 +46,3 @@ def run_collectstatic(project_path: Path) -> None | str:
         output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
         problem_message = f'Problem running collectstatic; output, ``{pprint.pformat(output)}``'
     return problem_message
-
-
-# def run_collectstatic() -> None | str:
-#     """
-#     Runs collectstatic command.
-#     """
-#     log.info('::: running collectstatic ----------')
-#     try:
-#         ## log cwd
-#         log.debug(f'cwd: {os.getcwd()}')
-#         command = ['bash', '-c', 'source ../env/bin/activate && python ./manage.py collectstatic --noinput']
-#         log.debug(f'command: {command}')
-#         subprocess.run(command, check=True)
-#         message = None
-#     except subprocess.CalledProcessError as e:
-#         message = f'Error running collectstatic: {e}'
-#         log.exception(message)
-#     log.debug(f'message: {message}')
-#     return message
