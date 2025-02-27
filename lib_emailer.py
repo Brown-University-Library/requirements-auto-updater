@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 def send_email_of_diffs(
-    project_path: Path, diff_text: str, followup_problems: dict, project_email_addresses: list[list[str, str]]
+    project_path: Path, diff_text: str, followup_problems: dict, project_email_addresses: list[tuple[str, str]]
 ) -> None:
     """
     Manages the sending of an email with the differences between the previous and current requirements files.
@@ -132,7 +132,7 @@ class Emailer:
         email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
         return email_message
 
-    def send_email(self, email_addresses: list[list[str, str]], message: str) -> None:
+    def send_email(self, email_addresses: list[tuple[str, str]], message: str) -> None:
         """
         Builds and sends email.
 

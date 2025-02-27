@@ -39,7 +39,7 @@ def validate_project_path(project_path: Path) -> None:
     return
 
 
-def determine_project_email_addresses(project_path: Path) -> list[list[str, str]]:
+def determine_project_email_addresses(project_path: Path) -> list[tuple[str, str]]:
     """
     Loads email addresses from the target-project's `.env` file.
     Returns a list of email addresses.
@@ -58,7 +58,9 @@ def determine_project_email_addresses(project_path: Path) -> list[list[str, str]
     try:
         settings: dict = dotenv.dotenv_values('../.env')
         email_addresses_json: str = settings['ADMINS_JSON']
-        email_addresses: list[list[str, str]] = json.loads(email_addresses_json)
+        email_addresses_list: list[list[str]] = json.loads(email_addresses_json)
+        email_addresses: list[tuple[str, str]] = [tuple(pair) for pair in email_addresses_list]  # type: ignore
+        log.debug(f'email_addresses: {email_addresses}')
         log.info(f'ok / email_addresses: {email_addresses}')
         return email_addresses
     except Exception as e:
@@ -120,7 +122,7 @@ def fetch_branch_data(project_path: Path) -> str:
     return project_branch
 
 
-def check_git_status(project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
+def check_git_status(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None:
     """
     Checks that the project has no uncommitted changes.
     If there are uncommitted changes:
@@ -148,7 +150,7 @@ def check_git_status(project_path: Path, project_email_addresses: list[list[str,
     return
 
 
-def determine_python_version(project_path: Path, project_email_addresses: list[list[str, str]]) -> tuple[str, str, str]:
+def determine_python_version(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> tuple[str, str, str]:
     """
     Determines Python version from the target-project's virtual environment.
     The purpose is to later run the `uv pip compile ...` command, to add the --python version
@@ -206,7 +208,7 @@ def determine_python_version(project_path: Path, project_email_addresses: list[l
     ## end def determine_python_version()
 
 
-def determine_environment_type(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
+def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
     """
     Infers environment type based on the system hostname.
     Returns 'local', 'staging', or 'production'.
@@ -256,7 +258,7 @@ def determine_uv_path() -> Path:
     return uv_path
 
 
-def determine_group(project_path: Path, project_email_addresses: list[list[str, str]]) -> str:
+def determine_group(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
     """
     Infers the group by examining existing files.
     Returns the most common group.

@@ -40,7 +40,7 @@ log = logging.getLogger(__name__)
 #     return
 
 
-def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
+def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None:
     """
     Run initial tests to ensure that the script can run.
 
@@ -72,7 +72,7 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     return
 
 
-def run_followup_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None | str:
+def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
     """
     Runs followup tests on the updated venv.
 

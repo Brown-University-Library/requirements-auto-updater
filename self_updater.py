@@ -206,7 +206,7 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
 ## ------------------------------------------------------------------
 
 
-def manage_update(project_path: str) -> None:
+def manage_update(project_path_str: str) -> None:
     """
     Main function to manage the update process for the project's dependencies.
     Calls various helper functions to validate, compile, compare, sync, and update permissions.
@@ -215,12 +215,12 @@ def manage_update(project_path: str) -> None:
 
     ## ::: run environmental checks :::
     ## validate project path ----------------------------------------
-    project_path: Path = Path(project_path).resolve()  # ensures an absolute path now
+    project_path: Path = Path(project_path_str).resolve()  # ensures an absolute path now
     lib_environment_checker.validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
     ## get email addresses ------------------------------------------
-    project_email_addresses: list[list[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
+    project_email_addresses: list[tuple[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
     ## check branch -------------------------------------------------
     lib_environment_checker.check_branch(project_path, project_email_addresses)  # emails admins and exits if not on main
     ## check git status ---------------------------------------------
@@ -273,7 +273,7 @@ def manage_update(project_path: str) -> None:
         ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
         if environment_type != 'production':
-            followup_tests_problems = run_followup_tests(uv_path, project_path, project_email_addresses)
+            followup_tests_problems = run_followup_tests(uv_path, project_path)
         ## send diff email ------------------------------------------
         followup_problems = {
             'collectstatic_problems': followup_collectstatic_problems,

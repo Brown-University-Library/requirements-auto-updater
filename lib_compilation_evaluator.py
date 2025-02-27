@@ -16,6 +16,41 @@ class CompiledComparator:
     def __init__(self):
         pass
 
+    # def compare_with_previous_backup(
+    #     self, new_path: Path, old_path: Path | None = None, project_path: Path | None = None
+    # ) -> bool:
+    #     """
+    #     Compares the newly created `requirements.txt` with the most recent one.
+    #     Ignores initial lines starting with '#' in the comparison.
+    #     Returns False if there are no changes, True otherwise.
+    #     (Currently the manager-script just passes in the new_path, and the old_path is determined.)
+    #     """
+    #     log.info('::: starting compare to check for changes ----------')
+    #     changes = True
+    #     ## try to get the old-path --------------------------------------
+    #     if not old_path:
+    #         log.debug('old_path not passed in; looking for it in `requirements_backups`')
+    #         backup_dir: Path = project_path.parent / 'requirements_backups'
+    #         log.debug(f'backup_dir: ``{backup_dir}``')
+    #         backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
+    #         old_path: Path | None = backup_files[1] if len(backup_files) > 1 else None
+    #         log.debug(f'old_file: ``{old_path}``')
+    #     if not old_path:
+    #         log.debug('no previous backups found, so changes=False.')
+    #         changes = False
+    #     else:
+    #         ## compare the two files ------------------------------------
+    #         with new_path.open() as curr, old_path.open() as prev:
+    #             curr_lines = curr.readlines()
+    #             prev_lines = prev.readlines()
+    #             curr_lines_filtered = self.filter_initial_comments(curr_lines)  # removes initial comments
+    #             prev_lines_filtered = self.filter_initial_comments(prev_lines)  # removes initial comments
+    #             if curr_lines_filtered == prev_lines_filtered:
+    #                 log.debug('no differences found in dependencies.')
+    #                 changes = False
+    #     log.info(f'ok / changes, ``{changes}``')
+    #     return changes  # just the boolean
+
     def compare_with_previous_backup(
         self, new_path: Path, old_path: Path | None = None, project_path: Path | None = None
     ) -> bool:
@@ -29,12 +64,19 @@ class CompiledComparator:
         changes = True
         ## try to get the old-path --------------------------------------
         if not old_path:
+            if project_path is None:
+                msg = 'project_path must be passed in if old_path is not passed in.'
+                log.exception(msg)
+                raise Exception(msg)
             log.debug('old_path not passed in; looking for it in `requirements_backups`')
             backup_dir: Path = project_path.parent / 'requirements_backups'
             log.debug(f'backup_dir: ``{backup_dir}``')
             backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
-            old_path: Path | None = backup_files[1] if len(backup_files) > 1 else None
-            log.debug(f'old_file: ``{old_path}``')
+            # old_path: Path | None = backup_files[1] if len(backup_files) > 1 else None
+            # log.debug(f'old_file: ``{old_path}``')
+            determined_old_path: Path | None = backup_files[1] if len(backup_files) > 1 else None
+            log.debug(f'determined_old_path: ``{determined_old_path}``')
+            old_path = determined_old_path
         if not old_path:
             log.debug('no previous backups found, so changes=False.')
             changes = False
@@ -70,7 +112,7 @@ class CompiledComparator:
         Called by send_email_of_diffs().
         """
         log.info('::: making diff-text ----------')
-        ## get the two most recent backup files -------------------------
+        ## get the two most recent backup files ---------------------
         backup_dir: Path = project_path.parent / 'requirements_backups'
         log.debug(f'backup_dir: ``{backup_dir}``')
         backup_files: list[Path] = sorted([f for f in backup_dir.iterdir() if f.suffix == '.txt'], reverse=True)
@@ -78,17 +120,21 @@ class CompiledComparator:
         log.debug(f'current_file: ``{current_file}``')
         previous_file: Path | None = backup_files[1] if len(backup_files) > 1 else None
         log.debug(f'previous_file: ``{previous_file}``')
-
-        with current_file.open() as curr, previous_file.open() as prev:
-            ## prepare the lines for the diff ---------------------------
-            curr_lines = curr.readlines()
-            prev_lines = prev.readlines()
-            curr_lines_filtered = self.filter_initial_comments(curr_lines)  # removes initial comments
-            prev_lines_filtered = self.filter_initial_comments(prev_lines)  # removes initial comments
-            ## build the diff info --------------------------------------
-            diff_lines = [f'--- {previous_file.name}\n', f'+++ {current_file.name}\n']
-            diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
-            diff_text = ''.join(diff_lines)
+        ## create the diff-text -------------------------------------
+        if not previous_file:
+            log.debug('no previous backups found, so returning empty string.')
+            diff_text = ''
+        else:
+            with current_file.open() as curr, previous_file.open() as prev:
+                ## prepare the lines for the diff -------------------
+                curr_lines = curr.readlines()
+                prev_lines = prev.readlines()
+                curr_lines_filtered = self.filter_initial_comments(curr_lines)  # removes initial comments
+                prev_lines_filtered = self.filter_initial_comments(prev_lines)  # removes initial comments
+                ## build the diff info ------------------------------
+                diff_lines = [f'--- {previous_file.name}\n', f'+++ {current_file.name}\n']
+                diff_lines.extend(difflib.unified_diff(prev_lines_filtered, curr_lines_filtered))
+                diff_text = ''.join(diff_lines)
         log.info(f'ok / diff_text, ``{diff_text}``')
         return diff_text
 
