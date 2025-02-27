@@ -43,6 +43,7 @@ def run_collectstatic(project_path: Path) -> None | str:
         log.info('ok / collectstatic successful')
         problem_message = None
     else:
+        log.info('problem / collectstatic failed; see log; problem message will be emailed')
         output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
         problem_message = f'Problem running collectstatic; output, ``{pprint.pformat(output)}``'
     return problem_message
