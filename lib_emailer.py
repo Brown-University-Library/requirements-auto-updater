@@ -83,11 +83,11 @@ class Emailer:
         """
         log.debug('starting create_setup_problem_message()')
         email_message = f"""
-        There was a problem running the self-updater script. 
+        There was a problem running the auto-updater script. 
 
         Message: ``{message}``.
 
-        Suggestion, after fixing the problem, manually run the self-updater script again to make sure there aren't other environmental setup issues. 
+        Suggestion, after fixing the problem, manually run the auto-updater script again to make sure there aren't other environmental setup issues. 
 
         Usage instructions are at:
         <https://github.com/Brown-University-Library/self_updater_code?tab=readme-ov-file#usage>
@@ -137,7 +137,7 @@ class Emailer:
         Builds and sends email.
 
         On a successful update email, the email_addresses will be the project-admins.
-        On a setup problem email, the email_addresses will be the self-updater sys-admins.
+        On a setup problem email, the email_addresses will be the auto-updater sys-admins.
         """
         log.info('::: sending email ----------')
         log.debug(f'email_addresses: ``{email_addresses}``')
@@ -148,7 +148,7 @@ class Emailer:
         log.debug(f'built_recipients: {built_recipients}')
         ## build email message ------------------------------------------
         eml = MIMEText(message)
-        eml['Subject'] = f'bul-self-updater info from server ``{self.server_name}`` for project ``{self.project_path.name}``'
+        eml['Subject'] = f'bul-auto-updater info from server ``{self.server_name}`` for project ``{self.project_path.name}``'
         eml['From'] = self.self_updater_email_from
         eml['To'] = ', '.join(built_recipients)
         ## send email ---------------------------------------------------
@@ -158,7 +158,7 @@ class Emailer:
             log.info('ok / email sent')
         except Exception as e:
             err = repr(e)
-            log.exception(f'problem sending self-updater mail, ``{err}``')
+            log.exception(f'problem sending auto-updater mail, ``{err}``')
             raise Exception(err)
         return
 

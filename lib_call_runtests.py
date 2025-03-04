@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 #         subprocess.run(command, check=True, env=local_scoped_env)
 #         log.info('ok / initial tests passed')
 #     except Exception as e:
-#         message = f'Error on initial run_tests() call: ``{e}``. Halting self-update.'
+#         message = f'Error on initial run_tests() call: ``{e}``. Halting auto-update.'
 #         log.exception(message)
 #         ## email sys-admins -----------------------------------------
 #         emailer = Emailer(project_path)
@@ -59,7 +59,7 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     command_result: tuple[bool, dict] = run_run_tests_command(command, project_path, local_scoped_env)
     (ok, output) = command_result
     if not ok:
-        message = f'Error on initial run_tests() call: ``{output}``. Halting self-update.'
+        message = f'Error on initial run_tests() call: ``{output}``. Halting auto-update.'
         log.exception(message)
         ## email sys-admins -----------------------------------------
         emailer = Emailer(project_path)

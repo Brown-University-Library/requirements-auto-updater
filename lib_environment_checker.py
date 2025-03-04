@@ -20,13 +20,13 @@ def validate_project_path(project_path: Path) -> None:
     """
     Validates that the provided project path exists.
     If path is invalid:
-    - Sends an email to the self-updater sys-admins
+    - Sends an email to the auto-updater sys-admins
     - Exits the script
     """
     log.info('::: validating project_path ----------')
     # log.debug(f'project_path: ``{project_path}``')
     if not project_path.exists():
-        message = f'Error: The provided project_path ``{project_path}`` does not exist. Halting self-update.'
+        message = f'Error: The provided project_path ``{project_path}`` does not exist. Halting auto-update.'
         log.exception(message)
         ## email project sys-admins ---------------------------------
         emailer = Emailer(project_path)
@@ -51,7 +51,7 @@ def determine_project_email_addresses(project_path: Path) -> list[tuple[str, str
     ]'
 
     If there's an error:
-    - Sends an email to the self-updater sys-admins
+    - Sends an email to the auto-updater sys-admins
     - Exits the script
     """
     log.info('::: determining email addresses ----------')
