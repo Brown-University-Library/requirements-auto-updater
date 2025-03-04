@@ -1,5 +1,5 @@
 """
-Module used by self_updater.py
+Module used by audo_updater.py
 Contains code for comparing the newly-compiled `requirements.txt` with the most recent one.
 """
 
@@ -145,7 +145,7 @@ class CompiledComparator:
 
         Note: reads and writes the requirements `.txt` file to avoid explicit full-path references.
 
-        Called by self_updater.py.
+        Called by audo_updater.py.
         """
         log.info('::: copying new compile to codebase ----------')
         ## copy new requirements file to project --------------------

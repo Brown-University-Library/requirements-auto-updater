@@ -1,5 +1,5 @@
 """
-Module used by self_updater.py
+Module used by audo_updater.py
 Contains code for checking the target-project's environment.
 """
 
