@@ -23,13 +23,11 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
+from lib.lib_emailer import send_email_of_diffs
 
-import lib_common
-import lib_django_updater
-import lib_environment_checker
-from lib_call_runtests import run_followup_tests, run_initial_tests
-from lib_compilation_evaluator import CompiledComparator
-from lib_emailer import send_email_of_diffs
+from lib import lib_common, lib_django_updater, lib_environment_checker
+from lib.lib_call_runtests import run_followup_tests, run_initial_tests
+from lib.lib_compilation_evaluator import CompiledComparator
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()

@@ -3,41 +3,10 @@ import os
 import subprocess
 from pathlib import Path
 
-import lib_common
-from lib_emailer import Emailer
+from lib import lib_common
+from lib.lib_emailer import Emailer
 
 log = logging.getLogger(__name__)
-
-
-# def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[list[str, str]]) -> None:
-#     """
-#     Run initial tests to ensure that the script can run.
-
-#     On failure:
-#     - Emails project-admins
-#     - Raises an exception
-#     """
-#     log.info('::: running initial tests ----------')
-#     ## set the venv -------------------------------------------------
-#     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)  # these are resolved-paths
-#     (venv_bin_path, venv_path) = venv_tuple
-#     local_scoped_env = make_local_scoped_env(project_path, venv_bin_path, venv_path)
-#     ## prep the command ---------------------------------------------
-#     command = make_run_tests_command(project_path, venv_bin_path)
-#     ## run the command ----------------------------------------------
-#     try:
-#         subprocess.run(command, check=True, env=local_scoped_env)
-#         log.info('ok / initial tests passed')
-#     except Exception as e:
-#         message = f'Error on initial run_tests() call: ``{e}``. Halting auto-update.'
-#         log.exception(message)
-#         ## email sys-admins -----------------------------------------
-#         emailer = Emailer(project_path)
-#         email_message: str = emailer.create_setup_problem_message(message)
-#         emailer.send_email(project_email_addresses, email_message)
-#         ## raise exception -----------------------------------------
-#         raise Exception(message)
-#     return
 
 
 def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None:

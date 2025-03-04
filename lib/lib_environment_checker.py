@@ -10,8 +10,8 @@ from pathlib import Path
 
 import dotenv
 
-import lib_git_handler
-from lib_emailer import Emailer
+from lib import lib_git_handler
+from lib.lib_emailer import Emailer
 
 log = logging.getLogger(__name__)
 
