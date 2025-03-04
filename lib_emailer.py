@@ -30,7 +30,7 @@ def send_email_of_diffs(
     Note that on an email-send error, the error will be logged, but the script will continue,
       so the permissions-update will still occur.
 
-    Called by: audo_updater.manage_update()
+    Called by: auto_updater.manage_update()
     """
     ## prepare problem-message --------------------------------------
     log.info('::: preparing problem-message ----------')
@@ -71,7 +71,7 @@ class Emailer:
     def __init__(self, project_path: Path) -> None:
         self.project_path: Path = project_path
         self.sys_admin_recipients: list = json.loads(os.environ['SLFUPDTR__SYS_ADMIN_RECIPIENTS_JSON'])
-        self.audo_updater_email_from: str = os.environ['SLFUPDTR__EMAIL_FROM']
+        self.auto_updater_email_from: str = os.environ['SLFUPDTR__EMAIL_FROM']
         self.email_host: str = os.environ['SLFUPDTR__EMAIL_HOST']
         self.email_host_port: int = int(os.environ['SLFUPDTR__EMAIL_HOST_PORT'])
         self.server_name: str = socket.gethostname()
@@ -90,7 +90,7 @@ class Emailer:
         Suggestion, after fixing the problem, manually run the auto-updater script again to make sure there aren't other environmental setup issues. 
 
         Usage instructions are at:
-        <https://github.com/Brown-University-Library/audo_updater_code?tab=readme-ov-file#usage>
+        <https://github.com/Brown-University-Library/auto_updater_code?tab=readme-ov-file#usage>
 
         (end-of-message)
         """
@@ -149,12 +149,12 @@ class Emailer:
         ## build email message ------------------------------------------
         eml = MIMEText(message)
         eml['Subject'] = f'bul-auto-updater info from server ``{self.server_name}`` for project ``{self.project_path.name}``'
-        eml['From'] = self.audo_updater_email_from
+        eml['From'] = self.auto_updater_email_from
         eml['To'] = ', '.join(built_recipients)
         ## send email ---------------------------------------------------
         try:
             s = smtplib.SMTP(self.email_host, self.email_host_port)
-            s.sendmail(self.audo_updater_email_from, built_recipients, eml.as_string())
+            s.sendmail(self.auto_updater_email_from, built_recipients, eml.as_string())
             log.info('ok / email sent')
         except Exception as e:
             err = repr(e)

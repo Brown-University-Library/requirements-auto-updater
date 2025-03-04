@@ -5,14 +5,14 @@
 
 """
 See README.md for extensive info.
-<https://github.com/Brown-University-Library/audo_updater_code/blob/main/README.md>
+<https://github.com/Brown-University-Library/auto_updater_code/blob/main/README.md>
 
 Info...
 - Main manager function is`manage_update()`, at bottom above dundermain.
 - Functions are in order called by `manage_update()`.
 
 Usage...
-`$ uv run ./audo_update.py "/path/to/project_code_dir/"`
+`$ uv run ./auto_update.py "/path/to/project_code_dir/"`
 """
 
 import logging
@@ -46,7 +46,7 @@ ENVAR_EMAIL_HOST_PORT = os.environ['SLFUPDTR__EMAIL_HOST_PORT']
 ## set up logging ---------------------------------------------------
 log_dir: Path = stuff_dir / 'logs'
 log_dir.mkdir(parents=True, exist_ok=True)  # creates the log-directory inside the stuff-directory if it doesn't exist
-log_file_path: Path = log_dir / 'audo_updater.log'
+log_file_path: Path = log_dir / 'auto_updater.log'
 logging.basicConfig(
     level=logging.DEBUG,
     format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         message: str = """
         See usage instructions at:
-        <https://github.com/Brown-University-Library/audo_updater_code?tab=readme-ov-file#usage>
+        <https://github.com/Brown-University-Library/auto_updater_code?tab=readme-ov-file#usage>
         """
         message: str = message.replace('        ', '')  # removes indentation-spaces
         print(message)

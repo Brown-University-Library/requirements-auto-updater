@@ -42,18 +42,18 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 - Directly:
     - simplest:
         ```
-        $ /path/to/uv run ./audo_update.py "/path/to/project_code_dir/"
+        $ /path/to/uv run ./auto_update.py "/path/to/project_code_dir/"
         ```
     - old-school:
         ```
-        $ cd "/path/to/audo_updater_code/"
+        $ cd "/path/to/auto_updater_code/"
         $ source ../env/bin/activate
-        (venv) $ python ./audo_update.py "/path/to/project_code_dir/"
+        (venv) $ python ./auto_update.py "/path/to/project_code_dir/"
         ```
 
 - Via cron (eg to run every day at midnight) (all one line):
     ```
-    0 0 * * * cd "/path/to/audo_updater_code/"; ../env/bin/uv run ./audo_update.py "/path/to/project_code_dir/"
+    0 0 * * * cd "/path/to/auto_updater_code/"; ../env/bin/uv run ./auto_update.py "/path/to/project_code_dir/"
     ```
 
 ---
