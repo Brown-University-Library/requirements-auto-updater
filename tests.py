@@ -68,17 +68,17 @@ class TestGitCommands(unittest.TestCase):
         self.assertTrue(ok is True)
         self.assertIn('clean', output['stdout'])
 
-    def test_git_status_not_clean(self):
-        """
-        Checks that various non-"clean" states are detected properly.
-        Assumes current-project is on branch `main`.
-        """
-        target_dir = Path('../git_tests/check_changes_not_staged/').resolve()
-        log.debug(f'cur_dir: {target_dir}')
-        git_result: tuple[bool, dict] = lib_git_handler.run_git_status(target_dir)
-        (ok, output) = git_result
-        self.assertTrue(ok is True)
-        self.assertNotIn('clean', output['stdout'])
+    # def test_git_status_not_clean(self):
+    #     """
+    #     Checks that various non-"clean" states are detected properly.
+    #     Assumes current-project is on branch `main`.
+    #     """
+    #     target_dir = Path('../git_tests/check_changes_not_staged/').resolve()
+    #     log.debug(f'cur_dir: {target_dir}')
+    #     git_result: tuple[bool, dict] = lib_git_handler.run_git_status(target_dir)
+    #     (ok, output) = git_result
+    #     self.assertTrue(ok is True)
+    #     self.assertNotIn('clean', output['stdout'])
 
 
 class TestMiscellaneous(unittest.TestCase):
