@@ -39,9 +39,9 @@ assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
 
 ## define constants -------------------------------------------------
-ENVAR_EMAIL_FROM = os.environ['SLFUPDTR__EMAIL_FROM']
-ENVAR_EMAIL_HOST = os.environ['SLFUPDTR__EMAIL_HOST']
-ENVAR_EMAIL_HOST_PORT = os.environ['SLFUPDTR__EMAIL_HOST_PORT']
+ENVAR_EMAIL_FROM = os.environ['AUTO_UPDTR__EMAIL_FROM']
+ENVAR_EMAIL_HOST = os.environ['AUTO_UPDTR__EMAIL_HOST']
+ENVAR_EMAIL_HOST_PORT = os.environ['AUTO_UPDTR__EMAIL_HOST_PORT']
 
 ## set up logging ---------------------------------------------------
 log_dir: Path = stuff_dir / 'logs'

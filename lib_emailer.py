@@ -70,10 +70,10 @@ class Emailer:
 
     def __init__(self, project_path: Path) -> None:
         self.project_path: Path = project_path
-        self.sys_admin_recipients: list = json.loads(os.environ['SLFUPDTR__SYS_ADMIN_RECIPIENTS_JSON'])
-        self.auto_updater_email_from: str = os.environ['SLFUPDTR__EMAIL_FROM']
-        self.email_host: str = os.environ['SLFUPDTR__EMAIL_HOST']
-        self.email_host_port: int = int(os.environ['SLFUPDTR__EMAIL_HOST_PORT'])
+        self.sys_admin_recipients: list = json.loads(os.environ['AUTO_UPDTR__SYS_ADMIN_RECIPIENTS_JSON'])
+        self.auto_updater_email_from: str = os.environ['AUTO_UPDTR__EMAIL_FROM']
+        self.email_host: str = os.environ['AUTO_UPDTR__EMAIL_HOST']
+        self.email_host_port: int = int(os.environ['AUTO_UPDTR__EMAIL_HOST_PORT'])
         self.server_name: str = socket.gethostname()
 
     def create_setup_problem_message(self, message: str) -> str:
