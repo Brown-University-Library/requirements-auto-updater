@@ -27,11 +27,13 @@ log = logging.getLogger(__name__)
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
-from auto_updater_code import (  # noqa: E402 (disables linter warning that this import is not at the top)
+from auto_updater_code.lib import (  # noqa: E402 (disables linter warning that this import is not at the top)
     lib_django_updater,
     lib_git_handler,
 )
-from auto_updater_code.lib_compilation_evaluator import CompiledComparator  # noqa: E402  (prevents linter problem-indicator)
+from auto_updater_code.lib.lib_compilation_evaluator import (  # noqa: E402 (disables linter warning that this import is not at the top)
+    CompiledComparator,
+)
 
 
 class TestGitCommands(unittest.TestCase):

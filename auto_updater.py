@@ -12,7 +12,7 @@ Info...
 - Functions are in order called by `manage_update()`.
 
 Usage...
-`$ uv run ./auto_update.py "/path/to/project_code_dir/"`
+`$ uv run ./auto_updater.py "/path/to/project_code_dir/"`
 """
 
 import logging
