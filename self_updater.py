@@ -1,6 +1,6 @@
 # /// script
-# requires-python = "~=3.12.0"
-# dependencies = ["python-dotenv~=1.0.0"]
+# requires-python = "==3.12.*"
+# dependencies = ["python-dotenv==1.0.*"]
 # ///
 
 """

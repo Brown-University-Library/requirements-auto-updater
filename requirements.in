@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # Note...
 # This project does not need any dependencies installed into a virtual environment.
-# Instead, the `self_updater.py` and `tests.py` files use the PEP-723 python `inline script metadata` syntax 
+# Instead, the `auto_updater.py` and `tests.py` files use the PEP-723 python `inline script metadata` syntax 
 #   to declare the dependencies. 
 #   <https://packaging.python.org/en/latest/specifications/inline-script-metadata/>
 # This allows files to be run like: `$ uv run ./tests.py`, with the python and dependencies versions being handled on-the-fly.
@@ -10,5 +10,5 @@
 # Temporary exception to the above: until we get `uv` installed globally, this project will install `uv` into the venv.
 # -------------------------------------------------------------------
 
-python-dotenv~=1.0.0
-uv~=0.5.0
+python-dotenv==1.0.*
+uv==0.5.*
