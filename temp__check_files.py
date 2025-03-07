@@ -9,7 +9,10 @@ import os
 import pathlib
 import stat
 import subprocess
+import sys
 from typing import Any
+
+EXPECTED_GROUP: str = os.environ['TEMP__EXPECTED_GROUP']
 
 
 def check_permissions(path: pathlib.Path, expected_group: str) -> bool:
@@ -45,7 +48,11 @@ def main() -> None:
     args: Any = parser.parse_args()
 
     pth: pathlib.Path = pathlib.Path(args.directory)
-    group: str = 'foo'
+    if not pth.exists() or not pth.is_dir():
+        print(f'Error: {pth} is not a valid directory.')
+        sys.exit(1)
+
+    group: str = EXPECTED_GROUP
 
     try:
         subprocess.run(['chgrp', '-R', group, str(pth)], check=True)
