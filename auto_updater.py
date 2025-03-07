@@ -180,6 +180,25 @@ def mark_active(backup_file: Path) -> None:
     return
 
 
+# def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
+#     """
+#     Update group ownership and permissions for relevant directories.
+#     Mark the backup file as active by adding a header comment.
+#     """
+#     log.info('::: updating group and permissions ----------')
+#     backup_dir: Path = project_path.parent / 'requirements_backups'
+#     log.debug(f'backup_dir: ``{backup_dir}``')
+#     relative_env_path = project_path / '../env'
+#     env_path = relative_env_path.resolve()
+#     log.debug(f'env_path: ``{env_path}``')
+#     for path in [env_path, backup_dir]:
+#         log.debug(f'updating group and permissions for path: ``{path}``')
+#         subprocess.run(['chgrp', '-R', group, str(path)], check=True)
+#         subprocess.run(['chmod', '-R', 'g=rwX', str(path)], check=True)
+#     log.info('ok / updated group and permissions')
+#     return
+
+
 def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
     """
     Update group ownership and permissions for relevant directories.
