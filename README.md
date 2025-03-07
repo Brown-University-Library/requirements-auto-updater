@@ -1,12 +1,12 @@
 ## Overview...
 
-Enables automatic self-updating! (To a limited extent.)
+Enables automatic requirements and venv updating! (To a limited extent.)
 
-Called directly -- or, typically, by a cron job -- this script checks to see if a compile of the appropriate `requirements.in` file would create anything different from the previous run.
+Called directly -- or, typically, by a cron job -- this script checks to see if a re-compile of the appropriate `requirements.in` file would create anything different from the previous run.
 
-If so, it will update the venv, make it active, and notify the project admins.
+If so, it will update the venv, make it active, run django's collectstatic if necessary, and notify the project-admins.
 
-_(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
+_(Code is working and actively updating the `bdr_deposits_uploader` and `sitechecker`.)_
 
 ---
 
@@ -40,20 +40,14 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 ## Usage...
 
 - Directly:
-    - simplest:
-        ```
-        $ /path/to/uv run ./auto_update.py "/path/to/project_code_dir/"
-        ```
-    - old-school:
-        ```
-        $ cd "/path/to/auto_updater_code/"
-        $ source ../env/bin/activate
-        (venv) $ python ./auto_update.py "/path/to/project_code_dir/"
-        ```
-
-- Via cron (eg to run every day at midnight) (all one line):
     ```
-    0 0 * * * cd "/path/to/auto_updater_code/"; ../env/bin/uv run ./auto_update.py "/path/to/project_code_dir/"
+    $ cd "/path/to/requirements-auto-updater/"
+    $ uv run ./auto_update.py "/path/to/project_to_update_code_dir/"
+    ```
+
+- Via cron on servers (eg to run every day at midnight) (all one line):
+    ```
+    0 0 * * * PATH=/usr/local/bin:$PATH cd "/path/to/requirements-auto-updater/" && uv run ./auto_updater.py "/path/to/project_to_update_code_dir/"
     ```
 
 ---
@@ -63,7 +57,7 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 
 - All requirements files are in a top-level `requirements` directory.
 - The requirements files are named `local.in`, `staging.in`, and `production.in` (it's ok to inherit from `base.in`).
-- The requirements files contain tilde-notation (`package~=1.2.0`) wherever possible.
+- The requirements files contain tilde-notation (`package~=1.2.0`) wherever possible. That third numeral is important; we only want to update the `patch` version.
 - The virtual environment is in the "outer-stuff" directory, sim-linked via an `env` file.
 - There is a `.env` file in the "outer-stuff" directory.
 - The `.env` file contains an `ADMINS_JSON` entry with the following structure:
@@ -77,15 +71,19 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 
 ---
 
+
 ## Notes...
 
 - Assumes`uv` is accessible
-    - Checks the `which uv` path. If nothing found, will then look for `uv` at `../env/bin/uv`. So add `uv` to the `requirements.in` file if uv isn't available via `which` on your server _(note that the venv does not need to be activated, it just exists to get `uv` on the servers)_
-    - (We should get `uv` installed globally on all our servers. It's that good.)
+    - Checks the `which uv` path. If nothing found, will raise an exception and email the project-admins. This is the reason for updating `PATH` in the cron-call.
 
 - Suggestion: we do not tweak this script for different project-structures; rather, we restructure our apps to fit these assumptions (to keep this script simple, and for the benefits of a more standardized project structure).
 
 - The `backup_requirements` dir defaults to storing the last 30 compiled requirements files. With a cron-job running once-a-day, that gives us a month to detect a problem and be able to access the previously-active `requirement.txt` file. You can tell which were active because they'll contain the string `# ACTIVE` at the top.
+
+- We've seen that `pip` and `uv` compilation, from `.in` to `.txt` files, may not actually compile a desired newer package-version if the existing `.txt` output path already exists. This auto-updater avoids that by compiling to the `backup_requirements` dir with a date-stamped filename. (Then a comparison with the previous backup occurs.)
+
+- To monitor: using the tilde-notation to ensure that only the `patch` version is updated _could_ still install new non-patch-level versions of dependencies. In the 2 months of monitoring this in real usage on two projects, this has not caused an issue.
 
 ---
 
@@ -94,16 +92,6 @@ _(Code is working and actively updating the `bdr_deposits_uploader` on dev.)_
 
 We need to make upgrading dependency-packages more sustainable. 
 
-By definition, the third part of package-notation (`major`, `minor`, `patch`) infers both backwards-compatibility and bug-fixes, so this seems like it should lighten the technical-debt load a bit.
-
----
-
-
-## TODOs...
-
-- ~~Create diff of changes~~
-- ~~Email the diff to the admins.~~
-- ~~Add tests for this script.~~
-- ~~Add the ability to run `./run_tests.py` on project.~~
+By definition, the third part of package-notation (`major`, `minor`, `patch`) infers both backwards-compatibility and bug-fixes, so this should lighten the technical-debt load. However it _is_ possible for `patch` upgrades to contain backwards-incompatibilites -- [example](https://www.djangoproject.com/weblog/2023/may/03/security-releases/).
 
 ---
