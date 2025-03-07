@@ -23,11 +23,11 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
-from lib.lib_emailer import send_email_of_diffs
 
 from lib import lib_common, lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
 from lib.lib_compilation_evaluator import CompiledComparator
+from lib.lib_emailer import send_email_of_diffs
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
@@ -231,7 +231,7 @@ def manage_update(project_path_str: str) -> None:
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     ## get uv path --------------------------------------------------
-    uv_path: Path = lib_environment_checker.determine_uv_path()
+    uv_path: Path = lib_environment_checker.determine_uv_path(project_path, project_email_addresses)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
 
@@ -292,6 +292,7 @@ def manage_update(project_path_str: str) -> None:
 
 if __name__ == '__main__':
     log.debug('\n\nstarting dundermain')
+    # print(f'sys.argv: ``{sys.argv}``')
     if len(sys.argv) != 2:
         message: str = """
         See usage instructions at:
