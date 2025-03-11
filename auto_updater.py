@@ -180,26 +180,7 @@ def mark_active(backup_file: Path) -> None:
     return
 
 
-# def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
-#     """
-#     Update group ownership and permissions for relevant directories.
-#     Mark the backup file as active by adding a header comment.
-#     """
-#     log.info('::: updating group and permissions ----------')
-#     backup_dir: Path = project_path.parent / 'requirements_backups'
-#     log.debug(f'backup_dir: ``{backup_dir}``')
-#     relative_env_path = project_path / '../env'
-#     env_path = relative_env_path.resolve()
-#     log.debug(f'env_path: ``{env_path}``')
-#     for path in [env_path, backup_dir]:
-#         log.debug(f'updating group and permissions for path: ``{path}``')
-#         subprocess.run(['chgrp', '-R', group, str(path)], check=True)
-#         subprocess.run(['chmod', '-R', 'g=rwX', str(path)], check=True)
-#     log.info('ok / updated group and permissions')
-#     return
-
-
-def update_permissions(project_path: Path, backup_file: Path, group: str) -> None:
+def update_group_and_permissions(project_path: Path, backup_file: Path, group: str) -> None:
     """
     Update group ownership and permissions for relevant directories.
     Mark the backup file as active by adding a header comment.
@@ -212,9 +193,15 @@ def update_permissions(project_path: Path, backup_file: Path, group: str) -> Non
     log.debug(f'env_path: ``{env_path}``')
     for path in [env_path, backup_dir]:
         log.debug(f'updating group and permissions for path: ``{path}``')
-        subprocess.run(['chgrp', '-R', group, str(path)], check=True)
-        subprocess.run(['chmod', '-R', 'g=rwX', str(path)], check=True)
-    log.info('ok / updated group and permissions')
+        chgrp_result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['chgrp', '-R', group, str(path)], capture_output=True, text=True, check=False
+        )
+        log.debug(f'chgrp_result: ``{chgrp_result}``')
+        chmod_result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['chmod', '-R', 'g=rwX', str(path)], capture_output=True, text=True, check=False
+        )
+        log.debug(f'chmod_result: ``{chmod_result}``')
+    log.info('ok / attempted update of group and permissions')
     return
 
 
@@ -303,7 +290,7 @@ def manage_update(project_path_str: str) -> None:
 
     ## ::: clean up :::
     ## update group and permissions ---------------------------------
-    update_permissions(project_path, compiled_requirements, group)
+    update_group_and_permissions(project_path, compiled_requirements, group)
     return
 
     ## end def manage_update() zz
