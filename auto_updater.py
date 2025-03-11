@@ -240,6 +240,8 @@ def manage_update(project_path_str: str) -> None:
     uv_path: Path = lib_environment_checker.determine_uv_path(project_path, project_email_addresses)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
+    ## check for correct group and group-write permissions ---------
+    # lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)  # TODO
 
     ## run initial tests --------------------------------------------
     if environment_type != 'production':
