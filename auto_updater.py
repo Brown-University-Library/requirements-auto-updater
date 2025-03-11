@@ -182,8 +182,8 @@ def mark_active(backup_file: Path) -> None:
 
 def update_group_and_permissions(project_path: Path, backup_file: Path, group: str) -> None:
     """
-    Update group ownership and permissions for relevant directories.
-    Mark the backup file as active by adding a header comment.
+    Tries to update group-ownership and group-permissions for relevant directories.
+    Intentionally does not fail if the commands fail.
     """
     log.info('::: updating group and permissions ----------')
     backup_dir: Path = project_path.parent / 'requirements_backups'
@@ -289,7 +289,7 @@ def manage_update(project_path_str: str) -> None:
         log.debug('email sent')
 
     ## ::: clean up :::
-    ## update group and permissions ---------------------------------
+    ## try group and permissions update -----------------------------
     update_group_and_permissions(project_path, compiled_requirements, group)
     return
 
