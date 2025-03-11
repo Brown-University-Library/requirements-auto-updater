@@ -2,6 +2,9 @@
 # requires-python = "==3.12.*"
 # ///
 
+"""
+Usage: TEMP__EXPECTED_GROUP=group_name uv run ./temp__check_files.py /path/to/directory/
+"""
 
 import argparse
 import grp
@@ -11,7 +14,11 @@ import stat
 import subprocess
 import sys
 
-EXPECTED_GROUP: str = os.environ['TEMP__EXPECTED_GROUP']
+try:
+    EXPECTED_GROUP: str = os.environ['TEMP__EXPECTED_GROUP']
+except KeyError:
+    print('Error: TEMP__EXPECTED_GROUP environment variable not set.')
+    sys.exit(1)
 
 
 def check_group(item: pathlib.Path, expected_group: str) -> str | None:
@@ -40,6 +47,9 @@ def check_files(path: pathlib.Path, expected_group: str) -> dict[pathlib.Path, l
     problems: dict[pathlib.Path, list[str]] = {}
 
     for item in path.rglob('*'):
+        if item.is_symlink():
+            continue  # skip symlinks
+
         item_problems: list[str] = []
 
         group_issue: str | None = check_group(item, expected_group)
