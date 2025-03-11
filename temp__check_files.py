@@ -11,7 +11,6 @@ import grp
 import os
 import pathlib
 import stat
-import subprocess
 import sys
 
 try:
@@ -46,7 +45,8 @@ def check_permissions(item: pathlib.Path) -> str | None:
 def check_files(path: pathlib.Path, expected_group: str) -> dict[pathlib.Path, list[str]]:
     problems: dict[pathlib.Path, list[str]] = {}
 
-    for item in path.rglob('*'):
+    items: list[pathlib.Path] = sorted(path.rglob('*'))
+    for item in items:
         if item.is_symlink():
             continue  # skip symlinks
 
@@ -83,11 +83,6 @@ def validate_arg() -> pathlib.Path:
 def main() -> None:
     directory: pathlib.Path = validate_arg()
     group: str = EXPECTED_GROUP
-
-    try:
-        subprocess.run(['chgrp', '-R', group, str(directory)], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f'chgrp failed with error: {e}')
 
     problems: dict[pathlib.Path, list[str]] = check_files(directory, group)
 
