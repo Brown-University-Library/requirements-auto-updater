@@ -243,6 +243,7 @@ def manage_update(project_path_str: str) -> None:
     ## check for correct group and group-write permissions ---------
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)  # TODO
 
+    ## ::: initial tests :::
     ## run initial tests --------------------------------------------
     if environment_type != 'production':
         run_initial_tests(uv_path, project_path, project_email_addresses)
