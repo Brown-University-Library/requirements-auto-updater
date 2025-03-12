@@ -5,7 +5,7 @@
 
 """
 See README.md for extensive info.
-<https://github.com/Brown-University-Library/auto_updater_code/blob/main/README.md>
+<https://github.com/Brown-University-Library/requirements-auto-updater/blob/main/README.md>
 
 Info...
 - Main manager function is`manage_update()`, at bottom above dundermain.

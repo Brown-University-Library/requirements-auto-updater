@@ -1,16 +1,6 @@
-
-import argparse
 import grp
-import os
 import pathlib
 import stat
-import sys
-
-try:
-    EXPECTED_GROUP: str = os.environ['TEMP__EXPECTED_GROUP']
-except KeyError:
-    print('Error: TEMP__EXPECTED_GROUP environment variable not set.')
-    sys.exit(1)
 
 
 def check_group(item: pathlib.Path, expected_group: str) -> str | None:
@@ -57,34 +47,3 @@ def check_files(path: pathlib.Path, expected_group: str) -> dict[pathlib.Path, l
             problems[item] = item_problems
 
     return problems
-
-
-def validate_arg() -> pathlib.Path:
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description='Attempt to change group and verify permissions of files recursively.'
-    )
-    parser.add_argument('directory', type=pathlib.Path, help='Directory to process')
-    args: argparse.Namespace = parser.parse_args()
-
-    if not args.directory.exists() or not args.directory.is_dir():
-        print(f'Error: {args.directory} is not a valid directory.')
-        sys.exit(1)
-
-    return args.directory
-
-
-# def main() -> None:
-#     directory: pathlib.Path = validate_arg()
-#     group: str = EXPECTED_GROUP
-
-#     problems: dict[pathlib.Path, list[str]] = check_files(directory, group)
-
-#     if not problems:
-#         print('All files have the correct group and are group-writeable.')
-#     else:
-#         print('Problems found:')
-#         for path, issues in problems.items():
-#             for issue in issues:
-#                 print(f'{path}: {issue}')
-
-
