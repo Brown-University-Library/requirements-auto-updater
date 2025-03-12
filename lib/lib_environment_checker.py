@@ -10,7 +10,7 @@ from pathlib import Path
 
 import dotenv
 
-from lib import lib_git_handler
+from lib import lib_common, lib_git_handler, lib_perms_and_groups
 from lib.lib_emailer import Emailer
 
 log = logging.getLogger(__name__)
@@ -263,24 +263,6 @@ def determine_uv_path(project_path: Path, project_email_addresses: list[tuple[st
     return uv_path
 
 
-# def determine_uv_path() -> Path:
-#     """
-#     Checks `which` for the `uv` command.
-#     If that fails, gets path from this script's venv.
-#     Used for compile and sync.
-#     """
-#     log.info('::: determining uv path ----------')
-#     try:
-#         uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
-#         uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
-#     except subprocess.CalledProcessError:
-#         log.debug("`which` unsuccessful; accessing this script's venv")
-#         initial_uv_path: Path = Path(__file__).parent.parent / 'env' / 'bin' / 'uv'
-#         uv_path = initial_uv_path.resolve()
-#     log.info(f'ok / uv_path, ``{uv_path}``')
-#     return uv_path
-
-
 def determine_group(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
     """
     Infers the group by examining existing files.
@@ -306,3 +288,46 @@ def determine_group(project_path: Path, project_email_addresses: list[tuple[str,
         emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
+
+
+def check_group_and_permissions(
+    project_path: Path, expected_group: str, project_email_addresses: list[tuple[str, str]]
+) -> None:
+    """
+    Checks that all files in the venv-dir and requirements_backups-dir are group-writeable and owned by the expected group.
+    If there are any problems:
+    - Sends an email to the project sys-admins
+    - Exits the script
+    """
+    log.info('::: checking group and permissions ----------')
+    ## get venv path ------------------------------------------------
+    venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
+    (venv_bin_path_resolved, venv_path_resolved) = venv_tuple
+    ## get requirements_backups path --------------------------------
+    requirements_backups_path: Path = project_path / 'requirements_backups'
+    requirements_backups_path_resolved: Path = requirements_backups_path.resolve()
+    ## check-em, danno ----------------------------------------------
+    problems = {}
+    venv_problems: dict[Path, list[str]] = lib_perms_and_groups.check_files(venv_path_resolved, expected_group)
+    if venv_problems:
+        problems.update(venv_problems)
+    requirements_backups_problems: dict[Path, list[str]] = lib_perms_and_groups.check_files(
+        requirements_backups_path_resolved, expected_group
+    )
+    if requirements_backups_problems:
+        venv_problems.update(requirements_backups_problems)
+    if problems:
+        message = 'Error: Group/Permissions check failed.'
+        problems_json: str = json.dumps(problems, sort_keys=True, indent=2)
+        message += f'\n{problems_json}'
+        log.exception(message)
+        ## email project sys-admins ---------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        ## raise exception -----------------------------------------
+        raise Exception(message)
+    else:
+        log.info('ok / group and permissions are good')
+    return
+    ## end def check_group_and_permissions()
