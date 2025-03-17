@@ -3,8 +3,12 @@ Checks for correct group and permissions on files in two directories.
 """
 
 import grp
+import logging
 import pathlib
+import pprint
 import stat
+
+log = logging.getLogger(__name__)
 
 
 def check_group(item: pathlib.Path, expected_group: str) -> str | None:
@@ -37,12 +41,12 @@ def check_permissions(item: pathlib.Path) -> str | None:
     return None
 
 
-def check_files(path: pathlib.Path, expected_group: str) -> dict[pathlib.Path, list[str]]:
+def check_files(path: pathlib.Path, expected_group: str) -> dict[str, list[str]]:
     """
     Main function; checks the group and permissions of all files in the given path.
     Called by lib_environment_checker.check_group_and_permissions().
     """
-    problems: dict[pathlib.Path, list[str]] = {}
+    problems: dict[str, list[str]] = {}
 
     items: list[pathlib.Path] = sorted(path.rglob('*'))
     for item in items:
@@ -60,6 +64,34 @@ def check_files(path: pathlib.Path, expected_group: str) -> dict[pathlib.Path, l
             item_problems.append(permission_issue)
 
         if item_problems:
-            problems[item] = item_problems
-
+            problems[str(item)] = item_problems
+    log.debug(f'problems, ``{pprint.pformat(problems)}``')
     return problems
+
+
+# def check_files(path: pathlib.Path, expected_group: str) -> dict[pathlib.Path, list[str]]:
+#     """
+#     Main function; checks the group and permissions of all files in the given path.
+#     Called by lib_environment_checker.check_group_and_permissions().
+#     """
+#     problems: dict[pathlib.Path, list[str]] = {}
+
+#     items: list[pathlib.Path] = sorted(path.rglob('*'))
+#     for item in items:
+#         if item.is_symlink():
+#             continue  # skip symlinks
+
+#         item_problems: list[str] = []
+
+#         group_issue: str | None = check_group(item, expected_group)
+#         if group_issue:
+#             item_problems.append(group_issue)
+
+#         permission_issue: str | None = check_permissions(item)
+#         if permission_issue:
+#             item_problems.append(permission_issue)
+
+#         if item_problems:
+#             problems[item] = item_problems
+
+#     return problems

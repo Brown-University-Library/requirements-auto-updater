@@ -308,10 +308,10 @@ def check_group_and_permissions(
     requirements_backups_path_resolved: Path = requirements_backups_path.resolve()
     ## check-em, danno ----------------------------------------------
     problems = {}
-    venv_problems: dict[Path, list[str]] = lib_perms_and_groups.check_files(venv_path_resolved, expected_group)
+    venv_problems: dict[str, list[str]] = lib_perms_and_groups.check_files(venv_path_resolved, expected_group)
     if venv_problems:
         problems.update(venv_problems)
-    requirements_backups_problems: dict[Path, list[str]] = lib_perms_and_groups.check_files(
+    requirements_backups_problems: dict[str, list[str]] = lib_perms_and_groups.check_files(
         requirements_backups_path_resolved, expected_group
     )
     if requirements_backups_problems:
