@@ -132,6 +132,18 @@ class Emailer:
         email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
         return email_message
 
+    def truncate_long_lines(self, message: str, max_length: int = 950) -> str:
+        """
+        Handles error: `smtplib.SMTPDataError: (500, b'Line too long (see RFC5321 4.5.3.1.6)')` by truncating long lines
+        """
+        truncated_lines = []
+        for line in message.splitlines():
+            if len(line) > max_length:
+                truncated_lines.append(line[:max_length] + '... [truncated]')
+            else:
+                truncated_lines.append(line)
+        return '\n'.join(truncated_lines)
+
     def send_email(self, email_addresses: list[tuple[str, str]], message: str) -> None:
         """
         Builds and sends email.
@@ -147,7 +159,8 @@ class Emailer:
             built_recipients.append(f'"{name}" <{email}>')
         log.debug(f'built_recipients: {built_recipients}')
         ## build email message ------------------------------------------
-        eml = MIMEText(message)
+        valid_message: str = self.truncate_long_lines(message)  # email spec limits lines to 1000 characters
+        eml = MIMEText(valid_message)
         eml['Subject'] = f'bul-auto-updater info from server ``{self.server_name}`` for project ``{self.project_path.name}``'
         eml['From'] = self.auto_updater_email_from
         eml['To'] = ', '.join(built_recipients)
