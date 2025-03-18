@@ -40,6 +40,7 @@ load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), overri
 ENVAR_EMAIL_FROM = os.environ['AUTO_UPDTR__EMAIL_FROM']
 ENVAR_EMAIL_HOST = os.environ['AUTO_UPDTR__EMAIL_HOST']
 ENVAR_EMAIL_HOST_PORT = os.environ['AUTO_UPDTR__EMAIL_HOST_PORT']
+UV_PATH = os.environ['AUTO_UPDTR__UV_PATH']
 
 ## set up logging ---------------------------------------------------
 log_dir: Path = stuff_dir / 'logs'
@@ -237,7 +238,8 @@ def manage_update(project_path_str: str) -> None:
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     ## get uv path --------------------------------------------------
-    uv_path: Path = lib_environment_checker.determine_uv_path(project_path, project_email_addresses)
+    # uv_path: Path = lib_environment_checker.determine_uv_path(project_path, project_email_addresses)
+    uv_path: Path = Path(UV_PATH)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## check for correct group and group-write permissions ---------
