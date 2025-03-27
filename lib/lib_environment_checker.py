@@ -240,27 +240,27 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     return env_type
 
 
-def determine_uv_path(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> Path:
-    """
-    Checks `which` for the `uv` command.
-    If that fails, raises Exception and emails project-admins.
-    Used for compile and sync.
-    """
-    log.info('::: determining uv path ----------')
-    try:
-        uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
-        uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
-    except subprocess.CalledProcessError:
-        message = 'Error determining uv path'
-        log.exception(message)
-        ## email project-admins ---------------------------------
-        emailer = Emailer(project_path)
-        email_message: str = emailer.create_setup_problem_message(message)
-        emailer.send_email(project_email_addresses, email_message)
-        ## raise exception --------------------------------------
-        raise Exception(message)
-    log.info(f'ok / uv_path, ``{uv_path}``')
-    return uv_path
+# def determine_uv_path(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> Path:
+#     """
+#     Checks `which` for the `uv` command.
+#     If that fails, raises Exception and emails project-admins.
+#     Used for compile and sync.
+#     """
+#     log.info('::: determining uv path ----------')
+#     try:
+#         uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
+#         uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
+#     except subprocess.CalledProcessError:
+#         message = 'Error determining uv path'
+#         log.exception(message)
+#         ## email project-admins ---------------------------------
+#         emailer = Emailer(project_path)
+#         email_message: str = emailer.create_setup_problem_message(message)
+#         emailer.send_email(project_email_addresses, email_message)
+#         ## raise exception --------------------------------------
+#         raise Exception(message)
+#     log.info(f'ok / uv_path, ``{uv_path}``')
+#     return uv_path
 
 
 def determine_group(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
