@@ -1,12 +1,14 @@
 ## Overview...
 
-Enables automatic requirements and venv updating! (To a limited extent.)
+Enables automatic requirements and venv updating --to a limited extent.
 
-Called directly -- or, typically, by a cron job -- this script checks to see if a re-compile of the appropriate `requirements.in` file would create anything different from the previous run.
+Called directly -- or, typically, by a cron job -- this script:
+- checks a bunch of expectations about the project
+    - if expectations fail, an email noting the failure will go out to the target-project admins if possible; otherwise the auto-updater admins.
+- checks to see if a re-compile of the appropriate `requirements.in` file would create anything different from the previous run.
+    - if the recompile is different from the previous day's, it will update the venv, make it active, re-run tests, run django's `collectstatic` if necessary, and notify the project-admins.
 
-If so, it will update the venv, make it active, run django's collectstatic if necessary, and notify the project-admins.
-
-_(Code is working and actively updating the `bdr_deposits_uploader` and `sitechecker`.)_
+_(Code is working and actively updating the `bdr_deposits_uploader` (dev) and `sitechecker` (dev & prod), and `bdr_storage` (dev).)_
 
 ---
 
@@ -15,24 +17,38 @@ _(Code is working and actively updating the `bdr_deposits_uploader` and `siteche
 
 (see `manage_update()`, near bottom dundermain, for details)
 
-- determines the local/staging/production environment
-- determines the python version
-- determines the group
-- determines a `uv` path
-- determines the admin-emails
-- calls project's run_tests.py (on local and dev-servers)
-- if any of the above steps fail, emails project-admins (or updater-admins)
-- compiles and saves appropriate requirements file
-    - will create the `requirements_backups` directory in the "outer-stuff" directory if needed
-- checks it to see if anything is new
-- if so: 
+- Performs these initial checks:
+    - validates submitted project-path
+    - determines the admin-emails
+    - validates expected branch
+    - validates expected git-status
+    - determines the python version
+    - determines the local/staging/production environment
+    - determines a `uv` path
+    - determines the group
+    - validates group and permissions on the venv and the `requirements_backups` directories
+    - calls project's run_tests.py (on local and dev-servers)
+
+- If any of the above steps fail, emails project-admins (or updater-admins)
+
+- Compiles and saves appropriate requirements file
+    - creates the `requirements_backups` directory in the "outer-stuff" directory if needed
+    - saves the last 30 backups
+    - note that because the compile is to a "new" file (that's date-stamped), this ensures the latest patch is actually in the newly-compiled `.in` file. This thus avoids the situation we've seen, with both `pip` and `uv`, where an existing `.in` file can prevent the latest patch from being defined in the newly-compiled file.
+
+- Checks it to see if anything is new
+
+- If there is something new: 
     - updates the project's virtual-environment
-    - makes the changes active
-    - performs a diff showing the change
+        - normally a venv has to be made "active", by being sourced, before the venv can be updated from the compiled `.txt' file. [This explanation](https://github.com/Brown-University-Library/requirements-auto-updater/blob/6e8b540ad1a6f389e115f2cfb364751380b94f58/auto_updater.py#L128-L136) describes how the venv is updated programmatically.
+    - runs the usual `touch` command to let passenger know to reload the django-app
+    - performs a diff showing the change, and creates diff text
+    - checks the diff for a django update, and if django was updated, runs its collectstatic command
+    - saves the updated `.txt` file and runs a git-pull, then a git-add, then a git-commit, then a git-push
     - calls project's run_tests.py again (on local and dev servers)
-    - commits and pushes the new requirements `.txt` file.
     - emails the diff (and any test-issues) to the project-admins
-- updates permissions on the venv and the `requirements_backups` directory
+
+- Finally, attempts to update group & permissions on the venv and the `requirements_backups` directories
 
 ---
 

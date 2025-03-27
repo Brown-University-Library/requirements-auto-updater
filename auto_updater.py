@@ -131,7 +131,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     to ensure that when python or other commands are run, they refer to the virtual environment's
     binaries and site-packages rather than the system-wide python installation.
 
-    This code mimicks that environment modification by explicitly setting
+    This code mimics that environment modification by explicitly setting
     the PATH and VIRTUAL_ENV environment variables before running the command.
     """
     log.info('::: syncing dependencies ----------')
@@ -148,9 +148,9 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
     try:
         ## run sync command ------------------------------------------
         subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
-        log.info('ok / uv pip sync was successful')
+        log.info('ok / `uv pip sync` was successful')
     except subprocess.CalledProcessError:
-        message = 'Error during pip sync'
+        message = 'Error during `uv pip sync`'
         log.exception(message)
         raise Exception(message)
     try:
@@ -159,7 +159,7 @@ def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> N
         subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
         log.info('ok / ran `touch`')
     except subprocess.CalledProcessError:
-        message = 'Error during pip sync or touch'
+        message = 'Error during `touch'
         log.exception(message)
         raise Exception(message)
     return
@@ -298,7 +298,7 @@ def manage_update(project_path_str: str) -> None:
     update_group_and_permissions(project_path, compiled_requirements, group)
     return
 
-    ## end def manage_update() zz
+    ## end def manage_update()
 
 
 if __name__ == '__main__':
