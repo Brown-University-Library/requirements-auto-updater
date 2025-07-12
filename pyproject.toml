@@ -20,16 +20,16 @@ prod = []
 [tool.ruff]
 line-length = 125
 indent-width = 4
-target-version = "py38"
+target-version = "py312"
 
 [tool.ruff.format]
-docstring-code-format = false
+docstring-code-format = false   # docstrings not formatted
 indent-style = "space"
 line-ending = "auto"
-quote-style = "single"
+quote-style = "single"          # uses single-quotes for strings
 
 [tool.ruff.lint.flake8-quotes]
-avoid-escape = true
+avoid-escape = true             # avoid using backslashes
 
 [tool.ruff.lint.isort]
 case-sensitive = true
@@ -38,6 +38,6 @@ case-sensitive = true
 max-line-length = 125
 
 [tool.ruff.lint.pydocstyle]
-convention = "google"
+convention = "google"           # short-summary-line, then args-section, then returns-section
 
 ## ruff (linter-formatter/code-checker) end ##
