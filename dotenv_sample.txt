@@ -1,0 +1,13 @@
+## If the auto-update cannot be run, these sys-admins will be notified.
+## Otherwise emails will go to the _PROJECT_ admins.
+export AUTO_UPDTR__SYS_ADMIN_RECIPIENTS_JSON='
+[
+    [ "first1 last1", "email1@domain.com"],
+    [ "first2 last2", "email2@domain.com"]
+]'
+
+export AUTO_UPDTR__EMAIL_FROM="donotreply-auto-updater@domain.edu"  # email-code will indicate host.
+export AUTO_UPDTR__EMAIL_HOST="localhost"
+export AUTO_UPDTR__EMAIL_HOST_PORT="port-numeral"
+
+export AUTO_UPDTR__UV_PATH="path/to/uv"
