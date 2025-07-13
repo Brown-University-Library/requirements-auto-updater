@@ -231,25 +231,17 @@ def manage_update(project_path_str: str) -> None:
     lib_environment_checker.check_branch(project_path, project_email_addresses)  # emails admins and exits if not on main
     ## check git status ---------------------------------------------
     lib_environment_checker.check_git_status(project_path, project_email_addresses)  # emails admins and exits if not clean
-    ## get python version -------------------------------------------
-    version_info: tuple[str, str, str] = lib_environment_checker.determine_python_version(
-        project_path, project_email_addresses
-    )  # ie, ('3.12.4', '~=3.12.0', '/path/to/python3.12')
-    env_python_path_resolved = version_info[2]
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-    ## get uv path --------------------------------------------------
-    # uv_path: Path = lib_environment_checker.determine_uv_path(project_path, project_email_addresses)
-    uv_path: Path = Path(UV_PATH)
+    ## validate uv path -----------------------------------------------
+    lib_environment_checker.validate_uv_path(UV_PATH, project_path)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## check for correct group and group-write permissions ---------
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
 
     ## ::: initial tests :::
-    ## run initial tests --------------------------------------------
-    if environment_type != 'production':
-        run_initial_tests(uv_path, project_path, project_email_addresses)
+    run_initial_tests(UV_PATH, project_path, project_email_addresses)
 
     ## ::: compilation :::
     ## compile requirements file ------------------------------------
