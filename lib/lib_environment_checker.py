@@ -150,64 +150,6 @@ def check_git_status(project_path: Path, project_email_addresses: list[tuple[str
     return
 
 
-def determine_python_version(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> tuple[str, str, str]:
-    """
-    Determines Python version from the target-project's virtual environment.
-    The purpose is to later run the `uv pip compile ...` command, to add the --python version
-
-    If the virtual environment or python version is invalid:
-    - Sends an email to the project sys-admins
-    - Exits the script
-
-    Of the returned info, only the resolved-python-path is currently used.
-
-    History:
-    - Initially I just grabbed the python version.
-    - But `uv pip compile ... --python version` could fail if uv didn't find that python version.
-    - I thought the tilde-notation would resolve this, but it didn't.
-    - Grabbing the actual resolved-path to the venv's python executable works.
-
-    TODO: eventually remove the unneed code.
-    """
-    log.info('::: determining python version ----------')
-    ## get env_python_path ------------------------------------------
-    env_python_path: Path = project_path.parent / 'env/bin/python3'
-    log.debug(f'env_python_path before resolve: ``{env_python_path}``')
-    if not env_python_path.exists():
-        message = 'Error: Virtual environment not found.'
-        log.exception(message)
-        ## email project sys-admins ---------------------------------
-        emailer = Emailer(project_path)
-        email_message: str = emailer.create_setup_problem_message(message)
-        emailer.send_email(project_email_addresses, email_message)
-        ## raise exception -----------------------------------------
-        raise Exception(message)
-    ## get version --------------------------------------------------
-    python_version: str = subprocess.check_output([str(env_python_path), '--version'], text=True).strip().split()[-1]
-    log.debug(f'python_version: {python_version}')
-    ## tildify version ----------------------------------------------
-    parts: list = python_version.split('.')
-    tilde_notation: str = f'~={parts[0]}.{parts[1]}.0'  # converts, eg, '3.8.10' to '~=3.8.0'
-    log.debug(f'tilde_notation: {tilde_notation}')
-    ## resolve env_python_path --------------------------------------
-    env_python_path_resolved: str = str(env_python_path.resolve())  # only this is used by the calling code
-    log.debug(f'env_python_path_resolved: ``{env_python_path_resolved}``')
-    ## confirm Python 3 ---------------------------------------------
-    if not python_version.startswith('3.'):
-        message = 'Error: Invalid Python version.'
-        log.exception(message)
-        ## email project-admins -------------------------------------
-        emailer = Emailer(project_path)
-        email_message: str = emailer.create_setup_problem_message(message)
-        emailer.send_email(project_email_addresses, email_message)
-        ## raise exception -----------------------------------------
-        raise Exception(message)
-    log.info(f'ok / python_version, ``{python_version}``')
-    return (python_version, tilde_notation, env_python_path_resolved)
-
-    ## end def determine_python_version()
-
-
 def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
     """
     Infers environment type based on the system hostname.
@@ -240,27 +182,27 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     return env_type
 
 
-# def determine_uv_path(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> Path:
-#     """
-#     Checks `which` for the `uv` command.
-#     If that fails, raises Exception and emails project-admins.
-#     Used for compile and sync.
-#     """
-#     log.info('::: determining uv path ----------')
-#     try:
-#         uv_initial_path: str = subprocess.check_output(['which', 'uv'], text=True).strip()
-#         uv_path = Path(uv_initial_path).resolve()  # to ensure an absolute-path
-#     except subprocess.CalledProcessError:
-#         message = 'Error determining uv path'
-#         log.exception(message)
-#         ## email project-admins ---------------------------------
-#         emailer = Emailer(project_path)
-#         email_message: str = emailer.create_setup_problem_message(message)
-#         emailer.send_email(project_email_addresses, email_message)
-#         ## raise exception --------------------------------------
-#         raise Exception(message)
-#     log.info(f'ok / uv_path, ``{uv_path}``')
-#     return uv_path
+def validate_uv_path(uv_path: Path, project_path: Path) -> None:
+    """
+    Validates that the provided uv-path exists.
+    If path is invalid:
+    - Sends an email to the auto-updater sys-admins
+    - Exits the script
+    """
+    log.info('::: validating uv_path ----------')
+    # log.debug(f'project_path: ``{project_path}``')
+    if not uv_path.exists():
+        message = f'Error: The provided uv_path ``{uv_path}`` does not exist. Halting auto-update.'
+        log.exception(message)
+        ## email project sys-admins ---------------------------------
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(emailer.sys_admin_recipients, email_message)
+        ## raise exception -----------------------------------------
+        raise Exception(message)
+    else:
+        log.info(f'ok / uv_path, ``{uv_path}``')
+    return
 
 
 def determine_group(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
