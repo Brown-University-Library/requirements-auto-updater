@@ -250,7 +250,7 @@ def manage_update(project_path_str: str) -> None:
     uv_lock_backup: Path = uv_updater.backup_uv_lock(uv_path, project_path)
     ## run uv sync --------------------------------------------------
     sync_command: list[str] = uv_updater.make_sync_command(UV_PATH, environment_type)
-    run_uv_sync_command(sync_command, project_path)
+    uv_updater.run_sync_command(sync_command, project_path)
     ## check new uv.lock file ---------------------------------------
     differences_found: bool = uv_updater.compare_uv_lock_files(uv_lock_backup, project_path)
 
