@@ -3,6 +3,7 @@ Module used by auto_updater.py
 Contains code for comparing the newly-compiled `requirements.txt` with the most recent one.
 """
 
+import difflib
 import logging
 import pprint
 import shutil
@@ -114,27 +115,36 @@ class UvUpdater:
             error_str = 'problem: restoring previous uv sync failed; see log output.'
         return error_str
 
-
-# def run_git_commit(project_path: Path, commit_message: str | None = None) -> tuple[bool, dict]:
-#     """
-#     Runs `git commit` and return the output.
-#     """
-#     log.info('::: running git commit ----------')
-#     if commit_message is None:
-#         commit_message = 'auto-update of requirements'
-#     command = ['git', 'commit', '-m', commit_message]
-#     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
-#     log.debug(f'result: {result}')
-#     ok = True if result.returncode == 0 else False
-#     if ok is True:
-#         log.info('ok / git commit successful')
-#     else:
-#         if 'nothing to commit' in result.stdout:
-#             log.info('ok / nothing to commit')
-#     output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
-#     return_val = (ok, output)
-#     log.debug(f'return_val: {return_val}')
-#     return return_val
+    def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> str | None:
+        """
+        Compares the uv.lock file with the backup and returns True if they differ.
+        Uses Python's difflib to generate a unified diff.
+        """
+        log.info('::: comparing uv.lock files ----------')
+        try:
+            with uv_lock_path.open() as curr, uv_lock_backup_path.open() as prev:
+                ## read lines ---------------------------------------
+                curr_lines = [line.rstrip() for line in curr.readlines()]
+                prev_lines = [line.rstrip() for line in prev.readlines()]
+                ## generate unified diff ----------------------------
+                diff: list[str] = list(
+                    difflib.unified_diff(
+                        prev_lines, curr_lines, fromfile=str(uv_lock_backup_path), tofile=str(uv_lock_path), lineterm=''
+                    )
+                )
+                log.debug(f'diff: \n{pprint.pformat(diff)}')
+                ## log the diff if there are differences ------------
+                if diff:
+                    log.info('ok / differences found between uv.lock and its backup')
+                else:
+                    log.info('ok / no differences found between uv.lock and its backup')
+            diff_text: str = '\n'.join(diff) + '\n'
+            log.debug(f'diff_text: \n{diff_text}')
+            return diff_text
+        except Exception as e:
+            log.error(f'Error comparing uv.lock files: {str(e)}')
+            # TODO: email admins
+            return None
 
 
 ## end class UvUpdater

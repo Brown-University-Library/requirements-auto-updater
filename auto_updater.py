@@ -247,27 +247,15 @@ def manage_update(project_path_str: str) -> None:
     ## ::: update :::
     ## backup uv.lock -----------------------------------------------
     uv_updater = UvUpdater()
-    uv_lock_backup: Path = uv_updater.backup_uv_lock(uv_path, project_path)
+    uv_lock_backup_path: Path = uv_updater.backup_uv_lock(uv_path, project_path)
     ## run uv sync --------------------------------------------------
     uv_updater.manage_sync(uv_path, project_path, environment_type)
-    ## check new uv.lock file ---------------------------------------
-    differences_found: bool = uv_updater.compare_uv_lock_files(uv_lock_backup, project_path)
-
-    # ## see if the new compile is different --------------------------
-    # compiled_comparator = CompiledComparator()
-    # differences_found: bool = compiled_comparator.compare_with_previous_backup(
-    #     compiled_requirements, old_path=None, project_path=project_path
-    # )
+    ## check if new uv.lock file is different -----------------------
+    diff_text: str | None = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
     ## ::: act on differences :::
-    if differences_found:
-        ## since it's different, update the venv --------------------
-        sync_dependencies(project_path, compiled_requirements, uv_path)
-        ## mark new-compile as active -------------------------------
-        mark_active(compiled_requirements)
-        ## make diff ------------------------------------------------
-        diff_text: str = compiled_comparator.make_diff_text(project_path)
-        ## check for django update ----------------------------------
+    if diff_text:
+        ## check for django update ---------------------------------- herezz
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
