@@ -4,6 +4,9 @@ Contains code for comparing the newly-compiled `requirements.txt` with the most 
 """
 
 import logging
+import pprint
+import shutil
+import subprocess
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -12,6 +15,35 @@ log = logging.getLogger(__name__)
 class UvUpdater:
     def __init__(self):
         pass
+
+    def manage_sync(self, uv_path: Path, project_path: Path, environment_type: str) -> None:
+        """
+        Manages the sync process.
+        """
+        self.backup_uv_lock(uv_path, project_path)
+        sync_type = '--upgrade'
+        sync_command: list[str] = self.make_sync_command(uv_path, environment_type, sync_type)
+        output: tuple[bool, dict] = self.run_standard_sync_command(sync_command, project_path)
+        ok, std_dct = output
+        if ok is True:
+            pass
+        else:  ## revert / TODO: do these in steps, building good problem message for email
+            problem_message = 'problem / uv sync failed'
+            ## copy the backup back to uv.lock
+            shutil.copy(project_path.parent / 'uv.lock.bak', project_path / 'uv.lock')
+            ## run `uv sync --frozen` to revert the .venv
+            sync_command: list[str] = self.make_sync_command(uv_path, environment_type, '--frozen')
+            error_str: str = self.run_frozen_sync_command(sync_command, project_path)
+            if error_str:
+                problem_message = '\n\n' + error_str
+            ## check run_tests again
+            run_tests_command: list[str] = self.make_run_tests_command(uv_path, environment_type)
+            error_str: str = self.run_run_tests_command(run_tests_command, project_path)
+            if error_str:
+                problem_message = '\n\n' + error_str
+            ## email admins with all errors
+            email_admins_with_errors(problem_message)
+        return
 
     def backup_uv_lock(self, uv_path: Path, project_path: Path) -> Path:
         """
@@ -26,7 +58,7 @@ class UvUpdater:
         assert backup_file_path.exists(), f'backup_file_path does not exist, ``{backup_file_path}``'
         return backup_file_path
 
-    def make_sync_command(self, uv_path: Path, environment_type: str) -> list[str]:
+    def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
         """
         Makes the sync command.
         """
@@ -40,15 +72,46 @@ class UvUpdater:
             msg = f'Invalid environment_type: {environment_type}'
             log.exception(msg)
             raise Exception(msg)
-        cmnd: list[str] = [str(uv_path), 'sync', '--upgrade', '--group', group]
+        cmnd: list[str] = [str(uv_path), 'sync', sync_type, '--group', group]
         log.debug(f'cmnd, ``{cmnd}``')
         return cmnd
 
-    def run_sync_command(self, sync_command: list[str], project_path: Path) -> None:
+    def run_standard_sync_command(self, sync_command: list[str], project_path: Path) -> tuple[bool, dict]:
         """
-        Runs the sync command. herezzz
+        Runs the initial --upgrade sync command.
         """
-        pass
+        result: subprocess.CompletedProcess = subprocess.run(
+            sync_command, cwd=str(project_path), capture_output=True, text=True
+        )
+        log.debug(f'result: {result}')
+        ok = True if result.returncode == 0 else False
+        if ok is True:
+            log.info('ok / uv sync successful')
+        else:
+            log.info('problem / uv sync failed')
+        output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+        return_val = (ok, output)
+        log.debug(f'return_val: {return_val}')
+        return return_val
+
+    def run_frozen_sync_command(self, sync_command: list[str], project_path: Path) -> str:
+        """
+        Runs the frozen sync command.
+        """
+        error_str: str = ''
+        result: subprocess.CompletedProcess = subprocess.run(
+            sync_command, cwd=str(project_path), capture_output=True, text=True
+        )
+        log.debug(f'result: {result}')
+        ok = True if result.returncode == 0 else False
+        if ok is True:
+            log.debug('restored frozen uv sync successful')
+            error_str = ''
+        else:
+            error_output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+            log.debug(f'error_output, ``{pprint.pformat(error_output)}``')
+            error_str = 'problem: restoring previous uv sync failed; see log output.'
+        return error_str
 
 
 # def run_git_commit(project_path: Path, commit_message: str | None = None) -> tuple[bool, dict]:
