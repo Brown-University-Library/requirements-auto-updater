@@ -26,7 +26,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 from lib import lib_common, lib_django_updater, lib_environment_checker
-from lib.lib_call_runtests import run_followup_tests, run_initial_tests
+from lib.lib_call_runtests import run_initial_tests
 from lib.lib_emailer import send_email_of_diffs
 from lib.lib_uv_updater import UvUpdater
 
