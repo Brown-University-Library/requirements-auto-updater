@@ -20,6 +20,7 @@ class UvUpdater:
         """
         Manages the sync process.
         """
+        log.info('::: starting uv sync ----------')
         self.backup_uv_lock(uv_path, project_path)
         sync_type = '--upgrade'
         sync_command: list[str] = self.make_sync_command(uv_path, environment_type, sync_type)
@@ -42,7 +43,7 @@ class UvUpdater:
             if error_str:
                 problem_message = '\n\n' + error_str
             ## email admins with all errors
-            email_admins_with_errors(problem_message)
+            # email_admins_with_errors(problem_message)  # TODO
         return
 
     def backup_uv_lock(self, uv_path: Path, project_path: Path) -> Path:
