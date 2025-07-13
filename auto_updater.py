@@ -42,6 +42,7 @@ ENVAR_EMAIL_FROM = os.environ['AUTO_UPDTR__EMAIL_FROM']
 ENVAR_EMAIL_HOST = os.environ['AUTO_UPDTR__EMAIL_HOST']
 ENVAR_EMAIL_HOST_PORT = os.environ['AUTO_UPDTR__EMAIL_HOST_PORT']
 UV_PATH = os.environ['AUTO_UPDTR__UV_PATH']
+uv_path: Path = Path(UV_PATH).resolve()
 
 ## set up logging ---------------------------------------------------
 log_dir: Path = stuff_dir / 'logs'
@@ -234,19 +235,19 @@ def manage_update(project_path_str: str) -> None:
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     ## validate uv path -----------------------------------------------
-    lib_environment_checker.validate_uv_path(UV_PATH, project_path)
+    lib_environment_checker.validate_uv_path(uv_path, project_path)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## check for correct group and group-write permissions ---------
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
 
     ## ::: initial tests :::
-    run_initial_tests(UV_PATH, project_path, project_email_addresses)
+    run_initial_tests(uv_path, project_path, project_email_addresses)
 
     ## ::: update :::
     ## backup uv.lock -----------------------------------------------
     uv_updater = UvUpdater()
-    uv_lock_backup: Path = uv_updater.backup_uv_lock(UV_PATH, project_path)
+    uv_lock_backup: Path = uv_updater.backup_uv_lock(uv_path, project_path)
     ## run uv sync --------------------------------------------------
     sync_command: list[str] = uv_updater.make_sync_command(UV_PATH, environment_type)
     run_uv_sync_command(sync_command, project_path)
