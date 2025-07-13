@@ -17,13 +17,16 @@ class UvUpdater:
         """
         Backs up the uv.lock file.
         """
+        import shutil
+
+        assert isinstance(uv_path, Path), f'type(uv_path) is {type(uv_path)}'
         uv_lock_path: Path = project_path / 'uv.lock'
         backup_file_path: Path = project_path.parent / 'uv.lock.bak'
-        uv_lock_path.copy(backup_file_path)  # copies the file from uv_lock_path to backup_file_path
+        shutil.copy(uv_lock_path, backup_file_path)
         assert backup_file_path.exists(), f'backup_file_path does not exist, ``{backup_file_path}``'
         return backup_file_path
 
-    def make_sync_command(uv_path: Path, environment_type: str) -> list[str]:
+    def make_sync_command(self, uv_path: Path, environment_type: str) -> list[str]:
         """
         Makes the sync command.
         """
@@ -40,6 +43,34 @@ class UvUpdater:
         cmnd: list[str] = [str(uv_path), 'sync', '--upgrade', '--group', group]
         log.debug(f'cmnd, ``{cmnd}``')
         return cmnd
+
+    def run_sync_command(self, sync_command: list[str], project_path: Path) -> None:
+        """
+        Runs the sync command. herezzz
+        """
+        pass
+
+
+# def run_git_commit(project_path: Path, commit_message: str | None = None) -> tuple[bool, dict]:
+#     """
+#     Runs `git commit` and return the output.
+#     """
+#     log.info('::: running git commit ----------')
+#     if commit_message is None:
+#         commit_message = 'auto-update of requirements'
+#     command = ['git', 'commit', '-m', commit_message]
+#     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
+#     log.debug(f'result: {result}')
+#     ok = True if result.returncode == 0 else False
+#     if ok is True:
+#         log.info('ok / git commit successful')
+#     else:
+#         if 'nothing to commit' in result.stdout:
+#             log.info('ok / nothing to commit')
+#     output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+#     return_val = (ok, output)
+#     log.debug(f'return_val: {return_val}')
+#     return return_val
 
 
 ## end class UvUpdater
