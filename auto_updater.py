@@ -244,8 +244,8 @@ def manage_update(project_path_str: str) -> None:
     run_initial_tests(UV_PATH, project_path, project_email_addresses)
 
     ## ::: compilation :::
-    ## compile requirements file ------------------------------------
-    compiled_requirements: Path = compile_requirements(project_path, env_python_path_resolved, environment_type, uv_path)
+    ## backup uv.lock -----------------------------------------------
+    uv_lock_backup: Path = backup_uv_lock(UV_PATH, project_path)
     ## cleanup old backups ------------------------------------------
     remove_old_backups(project_path)
     ## see if the new compile is different --------------------------
