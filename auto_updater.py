@@ -25,9 +25,8 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
-from lib import lib_common, lib_django_updater, lib_environment_checker, lib_misc
+from lib import lib_common, lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
-from lib.lib_compilation_evaluator import CompiledComparator
 from lib.lib_emailer import send_email_of_diffs
 from lib.lib_uv_updater import UvUpdater
 
@@ -250,13 +249,15 @@ def manage_update(project_path_str: str) -> None:
     uv_lock_backup: Path = uv_updater.backup_uv_lock(UV_PATH, project_path)
     ## run uv sync --------------------------------------------------
     sync_command: list[str] = uv_updater.make_sync_command(UV_PATH, environment_type)
-    
+    run_uv_sync_command(sync_command, project_path)
+    ## check new uv.lock file ---------------------------------------
+    differences_found: bool = uv_updater.compare_uv_lock_files(uv_lock_backup, project_path)
 
-    ## see if the new compile is different --------------------------
-    compiled_comparator = CompiledComparator()
-    differences_found: bool = compiled_comparator.compare_with_previous_backup(
-        compiled_requirements, old_path=None, project_path=project_path
-    )
+    # ## see if the new compile is different --------------------------
+    # compiled_comparator = CompiledComparator()
+    # differences_found: bool = compiled_comparator.compare_with_previous_backup(
+    #     compiled_requirements, old_path=None, project_path=project_path
+    # )
 
     ## ::: act on differences :::
     if differences_found:
