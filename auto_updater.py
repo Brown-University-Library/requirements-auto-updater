@@ -25,10 +25,11 @@ from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
-from lib import lib_common, lib_django_updater, lib_environment_checker
+from lib import lib_common, lib_django_updater, lib_environment_checker, lib_misc
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
 from lib.lib_compilation_evaluator import CompiledComparator
 from lib.lib_emailer import send_email_of_diffs
+from lib.lib_uv_updater import UvUpdater
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
@@ -243,11 +244,14 @@ def manage_update(project_path_str: str) -> None:
     ## ::: initial tests :::
     run_initial_tests(UV_PATH, project_path, project_email_addresses)
 
-    ## ::: compilation :::
+    ## ::: update :::
     ## backup uv.lock -----------------------------------------------
-    uv_lock_backup: Path = backup_uv_lock(UV_PATH, project_path)
-    ## cleanup old backups ------------------------------------------
-    remove_old_backups(project_path)
+    uv_updater = UvUpdater()
+    uv_lock_backup: Path = uv_updater.backup_uv_lock(UV_PATH, project_path)
+    ## run uv sync --------------------------------------------------
+    sync_command: list[str] = uv_updater.make_sync_command(UV_PATH, environment_type)
+    
+
     ## see if the new compile is different --------------------------
     compiled_comparator = CompiledComparator()
     differences_found: bool = compiled_comparator.compare_with_previous_backup(
