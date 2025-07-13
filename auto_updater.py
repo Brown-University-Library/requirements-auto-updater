@@ -260,19 +260,12 @@ def manage_update(project_path_str: str) -> None:
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
             followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path)
-        ## copy new compile to codebase -----------------------------
-        followup_copy_problems: None | str = None
-        followup_copy_problems = compiled_comparator.copy_new_compile_to_codebase(
-            compiled_requirements, project_path, environment_type
-        )
-        ## run post-update tests ------------------------------------
+        ## run post-update tests ------------------------------------ herezz
         followup_tests_problems: None | str = None
-        if environment_type != 'production':
-            followup_tests_problems = run_followup_tests(uv_path, project_path)
+        followup_tests_problems = run_followup_tests(uv_path, project_path)
         ## send diff email ------------------------------------------
         followup_problems = {
             'collectstatic_problems': followup_collectstatic_problems,
-            'copy_problems': followup_copy_problems,
             'test_problems': followup_tests_problems,
         }
         log.debug(f'followup_problems, ``{followup_problems}``')
@@ -281,7 +274,9 @@ def manage_update(project_path_str: str) -> None:
 
     ## ::: clean up :::
     ## try group and permissions update -----------------------------
-    update_group_and_permissions(project_path, compiled_requirements, group)
+    update_group_and_permissions(
+        project_path, compiled_requirements, group
+    )  # TODO: pehaps specify the _outer_ path so we get that `uv.lock.back` file?
     return
 
     ## end def manage_update()
