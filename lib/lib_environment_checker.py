@@ -156,20 +156,20 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     Returns 'local', 'staging', or 'production'.
     """
     log.info('::: determining environment type ----------')
-    ## ensure all .in files exist -----------------------------------
-    for filename in ['local.in', 'staging.in', 'production.in']:
-        full_path: Path = project_path / 'requirements' / filename
-        try:
-            assert full_path.exists()
-        except AssertionError:
-            message = f'Error: {full_path} not found'
-            log.exception(message)
-            ## email project-admins ---------------------------------
-            emailer = Emailer(project_path)
-            email_message: str = emailer.create_setup_problem_message(message)
-            emailer.send_email(project_email_addresses, email_message)
-            ## raise exception --------------------------------------
-            raise Exception(message)
+    # ## ensure all .in files exist -----------------------------------
+    # for filename in ['local.in', 'staging.in', 'production.in']:
+    #     full_path: Path = project_path / 'requirements' / filename
+    #     try:
+    #         assert full_path.exists()
+    #     except AssertionError:
+    #         message = f'Error: {full_path} not found'
+    #         log.exception(message)
+    #         ## email project-admins ---------------------------------
+    #         emailer = Emailer(project_path)
+    #         email_message: str = emailer.create_setup_problem_message(message)
+    #         emailer.send_email(project_email_addresses, email_message)
+    #         ## raise exception --------------------------------------
+    #         raise Exception(message)
     ## determine proper one -----------------------------------------
     hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
     if hostname.startswith('d') or hostname.startswith('q'):
@@ -180,6 +180,38 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
         env_type: str = 'local'
     log.info(f'ok / env_type, ``{env_type}``')
     return env_type
+
+
+# def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
+#     """
+#     Infers environment type based on the system hostname.
+#     Returns 'local', 'staging', or 'production'.
+#     """
+#     log.info('::: determining environment type ----------')
+#     ## ensure all .in files exist -----------------------------------
+#     for filename in ['local.in', 'staging.in', 'production.in']:
+#         full_path: Path = project_path / 'requirements' / filename
+#         try:
+#             assert full_path.exists()
+#         except AssertionError:
+#             message = f'Error: {full_path} not found'
+#             log.exception(message)
+#             ## email project-admins ---------------------------------
+#             emailer = Emailer(project_path)
+#             email_message: str = emailer.create_setup_problem_message(message)
+#             emailer.send_email(project_email_addresses, email_message)
+#             ## raise exception --------------------------------------
+#             raise Exception(message)
+#     ## determine proper one -----------------------------------------
+#     hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
+#     if hostname.startswith('d') or hostname.startswith('q'):
+#         env_type: str = 'staging'
+#     elif hostname.startswith('p'):
+#         env_type: str = 'production'
+#     else:
+#         env_type: str = 'local'
+#     log.info(f'ok / env_type, ``{env_type}``')
+#     return env_type
 
 
 def validate_uv_path(uv_path: Path, project_path: Path) -> None:
