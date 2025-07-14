@@ -12,13 +12,13 @@
 
 ## Overview...
 
-Enables automatic requirements and venv updating --to a limited extent.
+Enables automatic requirements and venv updating.
 
 Called directly -- or, typically, by a cron job -- this script:
 - checks a bunch of expectations about the project
     - if expectations fail, an email noting the failure will go out to the target-project admins if possible; otherwise the auto-updater admins.
-- checks to see if a re-compile of the appropriate `requirements.in` file would create anything different from the previous run.
-    - if the recompile is different from the previous day's, it will update the venv, make it active, re-run tests, run django's `collectstatic` if necessary, and notify the project-admins.
+- checks to see if a `uv sync --upgrade --group X` performs any updates. (Running that updates the `uv.lock` file and from that, updates the `.venv`.)
+    - if the resultant `uv.lock` file is different, this script re-runs the project's tests, runs django's `collectstatic` if necessary, and notifies the project-admins.
 
 ---
 
@@ -42,7 +42,7 @@ Called directly -- or, typically, by a cron job -- this script:
 - Saves a backup of `uv.lock` to `../uv.lock_backup`
 - Runs `uv sync --upgrade --group staging` (for dev) or `uv sync --upgrade --group production` (for prod)
 - Evaluates if `uv.lock` has changed
-- If `uv.lock` has changed:
+- If `uv.lock` has changed (meaning the `.venv` has been updated):
     - runs project's `run_tests.py`
         - on test success
             - runs `uv pip compile ./pyproject.toml -o ./requirements.txt`
