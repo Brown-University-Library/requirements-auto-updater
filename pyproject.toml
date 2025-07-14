@@ -4,40 +4,12 @@ version = "0.0.0"
 description = "Auto updates project packages and venv."
 readme = "https://github.com/Brown-University-Library/requirements-auto-updater/blob/main/README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = [
-    "python-dotenv~=1.1.0",
-]
-
+dependencies = []
+# dependencies = [
+#     "python-dotenv~=1.1.0",
+# ]
 
 [dependency-groups]
 local = []
 staging = []
 prod = []
-
-
-## ruff (linter-formatter/code-checker) start ##
-
-[tool.ruff]
-line-length = 125
-indent-width = 4
-target-version = "py312"
-
-[tool.ruff.format]
-docstring-code-format = false   # docstrings not formatted
-indent-style = "space"
-line-ending = "auto"
-quote-style = "single"          # uses single-quotes for strings
-
-[tool.ruff.lint.flake8-quotes]
-avoid-escape = true             # avoid using backslashes
-
-[tool.ruff.lint.isort]
-case-sensitive = true
-
-[tool.ruff.lint.pycodestyle]
-max-line-length = 125
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"           # short-summary-line, then args-section, then returns-section
-
-## ruff (linter-formatter/code-checker) end ##
