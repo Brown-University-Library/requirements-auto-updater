@@ -35,6 +35,32 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     return
 
 
+def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
+    """
+    Runs followup tests on the updated venv.
+
+    If tests pass returns None.
+
+    If tests fail:
+    - returns "tests failed" message (to be add to the diff email)
+    - does not exit, so that diffs can be emailed and permissions updated
+    """
+    log.info('::: running followup tests ----------')
+    ## prep the command ---------------------------------------------
+    command: list[str] = make_run_tests_command(project_path, uv_path)
+    ## run the command ----------------------------------------------
+    command_result: tuple[bool, dict] = run_run_tests_command(command, project_path)
+    (ok, output) = command_result
+    if not ok:
+        return_val = f'Error on followup run_tests() call: ``{output}``. Continuing processing to update permissions.'
+        log.exception(return_val)
+    else:
+        log.info('ok / followup tests passed')
+        return_val = None
+    log.debug(f'return_val, ``{return_val}``')
+    return return_val
+
+
 # def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None:
 #     """
 #     Run initial tests to ensure that the script can run.
@@ -144,6 +170,7 @@ def run_run_tests_command(command: list, project_path: Path) -> tuple[bool, dict
     Runs subprocess command and returns tuple (ok, data_dict).
     (Based on similar to `Go` style convention (err, data).)
     """
+    log.debug(f'running with cwd arg, ``{project_path}``')
     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
     log.debug(f'result: {result}')
     ok = True if result.returncode == 0 else False
