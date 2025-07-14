@@ -23,8 +23,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import find_dotenv, load_dotenv
-
+# from dotenv import find_dotenv, load_dotenv
 from lib import lib_common, lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
 from lib.lib_emailer import send_email_of_diffs
@@ -33,9 +32,9 @@ from lib.lib_uv_updater import UvUpdater
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
-dotenv_path = stuff_dir / '.env'
-assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
-load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
+# dotenv_path = stuff_dir / '.env'
+# assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
+# load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
 
 ## define constants -------------------------------------------------
 ENVAR_EMAIL_FROM = os.environ['AUTO_UPDTR__EMAIL_FROM']

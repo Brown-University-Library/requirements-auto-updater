@@ -5,9 +5,6 @@ description = "Auto updates project packages and venv."
 readme = "https://github.com/Brown-University-Library/requirements-auto-updater/blob/main/README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = []
-# dependencies = [
-#     "python-dotenv~=1.1.0",
-# ]
 
 [dependency-groups]
 local = []
