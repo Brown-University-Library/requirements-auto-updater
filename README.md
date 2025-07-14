@@ -20,8 +20,6 @@ Called directly -- or, typically, by a cron job -- this script:
 - checks to see if a re-compile of the appropriate `requirements.in` file would create anything different from the previous run.
     - if the recompile is different from the previous day's, it will update the venv, make it active, re-run tests, run django's `collectstatic` if necessary, and notify the project-admins.
 
-_(Code (WILL BE) working and (WILL) updating the `bdr_uploader_hub` and `sitechecker` projects (dev & prod)_
-
 ---
 
 
@@ -40,32 +38,7 @@ _(Code (WILL BE) working and (WILL) updating the `bdr_uploader_hub` and `siteche
     - determines the group
     - validates group and permissions on the venv and the `requirements_backups` directories
     - runs project's `run_tests.py`
-
 - If any of the above steps fail, emails project-admins (or updater-admins)
-
-OLD-START -----------------------------------------------------------
-
-- Compiles and saves appropriate requirements file
-    - creates the `requirements_backups` directory in the "outer-stuff" directory if needed
-    - saves the last 30 backups
-    - note that because the compile is to a "new" file (that's date-stamped), this ensures the latest patch is actually in the newly-compiled `.in` file. This thus avoids the situation we've seen, with both `pip` and `uv`, where an existing `.in` file can prevent the latest patch from being defined in the newly-compiled file.
-
-- Checks it to see if anything is new
-
-- If there is something new: 
-    - updates the project's virtual-environment
-        - normally a venv has to be made "active", by being sourced, before the venv can be updated from the compiled `.txt' file. [This explanation](https://github.com/Brown-University-Library/requirements-auto-updater/blob/6e8b540ad1a6f389e115f2cfb364751380b94f58/auto_updater.py#L128-L136) describes how the venv is updated programmatically.
-    - runs the usual `touch` command to let passenger know to reload the django-app
-    - performs a diff showing the change, and creates diff text
-    - checks the diff for a django update, and if django was updated, runs its collectstatic command
-    - saves the updated `.txt` file and runs a git-pull, then a git-add, then a git-commit, then a git-push
-    - calls project's run_tests.py again (on local and dev servers)
-    - emails the diff (and any test-issues) to the project-admins
-
-OLD-END -------------------------------------------------------------
-
-NEW-START -----------------------------------------------------------
-
 - Saves a backup of `uv.lock` to `../uv.lock_backup`
 - Runs `uv sync --upgrade --group staging` (for dev) or `uv sync --upgrade --group production` (for prod)
 - Evaluates if `uv.lock` has changed
@@ -86,20 +59,18 @@ NEW-START -----------------------------------------------------------
             - emails the canceled-diff (and test-failures) to the project-admins
 - Finally, attempts to update group & permissions on the venv and the `requirements_backups` directories
 
-NEW-END -------------------------------------------------------------
-
 
 ## Usage...
 
 - Directly:
     ```
     $ cd "/path/to/requirements-auto-updater/"
-    $ uv run ./auto_update.py "/path/to/project_to_update_code_dir/"
+    $ uv run --env-file "../.env" ./auto_updater.py --project "/path/to/project_to_update_code_dir/"
     ```
 
 - Via cron on servers (eg to run every day at 12:01am) (all one line):
     ```
-    1 0 * * * PATH=/usr/local/bin:$PATH cd "/path/to/requirements-auto-updater/" && uv run ./auto_updater.py "/path/to/project_to_update_code_dir/"
+    1 0 * * * PATH=/usr/local/bin:$PATH cd "/path/to/requirements-auto-updater/" && uv run --env-file "../.env" ./auto_updater.py --project "/path/to/project_to_update_code_dir/"
     ```
 
 ---
