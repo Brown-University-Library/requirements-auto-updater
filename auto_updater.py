@@ -15,6 +15,7 @@ Usage...
 `$ uv run ./auto_updater.py "/path/to/project_code_dir/"`
 """
 
+import argparse
 import logging
 import os
 import subprocess
@@ -22,25 +23,25 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import find_dotenv, load_dotenv
-
+# from dotenv import find_dotenv, load_dotenv
 from lib import lib_common, lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
-from lib.lib_compilation_evaluator import CompiledComparator
 from lib.lib_emailer import send_email_of_diffs
+from lib.lib_uv_updater import UvUpdater
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
-dotenv_path = stuff_dir / '.env'
-assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
-load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
+# dotenv_path = stuff_dir / '.env'
+# assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
+# load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
 
 ## define constants -------------------------------------------------
 ENVAR_EMAIL_FROM = os.environ['AUTO_UPDTR__EMAIL_FROM']
 ENVAR_EMAIL_HOST = os.environ['AUTO_UPDTR__EMAIL_HOST']
 ENVAR_EMAIL_HOST_PORT = os.environ['AUTO_UPDTR__EMAIL_HOST_PORT']
 UV_PATH = os.environ['AUTO_UPDTR__UV_PATH']
+uv_path: Path = Path(UV_PATH).resolve()
 
 ## set up logging ---------------------------------------------------
 log_dir: Path = stuff_dir / 'logs'
@@ -181,18 +182,16 @@ def mark_active(backup_file: Path) -> None:
     return
 
 
-def update_group_and_permissions(project_path: Path, backup_file: Path, group: str) -> None:
+def update_group_and_permissions(project_path: Path, backup_file_path: Path, group: str) -> None:
     """
     Tries to update group-ownership and group-permissions for relevant directories.
     Intentionally does not fail if the commands fail.
     """
     log.info('::: updating group and permissions ----------')
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    log.debug(f'backup_dir: ``{backup_dir}``')
-    relative_env_path = project_path / '../env'
-    env_path = relative_env_path.resolve()
-    log.debug(f'env_path: ``{env_path}``')
-    for path in [env_path, backup_dir]:
+    relative_env_path: Path = project_path / '.venv'
+    venv_path: Path = relative_env_path.resolve()
+    log.debug(f'env_path: ``{venv_path}``')
+    for path in [venv_path, backup_file_path]:
         log.debug(f'updating group and permissions for path: ``{path}``')
         chgrp_result: subprocess.CompletedProcess[str] = subprocess.run(
             ['chgrp', '-R', group, str(path)], capture_output=True, text=True, check=False
@@ -230,63 +229,40 @@ def manage_update(project_path_str: str) -> None:
     lib_environment_checker.check_branch(project_path, project_email_addresses)  # emails admins and exits if not on main
     ## check git status ---------------------------------------------
     lib_environment_checker.check_git_status(project_path, project_email_addresses)  # emails admins and exits if not clean
-    ## get python version -------------------------------------------
-    version_info: tuple[str, str, str] = lib_environment_checker.determine_python_version(
-        project_path, project_email_addresses
-    )  # ie, ('3.12.4', '~=3.12.0', '/path/to/python3.12')
-    env_python_path_resolved = version_info[2]
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-    ## get uv path --------------------------------------------------
-    # uv_path: Path = lib_environment_checker.determine_uv_path(project_path, project_email_addresses)
-    uv_path: Path = Path(UV_PATH)
+    ## validate uv path -----------------------------------------------
+    lib_environment_checker.validate_uv_path(uv_path, project_path)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
     ## check for correct group and group-write permissions ---------
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
 
     ## ::: initial tests :::
-    ## run initial tests --------------------------------------------
-    if environment_type != 'production':
-        run_initial_tests(uv_path, project_path, project_email_addresses)
+    run_initial_tests(uv_path, project_path, project_email_addresses)
 
-    ## ::: compilation :::
-    ## compile requirements file ------------------------------------
-    compiled_requirements: Path = compile_requirements(project_path, env_python_path_resolved, environment_type, uv_path)
-    ## cleanup old backups ------------------------------------------
-    remove_old_backups(project_path)
-    ## see if the new compile is different --------------------------
-    compiled_comparator = CompiledComparator()
-    differences_found: bool = compiled_comparator.compare_with_previous_backup(
-        compiled_requirements, old_path=None, project_path=project_path
-    )
+    ## ::: update :::
+    ## backup uv.lock -----------------------------------------------
+    uv_updater = UvUpdater()
+    uv_lock_backup_path: Path = uv_updater.backup_uv_lock(uv_path, project_path)
+    ## run uv sync --------------------------------------------------
+    uv_updater.manage_sync(uv_path, project_path, environment_type)
+    ## check if new uv.lock file is different -----------------------
+    diff_text: str | None = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
     ## ::: act on differences :::
-    if differences_found:
-        ## since it's different, update the venv --------------------
-        sync_dependencies(project_path, compiled_requirements, uv_path)
-        ## mark new-compile as active -------------------------------
-        mark_active(compiled_requirements)
-        ## make diff ------------------------------------------------
-        diff_text: str = compiled_comparator.make_diff_text(project_path)
+    if diff_text:
         ## check for django update ----------------------------------
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
             followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path)
-        ## copy new compile to codebase -----------------------------
-        followup_copy_problems: None | str = None
-        followup_copy_problems = compiled_comparator.copy_new_compile_to_codebase(
-            compiled_requirements, project_path, environment_type
-        )
         ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
-        if environment_type != 'production':
-            followup_tests_problems = run_followup_tests(uv_path, project_path)
+        followup_tests_problems = run_followup_tests(uv_path, project_path)
         ## send diff email ------------------------------------------
         followup_problems = {
             'collectstatic_problems': followup_collectstatic_problems,
-            'copy_problems': followup_copy_problems,
             'test_problems': followup_tests_problems,
         }
         log.debug(f'followup_problems, ``{followup_problems}``')
@@ -295,7 +271,7 @@ def manage_update(project_path_str: str) -> None:
 
     ## ::: clean up :::
     ## try group and permissions update -----------------------------
-    update_group_and_permissions(project_path, compiled_requirements, group)
+    update_group_and_permissions(project_path, uv_lock_backup_path, group)
     return
 
     ## end def manage_update()
@@ -303,15 +279,15 @@ def manage_update(project_path_str: str) -> None:
 
 if __name__ == '__main__':
     log.debug('\n\nstarting dundermain')
-    # print(f'sys.argv: ``{sys.argv}``')
-    if len(sys.argv) != 2:
-        message: str = """
-        See usage instructions at:
-        <https://github.com/Brown-University-Library/auto_updater_code?tab=readme-ov-file#usage>
-        """
-        message: str = message.replace('        ', '')  # removes indentation-spaces
-        print(message)
-        sys.exit(1)
 
-    project_path: str = sys.argv[1]
-    manage_update(project_path)
+    parser = argparse.ArgumentParser(description='Updates dependencies for the specified project')
+    parser.add_argument('--project', required=True, help='Path to the project directory')
+    try:
+        args = parser.parse_args()
+        project_path = args.project
+        log.debug(f'Project path: {project_path}')
+        manage_update(project_path)
+    except argparse.ArgumentError as e:
+        log.error(f'Argument error: {e}')
+        parser.print_help()
+        sys.exit(1)

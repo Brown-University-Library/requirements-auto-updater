@@ -1,2 +1,4 @@
+.venv
 *.pyc
 *pycache*
+*ruff_cache

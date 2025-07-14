@@ -37,10 +37,6 @@ def send_email_of_diffs(
     problem_message: str = ''
     if followup_problems['collectstatic_problems']:
         problem_message = followup_problems['collectstatic_problems']
-    if followup_problems['copy_problems']:
-        if problem_message:
-            problem_message += '\n\n'
-        problem_message += followup_problems['copy_problems']
     if followup_problems['test_problems']:
         if problem_message:
             problem_message += '\n\n'

@@ -1,16 +1,16 @@
 ## settings ##
 line-length = 125
 indent-width = 4
-target-version = "py38"
+target-version = "py312"
 
 [format]
-docstring-code-format = false
+docstring-code-format = false   # docstrings not formatted
 indent-style = "space"
 line-ending = "auto"
-quote-style = "single"
+quote-style = "single"          # uses single-quotes for strings
 
 [lint.flake8-quotes]
-avoid-escape = true
+avoid-escape = true             # avoid using backslashes
 
 [lint.isort]
 case-sensitive = true
@@ -19,4 +19,4 @@ case-sensitive = true
 max-line-length = 125
 
 [lint.pydocstyle]
-convention = "google"
+convention = "google"          # short-summary-line, then args-section, then returns-section
