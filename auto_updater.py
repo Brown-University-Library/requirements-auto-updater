@@ -26,7 +26,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 from lib import lib_common, lib_django_updater, lib_environment_checker
-from lib.lib_call_runtests import run_initial_tests
+from lib.lib_call_runtests import run_followup_tests, run_initial_tests
 from lib.lib_emailer import send_email_of_diffs
 from lib.lib_uv_updater import UvUpdater
 
@@ -183,18 +183,16 @@ def mark_active(backup_file: Path) -> None:
     return
 
 
-def update_group_and_permissions(project_path: Path, backup_file: Path, group: str) -> None:
+def update_group_and_permissions(project_path: Path, backup_file_path: Path, group: str) -> None:
     """
     Tries to update group-ownership and group-permissions for relevant directories.
     Intentionally does not fail if the commands fail.
     """
     log.info('::: updating group and permissions ----------')
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    log.debug(f'backup_dir: ``{backup_dir}``')
-    relative_env_path = project_path / '../env'
-    env_path = relative_env_path.resolve()
-    log.debug(f'env_path: ``{env_path}``')
-    for path in [env_path, backup_dir]:
+    relative_env_path: Path = project_path / '.venv'
+    venv_path: Path = relative_env_path.resolve()
+    log.debug(f'env_path: ``{venv_path}``')
+    for path in [venv_path, backup_file_path]:
         log.debug(f'updating group and permissions for path: ``{path}``')
         chgrp_result: subprocess.CompletedProcess[str] = subprocess.run(
             ['chgrp', '-R', group, str(path)], capture_output=True, text=True, check=False
@@ -255,12 +253,12 @@ def manage_update(project_path_str: str) -> None:
 
     ## ::: act on differences :::
     if diff_text:
-        ## check for django update ---------------------------------- herezz
+        ## check for django update ----------------------------------
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
             followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path)
-        ## run post-update tests ------------------------------------ herezz
+        ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
         followup_tests_problems = run_followup_tests(uv_path, project_path)
         ## send diff email ------------------------------------------
@@ -274,9 +272,7 @@ def manage_update(project_path_str: str) -> None:
 
     ## ::: clean up :::
     ## try group and permissions update -----------------------------
-    update_group_and_permissions(
-        project_path, compiled_requirements, group
-    )  # TODO: pehaps specify the _outer_ path so we get that `uv.lock.back` file?
+    update_group_and_permissions(project_path, uv_lock_backup_path, group)
     return
 
     ## end def manage_update()
