@@ -20,13 +20,13 @@ import logging
 import os
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # from dotenv import find_dotenv, load_dotenv
-from lib import lib_common, lib_django_updater, lib_environment_checker
+from lib import lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
 from lib.lib_emailer import send_email_of_diffs
+from lib.lib_git_handler import GitHandler
 from lib.lib_uv_updater import UvUpdater
 
 ## load envars ------------------------------------------------------
@@ -61,125 +61,125 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 
 
-def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
-    """
-    Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
-    Returns the path to the newly created backup file.
-    """
-    log.info('::: compiling requirements ----------')
-    ## prepare requirements.in filepath -----------------------------
-    requirements_in: Path = project_path / 'requirements' / f'{environment_type}.in'  # local.in, staging.in, production.in
-    log.debug(f'requirements.in path, ``{requirements_in}``')
-    ## ensure backup-directory is ready -----------------------------
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    log.debug(f'backup_dir: ``{backup_dir}``')
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    ## prepare compiled_filepath ------------------------------------
-    timestamp: str = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-    compiled_filepath: Path = backup_dir / f'{environment_type}_{timestamp}.txt'
-    log.debug(f'backup_file: ``{compiled_filepath}``')
-    ## prepare compile command --------------------------------------
-    compile_command: list[str] = [
-        str(uv_path),
-        'pip',
-        'compile',
-        str(requirements_in),
-        '--output-file',
-        str(compiled_filepath),
-        '--universal',
-        '--python',
-        python_version,
-    ]
-    log.debug(f'compile_command: ``{compile_command}``')
-    ## run compile command ------------------------------------------
-    try:
-        subprocess.run(compile_command, check=True)
-        log.info('ok / uv pip compile was successful')
-    except subprocess.CalledProcessError:
-        message = 'Error during pip compile'
-        log.exception(message)
-        raise Exception(message)
-    return compiled_filepath
+# def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
+#     """
+#     Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
+#     Returns the path to the newly created backup file.
+#     """
+#     log.info('::: compiling requirements ----------')
+#     ## prepare requirements.in filepath -----------------------------
+#     requirements_in: Path = project_path / 'requirements' / f'{environment_type}.in'  # local.in, staging.in, production.in
+#     log.debug(f'requirements.in path, ``{requirements_in}``')
+#     ## ensure backup-directory is ready -----------------------------
+#     backup_dir: Path = project_path.parent / 'requirements_backups'
+#     log.debug(f'backup_dir: ``{backup_dir}``')
+#     backup_dir.mkdir(parents=True, exist_ok=True)
+#     ## prepare compiled_filepath ------------------------------------
+#     timestamp: str = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
+#     compiled_filepath: Path = backup_dir / f'{environment_type}_{timestamp}.txt'
+#     log.debug(f'backup_file: ``{compiled_filepath}``')
+#     ## prepare compile command --------------------------------------
+#     compile_command: list[str] = [
+#         str(uv_path),
+#         'pip',
+#         'compile',
+#         str(requirements_in),
+#         '--output-file',
+#         str(compiled_filepath),
+#         '--universal',
+#         '--python',
+#         python_version,
+#     ]
+#     log.debug(f'compile_command: ``{compile_command}``')
+#     ## run compile command ------------------------------------------
+#     try:
+#         subprocess.run(compile_command, check=True)
+#         log.info('ok / uv pip compile was successful')
+#     except subprocess.CalledProcessError:
+#         message = 'Error during pip compile'
+#         log.exception(message)
+#         raise Exception(message)
+#     return compiled_filepath
 
-    ## end def compile_requirements()
-
-
-def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
-    """
-    Removes all files in the backup directory other than the most-recent files.
-    """
-    log.info('::: removing old backups ----------')
-    backup_dir: Path = project_path.parent / 'requirements_backups'
-    backups: list[Path] = sorted([f for f in backup_dir.iterdir() if f.is_file() and f.suffix == '.txt'], reverse=True)
-    old_backups: list[Path] = backups[keep_recent:]
-    for old_backup in old_backups:
-        log.debug(f'removing old backup: {old_backup}')
-        old_backup.unlink()
-    log.info('ok / old backups removed')
-    return
+#     ## end def compile_requirements()
 
 
-def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
-    """
-    Prepares the venv environment.
-    Syncs the recent `--output` requirements.in file to the venv.
-    Exits the script if any command fails.
-
-    Why this works, without explicitly "activate"-ing the venv...
-
-    When a Python virtual environment is traditionally 'activated' -- ie via `source venv/bin/activate`
-    in a shell -- what is really happening is that a set of environment variables is adjusted
-    to ensure that when python or other commands are run, they refer to the virtual environment's
-    binaries and site-packages rather than the system-wide python installation.
-
-    This code mimics that environment modification by explicitly setting
-    the PATH and VIRTUAL_ENV environment variables before running the command.
-    """
-    log.info('::: syncing dependencies ----------')
-    ## prepare env-path variables -----------------------------------
-    venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
-    (venv_bin_path, venv_path) = venv_tuple
-    ## set the local-env paths ---------------------------------------
-    local_scoped_env = os.environ.copy()
-    local_scoped_env['PATH'] = f'{venv_bin_path}:{local_scoped_env["PATH"]}'  # prioritizes venv-path
-    local_scoped_env['VIRTUAL_ENV'] = str(venv_path)
-    ## prepare sync command ------------------------------------------
-    sync_command: list[str] = [str(uv_path), 'pip', 'sync', str(backup_file)]
-    log.debug(f'sync_command: ``{sync_command}``')
-    try:
-        ## run sync command ------------------------------------------
-        subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
-        log.info('ok / `uv pip sync` was successful')
-    except subprocess.CalledProcessError:
-        message = 'Error during `uv pip sync`'
-        log.exception(message)
-        raise Exception(message)
-    try:
-        ## run `touch` to make the changes take effect ---------------
-        log.info('::: running `touch` ----------')
-        subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
-        log.info('ok / ran `touch`')
-    except subprocess.CalledProcessError:
-        message = 'Error during `touch'
-        log.exception(message)
-        raise Exception(message)
-    return
-
-    ## end def sync_dependencies()
+# def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
+#     """
+#     Removes all files in the backup directory other than the most-recent files.
+#     """
+#     log.info('::: removing old backups ----------')
+#     backup_dir: Path = project_path.parent / 'requirements_backups'
+#     backups: list[Path] = sorted([f for f in backup_dir.iterdir() if f.is_file() and f.suffix == '.txt'], reverse=True)
+#     old_backups: list[Path] = backups[keep_recent:]
+#     for old_backup in old_backups:
+#         log.debug(f'removing old backup: {old_backup}')
+#         old_backup.unlink()
+#     log.info('ok / old backups removed')
+#     return
 
 
-def mark_active(backup_file: Path) -> None:
-    """
-    Marks the backup file as active by adding a header comment.
-    """
-    log.info('::: marking recent-backup as active ----------')
-    with backup_file.open('r') as file:  # read the file
-        content: list[str] = file.readlines()
-    content.insert(0, '# ACTIVE\n')
-    with backup_file.open('w') as file:  # write the file
-        file.writelines(content)
-    log.info('ok / marked recent-backup as active')
-    return
+# def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
+#     """
+#     Prepares the venv environment.
+#     Syncs the recent `--output` requirements.in file to the venv.
+#     Exits the script if any command fails.
+
+#     Why this works, without explicitly "activate"-ing the venv...
+
+#     When a Python virtual environment is traditionally 'activated' -- ie via `source venv/bin/activate`
+#     in a shell -- what is really happening is that a set of environment variables is adjusted
+#     to ensure that when python or other commands are run, they refer to the virtual environment's
+#     binaries and site-packages rather than the system-wide python installation.
+
+#     This code mimics that environment modification by explicitly setting
+#     the PATH and VIRTUAL_ENV environment variables before running the command.
+#     """
+#     log.info('::: syncing dependencies ----------')
+#     ## prepare env-path variables -----------------------------------
+#     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
+#     (venv_bin_path, venv_path) = venv_tuple
+#     ## set the local-env paths ---------------------------------------
+#     local_scoped_env = os.environ.copy()
+#     local_scoped_env['PATH'] = f'{venv_bin_path}:{local_scoped_env["PATH"]}'  # prioritizes venv-path
+#     local_scoped_env['VIRTUAL_ENV'] = str(venv_path)
+#     ## prepare sync command ------------------------------------------
+#     sync_command: list[str] = [str(uv_path), 'pip', 'sync', str(backup_file)]
+#     log.debug(f'sync_command: ``{sync_command}``')
+#     try:
+#         ## run sync command ------------------------------------------
+#         subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
+#         log.info('ok / `uv pip sync` was successful')
+#     except subprocess.CalledProcessError:
+#         message = 'Error during `uv pip sync`'
+#         log.exception(message)
+#         raise Exception(message)
+#     try:
+#         ## run `touch` to make the changes take effect ---------------
+#         log.info('::: running `touch` ----------')
+#         subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
+#         log.info('ok / ran `touch`')
+#     except subprocess.CalledProcessError:
+#         message = 'Error during `touch'
+#         log.exception(message)
+#         raise Exception(message)
+#     return
+
+#     ## end def sync_dependencies()
+
+
+# def mark_active(backup_file: Path) -> None:
+#     """
+#     Marks the backup file as active by adding a header comment.
+#     """
+#     log.info('::: marking recent-backup as active ----------')
+#     with backup_file.open('r') as file:  # read the file
+#         content: list[str] = file.readlines()
+#     content.insert(0, '# ACTIVE\n')
+#     with backup_file.open('w') as file:  # write the file
+#         file.writelines(content)
+#     log.info('ok / marked recent-backup as active')
+#     return
 
 
 def update_group_and_permissions(project_path: Path, backup_file_path: Path, group: str) -> None:
@@ -257,9 +257,15 @@ def manage_update(project_path_str: str) -> None:
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
             followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path)
+            subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
         ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
         followup_tests_problems = run_followup_tests(uv_path, project_path)
+
+        ## git commit -----------------------------------------------
+        git_handler = GitHandler()
+        git_handler.manage_git(project_path, diff_text)
+
         ## send diff email ------------------------------------------
         followup_problems = {
             'collectstatic_problems': followup_collectstatic_problems,
