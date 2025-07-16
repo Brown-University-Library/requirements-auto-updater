@@ -150,6 +150,85 @@ class UvUpdater:
 ## end class UvUpdater
 
 
+# class GitHandler:
+#     def __init__(self):
+#         pass
+
+#     def manage_git(self, project_path: Path, diff_text: str) -> None:
+#         """
+#         Manages the git process.
+#         """
+#         log.info('::: starting git process ----------')
+#         self.run_git_pull(project_path)
+#         self.run_git_add(project_path / 'requirements.txt', project_path)
+#         self.run_git_commit(project_path, diff_text)
+#         self.run_git_push(project_path)
+#         return
+
+#     def run_git_pull(self, project_path: Path) -> None:
+#         """
+#         Runs the git pull command.
+#         """
+#         log.info('::: running git pull ----------')
+#         git_pull_command: list[str] = ['git', 'pull']
+#         result: subprocess.CompletedProcess = subprocess.run(git_pull_command, cwd=str(project_path))
+#         log.debug(f'result: {result}')
+#         ok = True if result.returncode == 0 else False
+#         if ok is True:
+#             log.info('ok / git pull successful')
+#         else:
+#             log.info('problem / git pull failed')
+#         return
+
+#     def run_git_add(self, requirements_path: Path, project_path: Path) -> tuple[bool, dict]:
+#         """
+#         Runs `git add` and return the output.
+#         """
+#         log.info('::: running git add ----------')
+#         command = ['git', 'add', str(requirements_path)]
+#         result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
+#         log.debug(f'result: {result}')
+#         ok = True if result.returncode == 0 else False
+#         if ok is True:
+#             log.info('ok / git add successful')
+#         output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+#         return_val = (ok, output)
+#         log.debug(f'return_val: {return_val}')
+#         return return_val
+
+#     def run_git_commit(self, project_path: Path, diff_text: str) -> None:
+#         """
+#         Runs the git commit command.
+#         """
+#         log.info('::: running git commit ----------')
+#         git_commit_command: list[str] = ['git', 'commit', '-am', 'auto-updater: update dependencies']
+#         result: subprocess.CompletedProcess = subprocess.run(git_commit_command, cwd=str(project_path))
+#         log.debug(f'result: {result}')
+#         ok = True if result.returncode == 0 else False
+#         if ok is True:
+#             log.info('ok / git commit successful')
+#         else:
+#             log.info('problem / git commit failed')
+#         return
+
+#     def run_git_push(self, project_path: Path) -> None:
+#         """
+#         Runs the git push command.
+#         """
+#         log.info('::: running git push ----------')
+#         git_push_command: list[str] = ['git', 'push']
+#         result: subprocess.CompletedProcess = subprocess.run(git_push_command, cwd=str(project_path))
+#         log.debug(f'result: {result}')
+#         ok = True if result.returncode == 0 else False
+#         if ok is True:
+#             log.info('ok / git push successful')
+#         else:
+#             log.info('problem / git push failed')
+#         return
+
+#     ## end class GitHandler
+
+
 # class CompiledComparator:
 #     def __init__(self):
 #         pass
