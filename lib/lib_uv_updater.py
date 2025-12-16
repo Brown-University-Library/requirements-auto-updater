@@ -3,6 +3,7 @@ Module used by auto_updater.py
 Contains code for comparing the newly-compiled `requirements.txt` with the most recent one.
 """
 
+import datetime
 import difflib
 import logging
 import pprint
@@ -60,6 +61,24 @@ class UvUpdater:
         assert backup_file_path.exists(), f'backup_file_path does not exist, ``{backup_file_path}``'
         return backup_file_path
 
+    # def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
+    #     """
+    #     Makes the sync command.
+    #     """
+    #     if environment_type == 'local':
+    #         group = 'local'
+    #     elif environment_type == 'staging':
+    #         group = 'staging'
+    #     elif environment_type == 'production':
+    #         group = 'production'
+    #     else:
+    #         msg = f'Invalid environment_type: {environment_type}'
+    #         log.exception(msg)
+    #         raise Exception(msg)
+    #     cmnd: list[str] = [str(uv_path), 'sync', sync_type, '--group', group]
+    #     log.debug(f'cmnd, ``{cmnd}``')
+    #     return cmnd
+
     def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
         """
         Makes the sync command.
@@ -74,9 +93,19 @@ class UvUpdater:
             msg = f'Invalid environment_type: {environment_type}'
             log.exception(msg)
             raise Exception(msg)
-        cmnd: list[str] = [str(uv_path), 'sync', sync_type, '--group', group]
+        iso_date: str = self.make_iso_date()  # the iso-date for a week ago
+        cmnd: list[str] = [str(uv_path), 'sync', sync_type, '--group', group, '--exclude-newer', iso_date]
         log.debug(f'cmnd, ``{cmnd}``')
         return cmnd
+
+    def make_iso_date(self) -> str:
+        """
+        Makes an ISO date for a week ago.
+        Called by make_sync_command()
+        """
+        iso_date: str = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+        log.debug(f'iso_date, ``{iso_date}``')
+        return iso_date
 
     def run_standard_sync_command(self, sync_command: list[str], project_path: Path) -> tuple[bool, dict]:
         """
