@@ -16,8 +16,10 @@ Enables automatic requirements and venv updating.
 
 Called directly -- or, typically, by a cron job -- this script:
 - checks a bunch of expectations about the project
-    - if expectations fail, an email noting the failure will go out to the target-project admins if possible; otherwise the auto-updater admins.
-- checks to see if a `uv sync --upgrade --group X` performs any updates. (Running that updates the `uv.lock` file and from that, updates the `.venv`.)
+    - if expectations fail, an email noting the failure will go out to: 
+        - the target-project admins if possible 
+        - otherwise the auto-updater admins
+- checks to see if a `uv sync --upgrade --group X exclude-newer ISODATE` performs any updates. (Running that updates the `uv.lock` file and from that, updates the `.venv`.)
     - if the resultant `uv.lock` file is different, this script re-runs the project's tests, runs django's `collectstatic` if necessary, and notifies the project-admins.
 
 ---
@@ -32,20 +34,19 @@ Called directly -- or, typically, by a cron job -- this script:
     - determines the admin-emails
     - validates expected branch
     - validates expected git-status
-    - ~determines the python version~
+    - ensures a python version is listed -- TODO
     - determines the local/staging/production environment
     - validates the `uv` path
     - determines the group
     - validates group and permissions on the venv and the `requirements_backups` directories
     - runs project's `run_tests.py`
 - If any of the above steps fail, emails project-admins (or updater-admins)
-- Saves a backup of `uv.lock` to `../uv.lock_backup`
-- Runs `uv sync --upgrade --group staging` (for dev) or `uv sync --upgrade --group production` (for prod)
+- Saves a backup of `uv.lock` to `../requirements_backups/uv.lock_ISODATETIME`
+- Runs `uv sync --upgrade --group staging exclude-newer ISODATETIME` (for dev) or `uv sync --upgrade --group production exclude-newer ISODATETIME` (for prod)
 - Evaluates if `uv.lock` has changed
 - If `uv.lock` has changed (meaning the `.venv` has been updated):
     - runs project's `run_tests.py`
         - on test success
-            - runs `uv pip compile ./pyproject.toml -o ./requirements.txt`
             - performs a diff on new and old `uv.lock` showing the change, and creates diff text 
             - if a django app
                 - runs its `collectstatic` command
@@ -54,7 +55,7 @@ Called directly -- or, typically, by a cron job -- this script:
             - emails the diff (and any issues) to the project-admins
         - on test failure
             - restores original `uv.lock`
-            - runs `uv sync --frozen`  # just updates the `.venv` from the `uv.lock` file
+            - runs `uv sync --frozen exclude-newer ISODATETIME`  # just updates the `.venv` from the `uv.lock` file
             - runs project's `run_tests.py` again
             - emails the canceled-diff (and test-failures) to the project-admins
 - Finally, attempts to update group & permissions on the venv and the `requirements_backups` directories
