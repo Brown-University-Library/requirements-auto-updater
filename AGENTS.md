@@ -1,0 +1,93 @@
+# AGENTS.md — Repository Agent Instructions (Source of Truth)
+
+This file defines the canonical coding directives for this repository.
+
+If other instruction files exist (Copilot, IDE rules, contributor docs) and conflict with this file, follow this file and treat the others as stale.
+
+
+## Project basics
+
+- Primary language: Python
+- Target runtime: Python 3.12
+- Dependency / execution tool: `uv`
+
+
+## How to run
+
+- Assumes the root directory is the repository root (with the `.git` directory)
+- Run a script (example): `uv run ./path_to_script.py --help`
+- Run tests (required for changes that affect behavior): 
+    - `uv run ./run_tests.py`
+    - if `run_tests.py` does not exist, use `uv run -m unittest discover -v`
+
+If a command fails due to missing context, inspect the repository for existing documented commands (README "Usage") and prefer those.
+
+
+## Coding directives (Python)
+
+### Type hints and imports
+
+- Use Python 3.12 type hints everywhere (functions and important variables).
+- Prefer builtin generics (e.g., `list[str]`, `dict[str, int]`) over `typing.List` / `typing.Dict`.
+- Prefer PEP 604 unions (e.g., `str | None`) over `Optional[str]`.
+- Avoid `typing` imports unless strictly necessary.
+
+### Script structure
+
+- Structure runnable modules as:
+  - `def main() -> None: ...`
+  - `if __name__ == '__main__': main()`
+- Keep `main()` simple: parse args / orchestrate calls only.
+- Put real logic into top-level helper functions and modules (no nested function definitions).
+
+### Functions and control flow
+
+- Prefer single-return functions (use local variables and a final return).
+- Do not define functions inside other functions.
+- Favor clarity and explicitness over cleverness.
+
+### HTTP and networking
+
+- Use `httpx` for all HTTP calls.
+- Do not introduce alternate HTTP libraries (e.g., `requests`, `aiohttp`) unless the repository already depends on them and there is a documented reason.
+
+### Docstrings
+
+- Use triple-quoted docstrings.
+- Write docstrings in present tense.
+  - Good: `"""Parses ..."""`
+  - Avoid: `"""Parse ..."""`
+
+### Additonal coding directives
+
+- inspect the `/ruff.toml` for additional coding directives, such as `max-line-length` and `quote-style`.
+
+
+## Tests
+
+- Use the standard library `unittest` framework (not pytest).
+- New behavior should usually come with a focused `unittest.TestCase` covering:
+  - the happy path
+  - at least one failure / edge case
+
+
+## Change workflow expectations
+
+When implementing a change (especially from an issue/task):
+
+1. Read relevant surrounding code and match existing conventions.
+2. Make the smallest correct change that satisfies the request.
+3. Update tests and run: `uv run ./run_tests.py`, or if that does not exist, `uv run -m unittest discover -v`
+4. If you cannot run tests in your environment, still write/adjust tests and state what you would run.
+
+
+## If instructions are missing or ambiguous
+
+- Do not ask questions unless absolutely necessary to proceed.
+- Make reasonable assumptions, state them explicitly, then implement.
+- If blocked, provide:
+  - what you tried
+  - what you found in the repo
+  - a concrete next step (command, file to edit, or minimal decision needed)
+
+---
