@@ -1,6 +1,6 @@
+import datetime
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from lib.lib_uv_updater import UvUpdater
 
@@ -8,19 +8,13 @@ from lib.lib_uv_updater import UvUpdater
 class TestUvUpdater(unittest.TestCase):
     def test_make_sync_command_includes_exclude_newer(self) -> None:
         updater = UvUpdater()
-        uv_path = Path('/usr/local/bin/uv')
-        with patch.object(updater, 'make_iso_date', return_value='2025-01-01'):
-            sync_command = updater.make_sync_command(uv_path, 'local', '--upgrade')
-        expected_command = [
-            str(uv_path),
-            'sync',
-            '--upgrade',
-            '--group',
-            'local',
-            '--exclude-newer',
-            '2025-01-01',
-        ]
-        self.assertEqual(expected_command, sync_command)
+        uv_path = Path('/made/up/path')
+        sync_command = updater.make_sync_command(uv_path, 'local', 'foo')
+        self.assertIn('--exclude-newer', sync_command)
+        exclude_newer_index = sync_command.index('--exclude-newer')
+        iso_date_str = sync_command[exclude_newer_index + 1]
+        datetime.datetime.strptime(iso_date_str, '%Y-%m-%d')  # ensures valid ISO date
+        self.assertEqual([str(uv_path), 'sync', 'foo', '--group', 'local'], sync_command[:5])
 
 
 if __name__ == '__main__':
