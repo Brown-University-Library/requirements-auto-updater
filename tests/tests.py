@@ -63,33 +63,6 @@ class TestGitCommands(unittest.TestCase):
         self.assertTrue(ok is True)
         self.assertIn('Already up to date.', output['stdout'])
 
-    # def test_git_status_clean(self):
-    #     """
-    #     Checks that `On branch main` is detected properly.
-    #     Assumes current-project is on branch `main`.
-
-    #     Note: just looking for the word 'clean' because one version of git says "working tree clean"
-    #         and another says "working directory clean". TODO: consider just checking the ok boolean.
-    #     """
-    #     cur_dir = Path('./').resolve()
-    #     log.debug(f'cur_dir: {cur_dir}')
-    #     git_result: tuple[bool, dict] = lib_git_handler.run_git_status(cur_dir)
-    #     (ok, output) = git_result
-    #     self.assertTrue(ok is True)
-    #     self.assertIn('clean', output['stdout'])
-
-    # def test_git_status_not_clean(self):
-    #     """
-    #     Checks that various non-"clean" states are detected properly.
-    #     Assumes current-project is on branch `main`.
-    #     """
-    #     target_dir = Path('../git_tests/check_changes_not_staged/').resolve()
-    #     log.debug(f'cur_dir: {target_dir}')
-    #     git_result: tuple[bool, dict] = lib_git_handler.run_git_status(target_dir)
-    #     (ok, output) = git_result
-    #     self.assertTrue(ok is True)
-    #     self.assertNotIn('clean', output['stdout'])
-
 
 class TestMiscellaneous(unittest.TestCase):
     def setUp(self):
@@ -141,6 +114,40 @@ class TestMiscellaneous(unittest.TestCase):
         self.assertEqual(expected, result)
 
 
+if __name__ == '__main__':
+    unittest.main()
+
+
+## older tests, for reference ---------------------------------------
+
+# def test_git_status_clean(self):
+#     """
+#     Checks that `On branch main` is detected properly.
+#     Assumes current-project is on branch `main`.
+
+#     Note: just looking for the word 'clean' because one version of git says "working tree clean"
+#         and another says "working directory clean". TODO: consider just checking the ok boolean.
+#     """
+#     cur_dir = Path('./').resolve()
+#     log.debug(f'cur_dir: {cur_dir}')
+#     git_result: tuple[bool, dict] = lib_git_handler.run_git_status(cur_dir)
+#     (ok, output) = git_result
+#     self.assertTrue(ok is True)
+#     self.assertIn('clean', output['stdout'])
+
+# def test_git_status_not_clean(self):
+#     """
+#     Checks that various non-"clean" states are detected properly.
+#     Assumes current-project is on branch `main`.
+#     """
+#     target_dir = Path('../git_tests/check_changes_not_staged/').resolve()
+#     log.debug(f'cur_dir: {target_dir}')
+#     git_result: tuple[bool, dict] = lib_git_handler.run_git_status(target_dir)
+#     (ok, output) = git_result
+#     self.assertTrue(ok is True)
+#     self.assertNotIn('clean', output['stdout'])
+
+
 # class TestComparison(unittest.TestCase):
 #     def setUp(self):
 #         # self.compiled_comparator = CompiledComparator()
@@ -187,7 +194,3 @@ class TestMiscellaneous(unittest.TestCase):
 #             file_a_new_path, file_b_old_path, project_path
 #         )
 #         self.assertEqual(expected, change_check_result)
-
-
-if __name__ == '__main__':
-    unittest.main()
