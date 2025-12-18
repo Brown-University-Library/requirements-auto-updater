@@ -8,6 +8,7 @@
 Usage:
 
 uv run ./tests.py
+uv run ./tests.py TestGitCommands.test_git_pull__A
 """
 
 import logging
@@ -31,8 +32,8 @@ stuff_dir = this_file_path.parent.parent
 sys.path.append(str(stuff_dir))
 from lib import (  # noqa: E402 (disables linter warning that this import is not at the top)
     lib_django_updater,
-    lib_git_handler,
 )
+from lib.lib_git_handler import GitHandler
 
 ## set constants ----------------------------------------------------
 PROJECT_PATH: Path = this_file_path.parent
@@ -45,7 +46,7 @@ PROJECT_PATH: Path = this_file_path.parent
 
 class TestGitCommands(unittest.TestCase):
     def setUp(self):
-        pass
+        self.git_handler = GitHandler()
 
     def tearDown(self):
         pass
@@ -57,7 +58,7 @@ class TestGitCommands(unittest.TestCase):
         """
         cur_dir = Path('./').resolve()
         log.debug(f'cur_dir: {cur_dir}')
-        git_result: tuple[bool, dict] = lib_git_handler.run_git_pull(cur_dir)
+        git_result: tuple[bool, dict] = self.git_handler.run_git_pull(cur_dir)
         (ok, output) = git_result
         self.assertTrue(ok is True)
         self.assertIn('Already up to date.', output['stdout'])
