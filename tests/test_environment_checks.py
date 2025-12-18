@@ -50,6 +50,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             with start_debugging_smtp_server():
                 with self.assertRaises(Exception) as context:
                     lib_environment_checker.validate_project_path(missing_path)
+        self.assertIsInstance(context, unittest.case._AssertRaisesContext)
         self.assertIn('Error: The provided project_path', str(context.exception))
 
 
