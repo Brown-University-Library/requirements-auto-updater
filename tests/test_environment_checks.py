@@ -39,7 +39,7 @@ class TestEnvironmentChecks(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
             try:
-                lib_environment_checker.validate_project_path(project_path)
+                self.assertIsNone(lib_environment_checker.validate_project_path(project_path))
             except Exception as exc:  # pragma: no cover - defensive assertion
                 self.fail(f'Unexpected exception raised: {exc!r}')
 
