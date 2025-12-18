@@ -218,6 +218,9 @@ def manage_update(project_path_str: str) -> None:
     log.debug('starting manage_update()')
 
     ## ::: run environmental checks :::
+    """
+    All environmental checks that can fail will, on failure, email relevant admins, then exit.
+    """
     ## validate project path ----------------------------------------
     project_path: Path = Path(project_path_str).resolve()  # ensures an absolute path now
     lib_environment_checker.validate_project_path(project_path)
@@ -226,9 +229,9 @@ def manage_update(project_path_str: str) -> None:
     ## get email addresses ------------------------------------------
     project_email_addresses: list[tuple[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
     ## check branch -------------------------------------------------
-    lib_environment_checker.check_branch(project_path, project_email_addresses)  # emails admins and exits if not on main
+    lib_environment_checker.check_branch(project_path, project_email_addresses)
     ## check git status ---------------------------------------------
-    lib_environment_checker.check_git_status(project_path, project_email_addresses)  # emails admins and exits if not clean
+    lib_environment_checker.check_git_status(project_path, project_email_addresses)
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     ## validate uv path -----------------------------------------------
@@ -239,7 +242,7 @@ def manage_update(project_path_str: str) -> None:
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
 
     ## ::: initial tests :::
-    run_initial_tests(uv_path, project_path, project_email_addresses)
+    run_initial_tests(uv_path, project_path, project_email_addresses)  # emails admins and exits on failure
 
     ## ::: update :::
     ## backup uv.lock -----------------------------------------------
