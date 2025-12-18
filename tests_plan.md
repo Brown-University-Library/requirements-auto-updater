@@ -60,8 +60,7 @@ Note: `lib/lib_emailer.py` imports `python-dotenv`. Ensure it's available in the
 
 Several failure paths send email via `lib.lib_emailer.Emailer`. With Python 3.12, the legacy `smtpd` module is removed. Options:
 
-- Option A (optional local dev): run a local SMTP server (e.g., MailHog or `aiosmtpd`) to accept mail on `localhost:1026`. Not required for tests to pass, but reduces connection errors in logs.
-- Option B (default): do not start any SMTP server. Tests should still assert that an exception is raised on failure paths without asserting on the exact error message, since the SMTP connection error may be raised before the function raises its own application-level exception.
+- Do not start any SMTP server. Tests should still assert that an exception is raised on failure paths without asserting on the exact error message, since the SMTP connection error may be raised before the function raises its own application-level exception.
 
 The repo-level `.env` already points to `localhost:1026` for email.
 
