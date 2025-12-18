@@ -113,6 +113,21 @@ class GitHandler:
         self.run_git_push(project_path)
         return
 
+    # def run_git_pull(self, project_path: Path) -> None:
+    #     """
+    #     Runs the git pull command.
+    #     """
+    #     log.info('::: running git pull ----------')
+    #     git_pull_command: list[str] = ['git', 'pull']
+    #     result: subprocess.CompletedProcess = subprocess.run(git_pull_command, cwd=str(project_path))
+    #     log.debug(f'result: {result}')
+    #     ok = True if result.returncode == 0 else False
+    #     if ok is True:
+    #         log.info('ok / git pull successful')
+    #     else:
+    #         log.info('problem / git pull failed')
+    #     return
+
     def run_git_pull(self, project_path: Path) -> None:
         """
         Runs the git pull command.
@@ -122,11 +137,14 @@ class GitHandler:
         result: subprocess.CompletedProcess = subprocess.run(git_pull_command, cwd=str(project_path))
         log.debug(f'result: {result}')
         ok = True if result.returncode == 0 else False
+        output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+        log.debug(f'output: ``{output}``')
         if ok is True:
             log.info('ok / git pull successful')
         else:
             log.info('problem / git pull failed')
-        return
+        return_val = (ok, output)
+        return return_val
 
     def run_git_add(self, requirements_path: Path, project_path: Path) -> tuple[bool, dict]:
         """
