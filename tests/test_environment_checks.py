@@ -13,7 +13,10 @@ from lib import lib_environment_checker
 
 @contextmanager
 def start_debugging_smtp_server() -> None:
-    """Start a debugging SMTP server for the duration of the context."""
+    """
+    Starts a debugging SMTP server for the duration of the context.
+    Called by test_validate_project_path_missing_raises()
+    """
     command = 'uv run --python 3.12 --with aiosmtpd -m aiosmtpd -n -c aiosmtpd.handlers.Debugging --listen localhost:1026'
     process = subprocess.Popen(
         shlex.split(command),
@@ -35,7 +38,9 @@ class TestEnvironmentChecks(unittest.TestCase):
     """Covers the environmental validation helpers."""
 
     def test_validate_project_path_ok(self) -> None:
-        """`validate_project_path()` allows existing paths."""
+        """
+        Checks legit path.
+        """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
             try:
@@ -44,14 +49,17 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.fail(f'Unexpected exception raised: {exc!r}')
 
     def test_validate_project_path_missing_raises(self) -> None:
-        """`validate_project_path()` raises when the path is missing."""
+        """
+        Checks bad path.
+        """
         with TemporaryDirectory() as temp_dir:
             missing_path = Path(temp_dir) / 'missing'
             with start_debugging_smtp_server():
                 with self.assertRaises(Exception) as context:
                     self.assertIsInstance(context, unittest.case._AssertRaisesContext)
                     lib_environment_checker.validate_project_path(missing_path)
-        self.assertIn('Error: The provided project_path', str(context.exception))
+                    ## note to self -- no code will run in the `with` after the failure, which is why the subsequent assertion must be out-dented.
+                self.assertIn('Error: The provided project_path', str(context.exception))
 
 
 if __name__ == '__main__':
