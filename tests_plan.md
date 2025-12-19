@@ -86,17 +86,9 @@ Each item maps to a call in `manage_update()` under the environmental checks sec
 
 Done.
 
-
 2) `lib_environment_checker.determine_project_email_addresses(project_path: Path) -> list[tuple[str, str]]`
 
-- Setup:
-  - Function reads `../.env` relative to CWD. Mirror production by `os.chdir(project_path)` in the test.
-- Happy path:
-  - Create `proj_dir` with parent containing `.env` (use `tests/sample_files/email_parent_env/.env`).
-  - `os.chdir(proj_dir)`, call the function; assert it returns a list of `(name, email)` tuples matching the `.env`.
-  - Restore CWD in `tearDown`.
-- Failure path:
-  - Missing or invalid parent `.env`. Assert that an exception is raised (no message assertion required).
+Done.
 
 3) `lib_environment_checker.check_branch(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None`
 
