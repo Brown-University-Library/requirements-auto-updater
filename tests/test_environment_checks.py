@@ -95,6 +95,50 @@ class TestEnvironmentChecks(unittest.TestCase):
             os.chdir(original_cwd)
 
 
+    ## branch checks -------------------------------------------------
+
+    def test_check_branch_main_ok(self) -> None:
+        """
+        Checks main branch passes without email or exception.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            git_dir = project_path / '.git'
+            git_dir.mkdir(parents=True, exist_ok=True)
+            head_path = git_dir / 'HEAD'
+            head_path.write_text('ref: refs/heads/main', encoding='utf-8')
+
+            project_email_addresses = [('Admin', 'admin@example.com')]
+
+            try:
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    self.assertIsNone(
+                        lib_environment_checker.check_branch(project_path, project_email_addresses)
+                    )
+                    mock_send.assert_not_called()
+            except Exception as exc:
+                self.fail(f'Unexpected exception raised: {exc!r}')
+
+    def test_check_branch_non_main_raises(self) -> None:
+        """
+        Checks non-main branch raises and triggers email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            git_dir = project_path / '.git'
+            git_dir.mkdir(parents=True, exist_ok=True)
+            head_path = git_dir / 'HEAD'
+            head_path.write_text('ref: refs/heads/feature/test', encoding='utf-8')
+
+            project_email_addresses = [('Admin', 'admin@example.com')]
+
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.check_branch(project_path, project_email_addresses)
+                self.assertIn('Error: Project is on branch', str(ctx.exception))
+                mock_send.assert_called_once()
+
+
 if __name__ == '__main__':
     unittest.main()
 
