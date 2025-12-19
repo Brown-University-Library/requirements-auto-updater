@@ -65,7 +65,7 @@ def main() -> None:
     ## Run tests ------------------------------------------------------
     verbosity = 2 if args.verbose else 1
     runner = unittest.TextTestRunner(verbosity=verbosity)
-    result = runner.run(suite)
+    result: unittest.result.TestResult = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
 
 
