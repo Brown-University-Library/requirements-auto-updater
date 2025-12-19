@@ -84,10 +84,8 @@ Each item maps to a call in `manage_update()` under the environmental checks sec
 
 1) `lib_environment_checker.validate_project_path(project_path: Path) -> None`
 
-- Happy path:
-  - Use `tempfile.TemporaryDirectory()`; pass its `Path`. Expect no exception.
-- Failure path:
-  - Pass a non-existent path. Assert that an exception is raised (do not assert message; email send may fail first).
+Done.
+
 
 2) `lib_environment_checker.determine_project_email_addresses(project_path: Path) -> list[tuple[str, str]]`
 
