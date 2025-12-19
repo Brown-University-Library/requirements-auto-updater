@@ -21,6 +21,16 @@ def main() -> None:
         action='store_true',
         help='Increase verbosity (equivalent to unittest verbosity=2)',
     )
+    parser.add_argument(
+        'targets',
+        nargs='*',
+        help=(
+            'Optional dotted test targets to run, e.g. '\
+            'tests.test_environment_checks '\
+            'tests.test_environment_checks.TestEnvironmentChecks '\
+            'tests.test_environment_checks.TestEnvironmentChecks.test_check_branch_non_main_raises'
+        ),
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).parent
@@ -31,11 +41,18 @@ def main() -> None:
     start_dir = 'tests'
 
     loader = unittest.TestLoader()
-    suite = loader.discover(
-        start_dir=start_dir,
-        pattern='test*.py',
-        # Avoid specifying top_level_dir to prevent importability check on start_dir
-    )
+    if args.targets:
+        # Load explicit targets provided on the command line
+        suite = unittest.TestSuite()
+        for target in args.targets:
+            suite.addTests(loader.loadTestsFromName(target))
+    else:
+        # Default to discovery as before
+        suite = loader.discover(
+            start_dir=start_dir,
+            pattern='test*.py',
+            # Avoid specifying top_level_dir to prevent importability check on start_dir
+        )
 
     verbosity = 2 if args.verbose else 1
     runner = unittest.TextTestRunner(verbosity=verbosity)
