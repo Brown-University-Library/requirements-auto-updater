@@ -10,6 +10,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 - Primary language: Python
 - Target runtime: Python 3.12
 - Dependency / execution tool: `uv`
+- project root is the directory containing this file.
 
 
 ## How to run
