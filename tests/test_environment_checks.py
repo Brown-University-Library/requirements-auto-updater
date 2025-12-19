@@ -1,4 +1,6 @@
-"""Tests for environment checks in `lib_environment_checker`."""
+"""
+Tests for environment checks in `lib_environment_checker`.
+"""
 
 import unittest
 from pathlib import Path
