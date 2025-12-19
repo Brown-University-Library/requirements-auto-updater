@@ -60,15 +60,14 @@ class TestEnvironmentChecks(unittest.TestCase):
                 log.debug(f'parent_path: ``{parent_path}``')
                 project_path = parent_path / 'proj'
                 project_path.mkdir(parents=True, exist_ok=True)
-
-                # create parent .env
+                ## create parent .env -----------
                 env_content = 'ADMINS_JSON=\'[["Project Admin", "project_admin@example.com"]]\'\n'
                 (parent_path / '.env').write_text(env_content, encoding='utf-8')
-
-                # chdir into project directory to mirror production behavior
+                ## chdir into project directory to mirror production behavior
                 os.chdir(project_path)
-
+                ## call function ----------------
                 result = lib_environment_checker.determine_project_email_addresses(project_path)
+                ## assert -----------------------
                 self.assertEqual(result, [('Project Admin', 'project_admin@example.com')])
         finally:
             os.chdir(original_cwd)
@@ -83,10 +82,9 @@ class TestEnvironmentChecks(unittest.TestCase):
                 parent_path = Path(parent_dir)
                 project_path = parent_path / 'proj'
                 project_path.mkdir(parents=True, exist_ok=True)
-
-                # intentionally do NOT create parent .env
+                ## intentionally do NOT create parent .env
                 os.chdir(project_path)
-
+                ## call function ----------------
                 with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
                     with self.assertRaises(Exception):
                         lib_environment_checker.determine_project_email_addresses(project_path)
@@ -94,44 +92,42 @@ class TestEnvironmentChecks(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
-
     ## branch checks -------------------------------------------------
 
     def test_check_branch_main_ok(self) -> None:
         """
-        Checks main branch passes without email or exception.
+        Checks main branch -- passes without email or exception.
         """
         with TemporaryDirectory() as temp_dir:
+            ## setup dummy git directory --------
             project_path = Path(temp_dir)
             git_dir = project_path / '.git'
             git_dir.mkdir(parents=True, exist_ok=True)
+            ## create HEAD file -----------------
             head_path = git_dir / 'HEAD'
             head_path.write_text('ref: refs/heads/main', encoding='utf-8')
-
+            ## call function ----------------
             project_email_addresses = [('Admin', 'admin@example.com')]
-
             try:
                 with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
-                    self.assertIsNone(
-                        lib_environment_checker.check_branch(project_path, project_email_addresses)
-                    )
+                    self.assertIsNone(lib_environment_checker.check_branch(project_path, project_email_addresses))
                     mock_send.assert_not_called()
             except Exception as exc:
                 self.fail(f'Unexpected exception raised: {exc!r}')
 
     def test_check_branch_non_main_raises(self) -> None:
         """
-        Checks non-main branch raises and triggers email.
+        Checks non-main branch -- raises and triggers email.
         """
         with TemporaryDirectory() as temp_dir:
+            ## setup dummy git directory --------
             project_path = Path(temp_dir)
             git_dir = project_path / '.git'
             git_dir.mkdir(parents=True, exist_ok=True)
             head_path = git_dir / 'HEAD'
             head_path.write_text('ref: refs/heads/feature/test', encoding='utf-8')
-
+            ## call function ----------------
             project_email_addresses = [('Admin', 'admin@example.com')]
-
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
                 with self.assertRaises(Exception) as ctx:
                     lib_environment_checker.check_branch(project_path, project_email_addresses)
