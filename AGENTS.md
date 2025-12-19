@@ -55,9 +55,15 @@ If a command fails due to missing context, inspect the repository for existing d
 ### Docstrings
 
 - Use triple-quoted docstrings.
-- Write docstrings in present tense.
-  - Good: `"""Parses ..."""`
+- Write docstrings in present tense, with triple-quotes on their own lines.
+  - Good: 
+    ```
+    """
+    Parses ...
+    """
+    ```
   - Avoid: `"""Parse ..."""`
+- Start test-function docstring-text with "Checks..."
 
 ### Additonal coding directives
 
