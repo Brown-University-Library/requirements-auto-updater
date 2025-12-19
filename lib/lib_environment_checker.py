@@ -42,6 +42,7 @@ def validate_project_path(project_path: Path) -> None:
 def determine_project_email_addresses(project_path: Path) -> list[tuple[str, str]]:
     """
     Loads email addresses from the target-project's `.env` file.
+    Note that an os.chdir() is performed to the project path before calling this function.
     Returns a list of email addresses.
     Assumes the setting `ADMINS_JSON` structured like:
     ADMINS_JSON='
@@ -55,6 +56,7 @@ def determine_project_email_addresses(project_path: Path) -> list[tuple[str, str
     - Exits the script
     """
     log.info('::: determining email addresses ----------')
+    log.debug(f'project_path: ``{project_path}``')
     try:
         settings: dict = dotenv.dotenv_values('../.env')
         email_addresses_json: str = settings['ADMINS_JSON']
