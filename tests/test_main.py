@@ -1,14 +1,5 @@
-# /// script
-# requires-python = "==3.12.*"
-# dependencies = ["python-dotenv==1.0.*"]
-# ///
-
-
 """
-Usage:
-
-uv run ./tests.py
-uv run ./tests.py TestGitCommands.test_git_pull__A
+Old test file; will be updated.
 """
 
 import logging
@@ -37,11 +28,6 @@ from lib.lib_git_handler import GitHandler
 
 ## set constants ----------------------------------------------------
 PROJECT_PATH: Path = this_file_path.parent
-
-
-# from lib.lib_compilation_evaluator import (  # noqa: E402 (disables linter warning that this import is not at the top)
-#     CompiledComparator,
-# )
 
 
 class TestGitCommands(unittest.TestCase):
