@@ -1,3 +1,7 @@
+"""
+TODO: remove dotenv dependency, and pass in necessary data to Emailer constructor.
+"""
+
 import json
 import logging
 import os
