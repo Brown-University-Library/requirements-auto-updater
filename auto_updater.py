@@ -213,6 +213,7 @@ def update_group_and_permissions(project_path: Path, backup_file_path: Path, gro
 def manage_update(project_path_str: str) -> None:
     """
     Main function to manage the update process for the project's dependencies.
+    Note that `project_path_str` is not this project's path, but the path to the project to be updated.
     Calls various helper functions to validate, compile, compare, sync, and update permissions.
     """
     log.debug('starting manage_update()')
