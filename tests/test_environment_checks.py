@@ -189,6 +189,43 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('Error: git-status check failed.', str(ctx.exception))
                 mock_send.assert_called_once()
 
+    ## environment-type checks ---------------------------------------
+
+    def test_determine_environment_type_valid_value(self) -> None:
+        """
+        Checks environment-type mapping from hostname with valid pyproject.toml.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            # write a minimal, valid pyproject.toml with dependency-groups
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            production = ["pkgB>=1.0"]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+
+            cases = [
+                ('dev-ci-01', 'staging'),
+                ('qa-host', 'staging'),
+                ('prod-01', 'production'),
+                ('laptop', 'local'),
+            ]
+            for hostname, expected in cases:
+                with self.subTest(hostname=hostname, expected=expected):
+                    with patch('lib.lib_environment_checker.subprocess.check_output', return_value=hostname + '\n'):
+                        with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                            result = lib_environment_checker.determine_environment_type(
+                                project_path, project_email_addresses
+                            )
+                            self.assertEqual(expected, result)
+                            mock_send.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()
