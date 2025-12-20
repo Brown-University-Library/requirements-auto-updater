@@ -92,10 +92,7 @@ Done.
 
 3) `lib_environment_checker.check_branch(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None`
 
-- Happy path:
-  - Use a directory structured like a git repo only for `HEAD` (copy `tests/sample_files/git_head_main/.git/HEAD`). Expect no exception.
-- Failure path:
-  - Use `git_head_feature/.git/HEAD` or omit `.git` entirely. Assert that an exception is raised.
+Done.
 
 4) `lib_environment_checker.check_git_status(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None`
 
