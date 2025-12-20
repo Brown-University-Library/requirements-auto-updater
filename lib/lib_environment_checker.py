@@ -158,20 +158,14 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     Returns 'local', 'staging', or 'production'.
     """
     log.info('::: determining environment type ----------')
-    # ## ensure all .in files exist -----------------------------------
-    # for filename in ['local.in', 'staging.in', 'production.in']:
-    #     full_path: Path = project_path / 'requirements' / filename
-    #     try:
-    #         assert full_path.exists()
-    #     except AssertionError:
-    #         message = f'Error: {full_path} not found'
-    #         log.exception(message)
-    #         ## email project-admins ---------------------------------
-    #         emailer = Emailer(project_path)
-    #         email_message: str = emailer.create_setup_problem_message(message)
-    #         emailer.send_email(project_email_addresses, email_message)
-    #         ## raise exception --------------------------------------
-    #         raise Exception(message)
+    ## check dependency-groups --------------------------------------
+    """
+    To implement...
+    - read pyproject.toml file
+    - ensure it has a `[dependency-groups]` section
+    - ensure the `[dependency-groups]` section contains a `staging` and `production` key.
+    """
+
     ## determine proper one -----------------------------------------
     hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
     if hostname.startswith('d') or hostname.startswith('q'):
