@@ -137,6 +137,9 @@ class TestEnvironmentChecks(unittest.TestCase):
                 mock_send.assert_called_once()
 
     ## git status checks ---------------------------------------------
+    """
+    These actually use git, since the function being tested actually uses git.
+    """
 
     @unittest.skipUnless(shutil.which('git'), 'git is required for git-status tests')
     def test_check_git_status_clean_ok(self) -> None:
