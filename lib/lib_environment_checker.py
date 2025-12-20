@@ -6,6 +6,7 @@ Contains code for checking the target-project's environment.
 import json
 import logging
 import subprocess
+import tomllib
 from pathlib import Path
 
 import dotenv
@@ -159,12 +160,42 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     """
     log.info('::: determining environment type ----------')
     ## check dependency-groups --------------------------------------
-    """
-    To implement...
-    - read pyproject.toml file
-    - ensure it has a `[dependency-groups]` section
-    - ensure the `[dependency-groups]` section contains a `staging` and `production` key.
-    """
+    try:
+        ## confirm pyproject.toml exists ----------------------------
+        pyproject_path: Path = project_path / 'pyproject.toml'
+        if not pyproject_path.exists():
+            message = f'Error: Missing pyproject.toml at ``{pyproject_path}``'
+            log.exception(message)
+            emailer = Emailer(project_path)
+            email_message: str = emailer.create_setup_problem_message(message)
+            emailer.send_email(project_email_addresses, email_message)
+            raise Exception(message)
+        ## confirm pyproject.toml has dependency-groups -------------
+        with pyproject_path.open('rb') as f:
+            pyproject: dict = tomllib.load(f)
+        dep_groups: dict | None = pyproject.get('dependency-groups')  # type: ignore[assignment]
+        if not isinstance(dep_groups, dict):
+            message = 'Error: `[dependency-groups]` section missing from pyproject.toml'
+            log.exception(message)
+            emailer = Emailer(project_path)
+            email_message: str = emailer.create_setup_problem_message(message)
+            emailer.send_email(project_email_addresses, email_message)
+            raise Exception(message)
+        ## confirm expected groups ----------------------------------
+        required_keys: list[str] = ['staging', 'production']
+        missing: list[str] = [k for k in required_keys if k not in dep_groups]
+        if missing:
+            message = 'Error: `[dependency-groups]` in pyproject.toml is missing required key(s): ' + ', '.join(missing)
+            log.exception(message)
+            emailer = Emailer(project_path)
+            email_message: str = emailer.create_setup_problem_message(message)
+            emailer.send_email(project_email_addresses, email_message)
+            raise Exception(message)
+        log.info('ok / pyproject.toml dependency-groups validated')
+    except Exception:
+        # exception already logged and emailed above if it's a validation error;
+        # for unexpected issues, propagate after logging.
+        raise
 
     ## determine proper one -----------------------------------------
     hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
