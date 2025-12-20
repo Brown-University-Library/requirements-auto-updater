@@ -4,6 +4,8 @@ Tests for environment checks in `lib_environment_checker`.
 
 import logging
 import os
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -132,6 +134,56 @@ class TestEnvironmentChecks(unittest.TestCase):
                 with self.assertRaises(Exception) as ctx:
                     lib_environment_checker.check_branch(project_path, project_email_addresses)
                 self.assertIn('Error: Project is on branch', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    ## git status checks ---------------------------------------------
+
+    @unittest.skipUnless(shutil.which('git'), 'git is required for git-status tests')
+    def test_check_git_status_clean_ok(self) -> None:
+        """
+        Checks clean git status -- passes without email or exception.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            # initialize git repo
+            subprocess.check_call(['git', 'init'], cwd=project_path)
+            subprocess.check_call(['git', 'config', 'user.name', 'Test User'], cwd=project_path)
+            subprocess.check_call(['git', 'config', 'user.email', 'test@example.com'], cwd=project_path)
+            # create a tracked file and commit
+            (project_path / 'README.md').write_text('# Test Repo\n', encoding='utf-8')
+            subprocess.check_call(['git', 'add', 'README.md'], cwd=project_path)
+            subprocess.check_call(['git', 'commit', '-m', 'init'], cwd=project_path)
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            try:
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    self.assertIsNone(lib_environment_checker.check_git_status(project_path, project_email_addresses))
+                    mock_send.assert_not_called()
+            except Exception as exc:
+                self.fail(f'Unexpected exception raised: {exc!r}')
+
+    @unittest.skipUnless(shutil.which('git'), 'git is required for git-status tests')
+    def test_check_git_status_dirty_raises(self) -> None:
+        """
+        Checks dirty git status -- raises and triggers email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            # initialize git repo
+            subprocess.check_call(['git', 'init'], cwd=project_path)
+            subprocess.check_call(['git', 'config', 'user.name', 'Test User'], cwd=project_path)
+            subprocess.check_call(['git', 'config', 'user.email', 'test@example.com'], cwd=project_path)
+            # create a tracked file and commit
+            test_file = project_path / 'README.md'
+            test_file.write_text('# Test Repo\n', encoding='utf-8')
+            subprocess.check_call(['git', 'add', 'README.md'], cwd=project_path)
+            subprocess.check_call(['git', 'commit', '-m', 'init'], cwd=project_path)
+            # make the repo dirty
+            test_file.write_text('# Test Repo\nmodified\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.check_git_status(project_path, project_email_addresses)
+                self.assertIn('Error: git-status check failed.', str(ctx.exception))
                 mock_send.assert_called_once()
 
 
