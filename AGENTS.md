@@ -19,6 +19,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 - Run a script (example): `uv run ./path_to_script.py --help`
 - Run tests (required for changes that affect behavior): 
     - `uv run ./run_tests.py`
+        - Note that `run_tests.py` has usage instructions about how to run more granular tests.
     - if `run_tests.py` does not exist, use `uv run -m unittest discover -v`
 
 If a command fails due to missing context, inspect the repository for existing documented commands (README "Usage") and prefer those.
