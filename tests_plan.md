@@ -100,8 +100,10 @@ Done.
 
 5) `lib_environment_checker.determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str`
 
-- No mocks for hostname. Assert return value is one of `{ "local", "staging", "production" }`.
-- Keep `tests/test_main.py::test_determine_environment_type` if desired; the new test should be environment-agnostic.
+- Happy path:
+  - TBD
+- Failure path:
+  - TBD
 
 6) `lib_environment_checker.validate_uv_path(uv_path: Path, project_path: Path) -> None`
 
