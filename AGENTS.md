@@ -65,6 +65,7 @@ If a command fails due to missing context, inspect the repository for existing d
     ```
   - Avoid: `"""Parse ..."""`
 - Start test-function docstring-text with "Checks..."
+- For header-comments, in functions, start the comment with two hashes (e.g., `## does this`).
 
 ### Additonal coding directives
 
