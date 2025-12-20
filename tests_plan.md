@@ -96,12 +96,7 @@ Done.
 
 4) `lib_environment_checker.check_git_status(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None`
 
-- Detail: Calls `lib.lib_git_handler.run_git_status()` which runs `git status` via subprocess; requires a real repo.
-- Happy path:
-  - In a temp dir: `git init`; set user; create file; `git add`; `git commit -m "init"`.
-  - Call `check_git_status()`; expect no exception (stdout should include "clean").
-- Failure path:
-  - Modify a tracked file without committing. Call `check_git_status()`; assert exception.
+Done.
 
 5) `lib_environment_checker.determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str`
 
