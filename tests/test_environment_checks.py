@@ -25,7 +25,7 @@ class TestEnvironmentChecks(unittest.TestCase):
     Checks the environmental-validation helpers.
     """
 
-    ## project path -------------------------------------------------
+    ## project path checks ------------------------------------------
 
     def test_validate_project_path_ok(self) -> None:
         """
@@ -47,7 +47,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             self.assertIn('Error: The provided project_path', str(ctx.exception))
             mock_send.assert_called_once()  # verifies that the email attempt was made
 
-    ## email addresses ----------------------------------------------
+    ## email address checks -----------------------------------------
 
     def test_determine_project_email_addresses_ok(self) -> None:
         """
@@ -92,7 +92,7 @@ class TestEnvironmentChecks(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
-    ## branch checks -------------------------------------------------
+    ## branch checks ------------------------------------------------
 
     def test_check_branch_main_ok(self) -> None:
         """
