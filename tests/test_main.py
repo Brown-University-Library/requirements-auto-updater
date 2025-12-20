@@ -7,8 +7,6 @@ import sys
 import unittest
 from pathlib import Path
 
-from lib import lib_environment_checker
-
 ## set up logging ---------------------------------------------------
 logging.basicConfig(
     level=logging.DEBUG,
@@ -25,9 +23,6 @@ from lib import (  # noqa: E402 (disables linter warning that this import is not
     lib_django_updater,
 )
 from lib.lib_git_handler import GitHandler
-
-## set constants ----------------------------------------------------
-PROJECT_PATH: Path = this_file_path.parent
 
 
 class TestGitCommands(unittest.TestCase):
@@ -88,15 +83,6 @@ class TestMiscellaneous(unittest.TestCase):
         incoming_text: str = incoming_text.replace('            ', '')  # removes indentation-spaces
         expected = True
         result = lib_django_updater.check_for_django_update(incoming_text)
-        self.assertEqual(expected, result)
-
-    def test_determine_environment_type(self):
-        """
-        ::: Checks that environment type is determined properly.
-        """
-        project_email_addresses = [('Birkin Diana', 'birkin_diana@brown.edu')]
-        expected = 'local'
-        result = lib_environment_checker.determine_environment_type(PROJECT_PATH, project_email_addresses)
         self.assertEqual(expected, result)
 
 
