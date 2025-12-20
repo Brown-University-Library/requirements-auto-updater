@@ -251,7 +251,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             name = "example"
             version = "0.0.0"
             """
-            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + "\n", encoding='utf-8')
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
                 with self.assertRaises(Exception) as ctx:
@@ -273,7 +273,7 @@ class TestEnvironmentChecks(unittest.TestCase):
 
             dependency-groups = "oops"
             """
-            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + "\n", encoding='utf-8')
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
                 with self.assertRaises(Exception) as ctx:
@@ -296,7 +296,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             [dependency-groups]
             staging = ["pkgA>=1.0"]
             """
-            (project_path_a / 'pyproject.toml').write_text(pyproject_content_a.strip() + "\n", encoding='utf-8')
+            (project_path_a / 'pyproject.toml').write_text(pyproject_content_a.strip() + '\n', encoding='utf-8')
             pea = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_a:
                 with self.assertRaises(Exception) as ctx_a:
@@ -315,7 +315,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             [dependency-groups]
             production = ["pkgB>=1.0"]
             """
-            (project_path_b / 'pyproject.toml').write_text(pyproject_content_b.strip() + "\n", encoding='utf-8')
+            (project_path_b / 'pyproject.toml').write_text(pyproject_content_b.strip() + '\n', encoding='utf-8')
             peb = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_b:
                 with self.assertRaises(Exception) as ctx_b:
