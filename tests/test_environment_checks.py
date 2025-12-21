@@ -2,13 +2,13 @@
 Tests for environment checks in `lib_environment_checker`.
 """
 
+import grp
 import logging
 import os
 import shutil
+import stat
 import subprocess
 import unittest
-import grp
-import stat
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -150,11 +150,11 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            # initialize git repo
+            ## initialize git repo
             subprocess.check_call(['git', 'init'], cwd=project_path)
             subprocess.check_call(['git', 'config', 'user.name', 'Test User'], cwd=project_path)
             subprocess.check_call(['git', 'config', 'user.email', 'test@example.com'], cwd=project_path)
-            # create a tracked file and commit
+            ## create a tracked file and commit
             (project_path / 'README.md').write_text('# Test Repo\n', encoding='utf-8')
             subprocess.check_call(['git', 'add', 'README.md'], cwd=project_path)
             subprocess.check_call(['git', 'commit', '-m', 'init'], cwd=project_path)
@@ -173,16 +173,16 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            # initialize git repo
+            ## initialize git repo
             subprocess.check_call(['git', 'init'], cwd=project_path)
             subprocess.check_call(['git', 'config', 'user.name', 'Test User'], cwd=project_path)
             subprocess.check_call(['git', 'config', 'user.email', 'test@example.com'], cwd=project_path)
-            # create a tracked file and commit
+            ## create a tracked file and commit
             test_file = project_path / 'README.md'
             test_file.write_text('# Test Repo\n', encoding='utf-8')
             subprocess.check_call(['git', 'add', 'README.md'], cwd=project_path)
             subprocess.check_call(['git', 'commit', '-m', 'init'], cwd=project_path)
-            # make the repo dirty
+            ## make the repo dirty
             test_file.write_text('# Test Repo\nmodified\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
@@ -199,7 +199,7 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            # write a minimal, valid pyproject.toml with dependency-groups
+            ## write a minimal, valid pyproject.toml with dependency-groups
             pyproject_content = """
             [project]
             name = "example"
@@ -247,7 +247,7 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            # write pyproject.toml without dependency-groups
+            ## write pyproject.toml without dependency-groups
             pyproject_content = """
             [project]
             name = "example"
@@ -287,7 +287,7 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         Checks error when required keys in `[dependency-groups]` are missing.
         """
-        # case A: missing production
+        ## case A: missing production
         with TemporaryDirectory() as temp_dir_a:
             project_path_a = Path(temp_dir_a)
             pyproject_content_a = """
@@ -306,7 +306,7 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('missing required key(s): production', str(ctx_a.exception))
                 mock_send_a.assert_called_once()
 
-        # case B: missing staging
+        ## case B: missing staging
         with TemporaryDirectory() as temp_dir_b:
             project_path_b = Path(temp_dir_b)
             pyproject_content_b = """
@@ -361,11 +361,11 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            # create a file so ls -l returns entries with a group
+            ## create a file so ls -l returns entries with a group
             sample_file = project_path / 'example.txt'
             sample_file.write_text('data', encoding='utf-8')
 
-            # compute expected group via grp and the file's gid
+            ## compute expected group via grp and the file's gid
             expected_group = grp.getgrgid(os.stat(sample_file).st_gid).gr_name
 
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -383,7 +383,7 @@ class TestEnvironmentChecks(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            # leave directory empty so `ls -l` yields no file entries
+            ## leave directory empty so `ls -l` yields no file entries
             project_email_addresses = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
                 with self.assertRaises(Exception) as ctx:
@@ -402,22 +402,22 @@ class TestEnvironmentChecks(unittest.TestCase):
             project_path = parent_path / 'proj'
             project_path.mkdir(parents=True, exist_ok=True)
 
-            # set up .venv with a file
+            ## set up .venv with a file
             venv_dir = project_path / '.venv'
             venv_dir.mkdir(parents=True, exist_ok=True)
             venv_file = venv_dir / 'file.txt'
             venv_file.write_text('content', encoding='utf-8')
 
-            # make group-writable on dir and file
+            ## make group-writable on dir and file
             venv_dir.chmod(venv_dir.stat().st_mode | stat.S_IWGRP)
             venv_file.chmod(venv_file.stat().st_mode | stat.S_IWGRP)
 
-            # create uv.lock.bak in parent of project_path and make group-writable
+            ## create uv.lock.bak in parent of project_path and make group-writable
             uv_bak = parent_path / 'uv.lock.bak'
             uv_bak.write_text('backup', encoding='utf-8')
             uv_bak.chmod(uv_bak.stat().st_mode | stat.S_IWGRP)
 
-            # determine expected_group from one of the files
+            ## determine expected_group from one of the files
             expected_group = grp.getgrgid(os.stat(venv_file).st_gid).gr_name
 
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -441,7 +441,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             project_path = parent_path / 'proj'
             project_path.mkdir(parents=True, exist_ok=True)
 
-            # set up .venv with two files
+            ## set up .venv with two files
             venv_dir = project_path / '.venv'
             venv_dir.mkdir(parents=True, exist_ok=True)
             good_file = venv_dir / 'good.txt'
@@ -449,19 +449,19 @@ class TestEnvironmentChecks(unittest.TestCase):
             good_file.write_text('ok', encoding='utf-8')
             bad_file.write_text('not-ok', encoding='utf-8')
 
-            # make group-writable on dir and good file
+            ## make group-writable on dir and good file
             venv_dir.chmod(venv_dir.stat().st_mode | stat.S_IWGRP)
             good_file.chmod(good_file.stat().st_mode | stat.S_IWGRP)
 
-            # ensure bad_file is NOT group-writable
+            ## ensure bad_file is NOT group-writable
             bad_file.chmod(bad_file.stat().st_mode & ~stat.S_IWGRP)
 
-            # create uv.lock.bak in parent and make group-writable
+            ## create uv.lock.bak in parent and make group-writable
             uv_bak = parent_path / 'uv.lock.bak'
             uv_bak.write_text('backup', encoding='utf-8')
             uv_bak.chmod(uv_bak.stat().st_mode | stat.S_IWGRP)
 
-            # expected group from a file
+            ## expected group from a file
             expected_group = grp.getgrgid(os.stat(good_file).st_gid).gr_name
 
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -482,33 +482,32 @@ class TestEnvironmentChecks(unittest.TestCase):
             project_path = parent_path / 'proj'
             project_path.mkdir(parents=True, exist_ok=True)
 
-            # set up .venv with a file
+            ## set up .venv with a file
             venv_dir = project_path / '.venv'
             venv_dir.mkdir(parents=True, exist_ok=True)
             vfile = venv_dir / 'file.txt'
             vfile.write_text('content', encoding='utf-8')
 
-            # ensure group-writable so only group mismatch causes failure
+            ## ensure group-writable so only group mismatch causes failure
             venv_dir.chmod(venv_dir.stat().st_mode | stat.S_IWGRP)
             vfile.chmod(vfile.stat().st_mode | stat.S_IWGRP)
 
-            # create uv.lock.bak in parent and make group-writable
+            ## create uv.lock.bak in parent and make group-writable
             uv_bak = parent_path / 'uv.lock.bak'
             uv_bak.write_text('backup', encoding='utf-8')
             uv_bak.chmod(uv_bak.stat().st_mode | stat.S_IWGRP)
 
-            # pick a wrong expected group (different from actual)
+            ## pick a wrong expected group (different from actual)
             actual_group = grp.getgrgid(os.stat(vfile).st_gid).gr_name
             wrong_group = actual_group + '_not'
 
             project_email_addresses = [('Admin', 'admin@example.com')]
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
                 with self.assertRaises(Exception) as ctx:
-                    lib_environment_checker.check_group_and_permissions(
-                        project_path, wrong_group, project_email_addresses
-                    )
+                    lib_environment_checker.check_group_and_permissions(project_path, wrong_group, project_email_addresses)
                 self.assertIn('Error: Group/Permissions check failed.', str(ctx.exception))
                 mock_send.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()
