@@ -473,6 +473,43 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('Error: Group/Permissions check failed.', str(ctx.exception))
                 mock_send.assert_called_once()
 
+    def test_check_group_and_permissions_wrong_group_raises(self) -> None:
+        """
+        Checks that mismatched group ownership triggers an error and email.
+        """
+        with TemporaryDirectory() as parent_dir:
+            parent_path = Path(parent_dir)
+            project_path = parent_path / 'proj'
+            project_path.mkdir(parents=True, exist_ok=True)
+
+            # set up .venv with a file
+            venv_dir = project_path / '.venv'
+            venv_dir.mkdir(parents=True, exist_ok=True)
+            vfile = venv_dir / 'file.txt'
+            vfile.write_text('content', encoding='utf-8')
+
+            # ensure group-writable so only group mismatch causes failure
+            venv_dir.chmod(venv_dir.stat().st_mode | stat.S_IWGRP)
+            vfile.chmod(vfile.stat().st_mode | stat.S_IWGRP)
+
+            # create uv.lock.bak in parent and make group-writable
+            uv_bak = parent_path / 'uv.lock.bak'
+            uv_bak.write_text('backup', encoding='utf-8')
+            uv_bak.chmod(uv_bak.stat().st_mode | stat.S_IWGRP)
+
+            # pick a wrong expected group (different from actual)
+            actual_group = grp.getgrgid(os.stat(vfile).st_gid).gr_name
+            wrong_group = actual_group + '_not'
+
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.check_group_and_permissions(
+                        project_path, wrong_group, project_email_addresses
+                    )
+                self.assertIn('Error: Group/Permissions check failed.', str(ctx.exception))
+                mock_send.assert_called_once()
+
 if __name__ == '__main__':
     unittest.main()
 
