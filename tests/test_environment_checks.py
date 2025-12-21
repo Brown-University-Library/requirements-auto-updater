@@ -323,6 +323,33 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('missing required key(s): staging', str(ctx_b.exception))
                 mock_send_b.assert_called_once()
 
+    ## uv-path checks -----------------------------------------------
+
+    def test_validate_uv_path_ok(self) -> None:
+        """
+        Checks legit uv path.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            uv_path = project_path / 'uv'
+            uv_path.write_text('#!/bin/sh\n', encoding='utf-8')  # create a dummy file
+            try:
+                self.assertIsNone(lib_environment_checker.validate_uv_path(uv_path, project_path))
+            except Exception as exc:
+                self.fail(f'Unexpected exception raised: {exc!r}')
+
+    def test_validate_uv_path_missing_raises(self) -> None:
+        """
+        Checks missing uv path triggers email and raises.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            missing_uv = project_path / 'nope-uv'
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_uv_path(missing_uv, project_path)
+                self.assertIn('Error: The provided uv_path', str(ctx.exception))
+                mock_send.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()
