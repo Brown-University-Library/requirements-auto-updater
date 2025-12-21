@@ -391,7 +391,7 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('Error inferring group:', str(ctx.exception))
                 mock_send.assert_called_once()
 
-    ## group and permissions checks ----------------------------------
+    ## permissions checks -------------------------------------------
 
     def test_check_group_and_permissions_ok(self) -> None:
         """
