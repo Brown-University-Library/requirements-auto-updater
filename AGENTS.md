@@ -20,7 +20,6 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 - Run tests (required for changes that affect behavior): 
     - `uv run ./run_tests.py`
         - Note that `run_tests.py` has usage instructions about how to run more granular tests.
-    - if `run_tests.py` does not exist, use `uv run -m unittest discover -v`
 
 If a command fails due to missing context, inspect the repository for existing documented commands (README "Usage") and prefer those.
 
@@ -74,8 +73,9 @@ If a command fails due to missing context, inspect the repository for existing d
 
 ## Tests
 
-- Use the standard library `unittest` framework (not pytest).
-- New behavior should usually come with a focused `unittest.TestCase` covering:
+- Use the standard library `unittest` framework (not pytest) for non-Django projects.
+- Use Django's test framework for Django projects.
+- New behavior should usually come with a focused test covering:
   - the happy path
   - at least one failure / edge case
 
@@ -86,7 +86,7 @@ When implementing a change (especially from an issue/task):
 
 1. Read relevant surrounding code and match existing conventions.
 2. Make the smallest correct change that satisfies the request.
-3. Update tests and run: `uv run ./run_tests.py`, or if that does not exist, `uv run -m unittest discover -v`
+3. Update tests and run: `uv run ./run_tests.py`
 4. If you cannot run tests in your environment, still write/adjust tests and state what you would run.
 
 
