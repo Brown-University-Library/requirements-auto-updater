@@ -11,12 +11,13 @@ class TestDjangoUpdater(unittest.TestCase):
         django_addition_diff_text = """
         --- a/uv.lock
         +++ b/uv.lock
-        @@ -1,3 +1,4 @@
+        @@ -1,4 +1,4 @@
          version = 1
          [project]
         -django==5.1.2
-        +somepkg==1.1.0
         +django==5.1.3
+        -somepkg==1.0.0
+        +somepkg==1.1.0
         """.strip()
         self.assertTrue(check_for_django_update(django_addition_diff_text))
 
