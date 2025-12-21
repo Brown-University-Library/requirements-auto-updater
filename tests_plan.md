@@ -112,15 +112,7 @@ Done.
 
 8) `lib_environment_checker.check_group_and_permissions(project_path: Path, expected_group: str, project_email_addresses: list[tuple[str, str]]) -> None`
 
-- Paths examined:
-  - `project_path / '.venv'`
-  - `project_path / '../uv.lock.bak'`
-- Happy path:
-  - Create `proj_dir/.venv/` and a file; set group-write on dirs/files.
-  - Create `uv.lock.bak` in the parent of `proj_dir` and set group-write.
-  - Determine `expected_group` via `grp`; call function; expect no exception.
-- Failure path:
-  - Remove group-write from one `.venv` file; call function; assert exception.
+Done.
 
 ## Test module structure (high level)
 
