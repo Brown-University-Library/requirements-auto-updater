@@ -7,6 +7,8 @@ import os
 import shutil
 import subprocess
 import unittest
+import grp
+import stat
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -349,6 +351,126 @@ class TestEnvironmentChecks(unittest.TestCase):
                 with self.assertRaises(Exception) as ctx:
                     lib_environment_checker.validate_uv_path(missing_uv, project_path)
                 self.assertIn('Error: The provided uv_path', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    ## group-determination checks ------------------------------------
+
+    def test_determine_group_ok(self) -> None:
+        """
+        Checks group inference from a directory with at least one file.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            # create a file so ls -l returns entries with a group
+            sample_file = project_path / 'example.txt'
+            sample_file.write_text('data', encoding='utf-8')
+
+            # compute expected group via grp and the file's gid
+            expected_group = grp.getgrgid(os.stat(sample_file).st_gid).gr_name
+
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            try:
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    result = lib_environment_checker.determine_group(project_path, project_email_addresses)
+                    self.assertEqual(expected_group, result)
+                    mock_send.assert_not_called()
+            except Exception as exc:
+                self.fail(f'Unexpected exception raised: {exc!r}')
+
+    def test_determine_group_invalid_raises(self) -> None:
+        """
+        Checks error on empty directory where no group can be inferred.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            # leave directory empty so `ls -l` yields no file entries
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.determine_group(project_path, project_email_addresses)
+                self.assertIn('Error inferring group:', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    ## group and permissions checks ----------------------------------
+
+    def test_check_group_and_permissions_ok(self) -> None:
+        """
+        Checks that group and permissions validation passes when everything is group-writable and owned by expected group.
+        """
+        with TemporaryDirectory() as parent_dir:
+            parent_path = Path(parent_dir)
+            project_path = parent_path / 'proj'
+            project_path.mkdir(parents=True, exist_ok=True)
+
+            # set up .venv with a file
+            venv_dir = project_path / '.venv'
+            venv_dir.mkdir(parents=True, exist_ok=True)
+            venv_file = venv_dir / 'file.txt'
+            venv_file.write_text('content', encoding='utf-8')
+
+            # make group-writable on dir and file
+            venv_dir.chmod(venv_dir.stat().st_mode | stat.S_IWGRP)
+            venv_file.chmod(venv_file.stat().st_mode | stat.S_IWGRP)
+
+            # create uv.lock.bak in parent of project_path and make group-writable
+            uv_bak = parent_path / 'uv.lock.bak'
+            uv_bak.write_text('backup', encoding='utf-8')
+            uv_bak.chmod(uv_bak.stat().st_mode | stat.S_IWGRP)
+
+            # determine expected_group from one of the files
+            expected_group = grp.getgrgid(os.stat(venv_file).st_gid).gr_name
+
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            try:
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    self.assertIsNone(
+                        lib_environment_checker.check_group_and_permissions(
+                            project_path, expected_group, project_email_addresses
+                        )
+                    )
+                    mock_send.assert_not_called()
+            except Exception as exc:
+                self.fail(f'Unexpected exception raised: {exc!r}')
+
+    def test_check_group_and_permissions_perm_issue_raises(self) -> None:
+        """
+        Checks that missing group-write on a .venv file triggers an error and email.
+        """
+        with TemporaryDirectory() as parent_dir:
+            parent_path = Path(parent_dir)
+            project_path = parent_path / 'proj'
+            project_path.mkdir(parents=True, exist_ok=True)
+
+            # set up .venv with two files
+            venv_dir = project_path / '.venv'
+            venv_dir.mkdir(parents=True, exist_ok=True)
+            good_file = venv_dir / 'good.txt'
+            bad_file = venv_dir / 'bad.txt'
+            good_file.write_text('ok', encoding='utf-8')
+            bad_file.write_text('not-ok', encoding='utf-8')
+
+            # make group-writable on dir and good file
+            venv_dir.chmod(venv_dir.stat().st_mode | stat.S_IWGRP)
+            good_file.chmod(good_file.stat().st_mode | stat.S_IWGRP)
+
+            # ensure bad_file is NOT group-writable
+            bad_file.chmod(bad_file.stat().st_mode & ~stat.S_IWGRP)
+
+            # create uv.lock.bak in parent and make group-writable
+            uv_bak = parent_path / 'uv.lock.bak'
+            uv_bak.write_text('backup', encoding='utf-8')
+            uv_bak.chmod(uv_bak.stat().st_mode | stat.S_IWGRP)
+
+            # expected group from a file
+            expected_group = grp.getgrgid(os.stat(good_file).st_gid).gr_name
+
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.check_group_and_permissions(
+                        project_path, expected_group, project_email_addresses
+                    )
+                self.assertIn('Error: Group/Permissions check failed.', str(ctx.exception))
                 mock_send.assert_called_once()
 
 if __name__ == '__main__':
