@@ -1,3 +1,18 @@
+"""
+This module provides two similarly structured test runners that wrap the same
+"run tests" command for different phases of the auto-update workflow:
+
+- run_initial_tests(uv_path, project_path, project_email_addresses):
+  Runs the project's tests before any updates to validate that the environment
+  is healthy and the script can proceed. On failure, emails project admins and
+  raises an exception to halt the auto-update.
+
+- run_followup_tests(uv_path, project_path):
+  Runs the tests after the virtualenv has been updated. On failure, logs and
+  returns a message so processing can continue without raising an exception (e.g., emailing diffs and
+  updating permissions).
+"""
+
 import logging
 import subprocess
 from pathlib import Path
@@ -58,6 +73,33 @@ def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
         log.info('ok / followup tests passed')
         return_val = None
     log.debug(f'return_val, ``{return_val}``')
+    return return_val
+
+
+def make_run_tests_command(project_path: Path, uv_path: Path) -> list[str]:
+    """
+    Prepares the run_tests command.
+    Called by run_initial_tests() and run_followup_tests().
+    """
+    run_tests_path = project_path / 'run_tests.py'  # no need to resolve; project_path is already resolved
+    command = [str(uv_path), 'run', str(run_tests_path)]
+    log.debug(f'command, ``{command}``')
+    return command
+
+
+def run_run_tests_command(command: list, project_path: Path) -> tuple[bool, dict]:
+    """
+    Runs subprocess command and returns tuple (ok, data_dict).
+    (Based on similar to `Go` style convention (err, data).)
+    Called by run_initial_tests() and run_followup_tests().
+    """
+    log.debug(f'running with cwd arg, ``{project_path}``')
+    result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
+    log.debug(f'result: {result}')
+    ok = True if result.returncode == 0 else False
+    output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+    return_val = (ok, output)
+    log.debug(f'return_val: {return_val}')
     return return_val
 
 
@@ -152,29 +194,3 @@ def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
 #     command = [str(python_path), str(run_tests_path)]
 #     log.debug(f'command, ``{command}``')
 #     return command
-
-
-def make_run_tests_command(project_path: Path, uv_path: Path) -> list[str]:
-    """
-    Prepares the run_tests command.
-    Called by run_initial_tests() and run_followup_tests().
-    """
-    run_tests_path = project_path / 'run_tests.py'  # no need to resolve; project_path is already resolved
-    command = [str(uv_path), 'run', str(run_tests_path)]
-    log.debug(f'command, ``{command}``')
-    return command
-
-
-def run_run_tests_command(command: list, project_path: Path) -> tuple[bool, dict]:
-    """
-    Runs subprocess command and returns tuple (ok, data_dict).
-    (Based on similar to `Go` style convention (err, data).)
-    """
-    log.debug(f'running with cwd arg, ``{project_path}``')
-    result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
-    log.debug(f'result: {result}')
-    ok = True if result.returncode == 0 else False
-    output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
-    return_val = (ok, output)
-    log.debug(f'return_val: {return_val}')
-    return return_val
