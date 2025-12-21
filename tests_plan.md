@@ -108,11 +108,7 @@ Done.
 
 7) `lib_environment_checker.determine_group(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str`
 
-- Happy path:
-  - Create temp dir and at least one file so `ls -l` returns entries with a group.
-  - Compute expected group via `grp.getgrgid(os.stat(file).st_gid).gr_name` and assert equality.
-- Failure path:
-  - Non-existent dir or empty dir (so `ls -l` yields no file entries). Assert exception.
+Done.
 
 8) `lib_environment_checker.check_group_and_permissions(project_path: Path, expected_group: str, project_email_addresses: list[tuple[str, str]]) -> None`
 
