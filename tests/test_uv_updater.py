@@ -1,9 +1,18 @@
 import datetime
+import logging
+import tempfile
 import unittest
 from pathlib import Path
-import tempfile
 
 from lib.lib_uv_updater import UvUpdater
+
+## set up logging ---------------------------------------------------
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
+    datefmt='%d/%b/%Y %H:%M:%S',
+)
+log = logging.getLogger(__name__)
 
 
 class TestUvUpdater(unittest.TestCase):
@@ -26,22 +35,15 @@ class TestUvUpdater(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             uv_lock_path = tmp_path / 'uv.lock'
+            log.debug(f'uv_lock_path: ``{uv_lock_path}``')
             uv_lock_backup_path = tmp_path / 'uv.lock.bak'
+            log.debug(f'uv_lock_backup_path: ``{uv_lock_backup_path}``')
 
-            # previous (backup) content
-            uv_lock_backup_path.write_text(
-                "version = 1\n"
-                "[package]\n"
-                "foo = \"1.0.0\"\n"
-            )
+            ## previous (backup) content
+            uv_lock_backup_path.write_text('version = 1\n[package]\nfoo = "1.0.0"\n')
 
-            # current content (changed)
-            uv_lock_path.write_text(
-                "version = 1\n"
-                "[package]\n"
-                "foo = \"1.1.0\"\n"
-                "bar = \"0.2.0\"\n"
-            )
+            ## current content (changed)
+            uv_lock_path.write_text('version = 1\n[package]\nfoo = "1.1.0"\nbar = "0.2.0"\n')
 
             result = updater.compare_uv_lock_files(uv_lock_path, uv_lock_backup_path)
 
@@ -50,11 +52,11 @@ class TestUvUpdater(unittest.TestCase):
             self.assertIn('diff', result)
             self.assertTrue(result['changes'])
             diff_text: str = result['diff']
-            self.assertNotEqual(diff_text.strip(), "")
-            # Expect unified diff headers to reference the two files
+            self.assertNotEqual(diff_text.strip(), '')
+            ## Expect unified diff headers to reference the two files
             self.assertIn(str(uv_lock_backup_path), diff_text)
             self.assertIn(str(uv_lock_path), diff_text)
-            # Expect to see changed line indicators
+            ## Expect to see changed line indicators
             self.assertIn('+bar = "0.2.0"', diff_text)
             self.assertIn('-foo = "1.0.0"', diff_text)
             self.assertIn('+foo = "1.1.0"', diff_text)
@@ -74,7 +76,7 @@ class TestUvUpdater(unittest.TestCase):
             result = updater.compare_uv_lock_files(uv_lock_path, missing_backup)
             self.assertIsInstance(result, dict)
             self.assertFalse(result.get('changes', True))
-            self.assertEqual(result.get('diff', None), "")
+            self.assertEqual(result.get('diff', None), '')
 
 
 if __name__ == '__main__':
