@@ -156,7 +156,7 @@ def check_git_status(project_path: Path, project_email_addresses: list[tuple[str
 def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
     """
     Infers environment type based on the system hostname.
-    Returns 'local', 'staging', or 'production'.
+    Returns 'local', 'staging', or 'prod'.
     """
     log.info('::: determining environment type ----------')
     ## check dependency-groups --------------------------------------
@@ -182,7 +182,7 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
             emailer.send_email(project_email_addresses, email_message)
             raise Exception(message)
         ## confirm expected groups ----------------------------------
-        required_keys: list[str] = ['staging', 'production']
+        required_keys: list[str] = ['staging', 'prod']
         missing: list[str] = [k for k in required_keys if k not in dep_groups]
         if missing:
             message = 'Error: `[dependency-groups]` in pyproject.toml is missing required key(s): ' + ', '.join(missing)

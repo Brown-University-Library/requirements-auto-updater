@@ -303,7 +303,7 @@ class TestEnvironmentChecks(unittest.TestCase):
             with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_a:
                 with self.assertRaises(Exception) as ctx_a:
                     lib_environment_checker.determine_environment_type(project_path_a, pea)
-                self.assertIn('missing required key(s): production', str(ctx_a.exception))
+                self.assertIn('missing required key(s): prod', str(ctx_a.exception))
                 mock_send_a.assert_called_once()
 
         ## case B: missing staging
