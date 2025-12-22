@@ -90,7 +90,7 @@ class Emailer:
         Suggestion, after fixing the problem, manually run the auto-updater script again to make sure there aren't other environmental setup issues. 
 
         Usage instructions are at:
-        <https://github.com/Brown-University-Library/auto_updater_code?tab=readme-ov-file#usage>
+        <https://github.com/Brown-University-Library/requirements-auto-updater?tab=readme-ov-file#usage>
 
         (end-of-message)
         """
