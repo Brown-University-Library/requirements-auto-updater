@@ -61,6 +61,129 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 
 
+def update_group_and_permissions(project_path: Path, backup_file_path: Path, group: str) -> None:
+    """
+    Tries to update group-ownership and group-permissions for relevant directories.
+    Intentionally does not fail if the commands fail.
+    """
+    log.info('::: updating group and permissions ----------')
+    relative_env_path: Path = project_path / '.venv'
+    venv_path: Path = relative_env_path.resolve()
+    log.debug(f'env_path: ``{venv_path}``')
+    for path in [venv_path, backup_file_path]:
+        log.debug(f'updating group and permissions for path: ``{path}``')
+        chgrp_result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['chgrp', '-R', group, str(path)], capture_output=True, text=True, check=False
+        )
+        log.debug(f'chgrp_result: ``{chgrp_result}``')
+        chmod_result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['chmod', '-R', 'g=rwX', str(path)], capture_output=True, text=True, check=False
+        )
+        log.debug(f'chmod_result: ``{chmod_result}``')
+    log.info('ok / attempted update of group and permissions')
+    return
+
+
+## ------------------------------------------------------------------
+## main manager function --------------------------------------------
+## ------------------------------------------------------------------
+
+
+def manage_update(project_path_str: str) -> None:
+    """
+    Main function to manage the update process for the project's dependencies.
+    Note that `project_path_str` is not this project's path, but the path to the project to be updated.
+    Calls various helper functions to validate, compile, compare, sync, and update permissions.
+    """
+    log.debug('starting manage_update()')
+
+    ## ::: run environmental checks :::
+    """
+    All environmental checks that can fail will, on failure, email relevant admins, then exit.
+    """
+    ## validate project path ----------------------------------------
+    project_path: Path = Path(project_path_str).resolve()  # ensures an absolute path now
+    lib_environment_checker.validate_project_path(project_path)
+    ## cd to project dir --------------------------------------------
+    os.chdir(project_path)
+    ## get email addresses ------------------------------------------
+    project_email_addresses: list[tuple[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
+    ## check branch -------------------------------------------------
+    lib_environment_checker.check_branch(project_path, project_email_addresses)
+    ## check git status ---------------------------------------------
+    lib_environment_checker.check_git_status(project_path, project_email_addresses)
+    ## get environment-type -----------------------------------------
+    environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
+    ## validate uv path -----------------------------------------------
+    lib_environment_checker.validate_uv_path(uv_path, project_path)
+    ## get group ----------------------------------------------------
+    group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
+    ## check for correct group and group-write permissions ---------
+    lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
+
+    ## ::: initial tests :::
+    run_initial_tests(uv_path, project_path, project_email_addresses)  # emails admins and exits on failure
+
+    ## ::: update :::
+    ## backup uv.lock -----------------------------------------------
+    uv_updater = UvUpdater()
+    uv_lock_backup_path: Path = uv_updater.backup_uv_lock(uv_path, project_path)
+    ## run uv sync --------------------------------------------------
+    uv_updater.manage_sync(uv_path, project_path, environment_type)
+    ## check if new uv.lock file is different -----------------------
+    diff_text: str | None = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
+
+    ## ::: act on differences :::
+    if diff_text:
+        ## check for django update ----------------------------------
+        followup_collectstatic_problems: None | str = None
+        django_update: bool = lib_django_updater.check_for_django_update(diff_text)
+        if django_update:
+            followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path, uv_path)
+            subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
+        ## run post-update tests ------------------------------------
+        followup_tests_problems: None | str = None
+        followup_tests_problems = run_followup_tests(uv_path, project_path)
+
+        ## git commit -----------------------------------------------
+        git_handler = GitHandler()
+        git_handler.manage_git(project_path, diff_text)
+
+        ## send diff email ------------------------------------------
+        followup_problems = {
+            'collectstatic_problems': followup_collectstatic_problems,
+            'test_problems': followup_tests_problems,
+        }
+        log.debug(f'followup_problems, ``{followup_problems}``')
+        send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
+        log.debug('email sent')
+
+    ## ::: clean up :::
+    ## try group and permissions update -----------------------------
+    update_group_and_permissions(project_path, uv_lock_backup_path, group)
+    return
+
+    ## end def manage_update()
+
+
+if __name__ == '__main__':
+    log.debug('\n\nstarting dundermain')
+
+    parser = argparse.ArgumentParser(description='Updates dependencies for the specified project')
+    parser.add_argument('--project', required=True, help='Path to the project directory')
+    try:
+        args = parser.parse_args()
+        project_path = args.project
+        log.debug(f'Project path: {project_path}')
+        manage_update(project_path)
+    except argparse.ArgumentError as e:
+        log.error(f'Argument error: {e}')
+        parser.print_help()
+        sys.exit(1)
+
+
+## older code, for reference during construction --------------------
+
 # def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
 #     """
 #     Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
@@ -180,124 +303,3 @@ log = logging.getLogger(__name__)
 #         file.writelines(content)
 #     log.info('ok / marked recent-backup as active')
 #     return
-
-
-def update_group_and_permissions(project_path: Path, backup_file_path: Path, group: str) -> None:
-    """
-    Tries to update group-ownership and group-permissions for relevant directories.
-    Intentionally does not fail if the commands fail.
-    """
-    log.info('::: updating group and permissions ----------')
-    relative_env_path: Path = project_path / '.venv'
-    venv_path: Path = relative_env_path.resolve()
-    log.debug(f'env_path: ``{venv_path}``')
-    for path in [venv_path, backup_file_path]:
-        log.debug(f'updating group and permissions for path: ``{path}``')
-        chgrp_result: subprocess.CompletedProcess[str] = subprocess.run(
-            ['chgrp', '-R', group, str(path)], capture_output=True, text=True, check=False
-        )
-        log.debug(f'chgrp_result: ``{chgrp_result}``')
-        chmod_result: subprocess.CompletedProcess[str] = subprocess.run(
-            ['chmod', '-R', 'g=rwX', str(path)], capture_output=True, text=True, check=False
-        )
-        log.debug(f'chmod_result: ``{chmod_result}``')
-    log.info('ok / attempted update of group and permissions')
-    return
-
-
-## ------------------------------------------------------------------
-## main manager function --------------------------------------------
-## ------------------------------------------------------------------
-
-
-def manage_update(project_path_str: str) -> None:
-    """
-    Main function to manage the update process for the project's dependencies.
-    Note that `project_path_str` is not this project's path, but the path to the project to be updated.
-    Calls various helper functions to validate, compile, compare, sync, and update permissions.
-    """
-    log.debug('starting manage_update()')
-
-    ## ::: run environmental checks :::
-    """
-    All environmental checks that can fail will, on failure, email relevant admins, then exit.
-    """
-    ## validate project path ----------------------------------------
-    project_path: Path = Path(project_path_str).resolve()  # ensures an absolute path now
-    lib_environment_checker.validate_project_path(project_path)
-    ## cd to project dir --------------------------------------------
-    os.chdir(project_path)
-    ## get email addresses ------------------------------------------
-    project_email_addresses: list[tuple[str, str]] = lib_environment_checker.determine_project_email_addresses(project_path)
-    ## check branch -------------------------------------------------
-    lib_environment_checker.check_branch(project_path, project_email_addresses)
-    ## check git status ---------------------------------------------
-    lib_environment_checker.check_git_status(project_path, project_email_addresses)
-    ## get environment-type -----------------------------------------
-    environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-    ## validate uv path -----------------------------------------------
-    lib_environment_checker.validate_uv_path(uv_path, project_path)
-    ## get group ----------------------------------------------------
-    group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
-    ## check for correct group and group-write permissions ---------
-    lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
-
-    ## ::: initial tests :::
-    run_initial_tests(uv_path, project_path, project_email_addresses)  # emails admins and exits on failure
-
-    ## ::: update :::
-    ## backup uv.lock -----------------------------------------------
-    uv_updater = UvUpdater()
-    uv_lock_backup_path: Path = uv_updater.backup_uv_lock(uv_path, project_path)
-    ## run uv sync --------------------------------------------------
-    uv_updater.manage_sync(uv_path, project_path, environment_type)
-    ## check if new uv.lock file is different -----------------------
-    diff_text: str | None = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
-
-    ## ::: act on differences :::
-    if diff_text:
-        ## check for django update ----------------------------------
-        followup_collectstatic_problems: None | str = None
-        django_update: bool = lib_django_updater.check_for_django_update(diff_text)
-        if django_update:
-            followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path)
-            subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
-        ## run post-update tests ------------------------------------
-        followup_tests_problems: None | str = None
-        followup_tests_problems = run_followup_tests(uv_path, project_path)
-
-        ## git commit -----------------------------------------------
-        git_handler = GitHandler()
-        git_handler.manage_git(project_path, diff_text)
-
-        ## send diff email ------------------------------------------
-        followup_problems = {
-            'collectstatic_problems': followup_collectstatic_problems,
-            'test_problems': followup_tests_problems,
-        }
-        log.debug(f'followup_problems, ``{followup_problems}``')
-        send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
-        log.debug('email sent')
-
-    ## ::: clean up :::
-    ## try group and permissions update -----------------------------
-    update_group_and_permissions(project_path, uv_lock_backup_path, group)
-    return
-
-    ## end def manage_update()
-
-
-if __name__ == '__main__':
-    log.debug('\n\nstarting dundermain')
-
-    parser = argparse.ArgumentParser(description='Updates dependencies for the specified project')
-    parser.add_argument('--project', required=True, help='Path to the project directory')
-    try:
-        args = parser.parse_args()
-        project_path = args.project
-        log.debug(f'Project path: {project_path}')
-        manage_update(project_path)
-    except argparse.ArgumentError as e:
-        log.error(f'Argument error: {e}')
-        parser.print_help()
-        sys.exit(1)

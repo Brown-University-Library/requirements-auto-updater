@@ -27,13 +27,20 @@ def check_for_django_update(incoming_text: str) -> bool:
     return return_val
 
 
-def run_collectstatic(project_path: Path) -> None | str:
+def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
     """
     Runs collectstatic command.
     """
     log.info('::: running collectstatic ----------')
     log.debug(f'cwd: {os.getcwd()}')
-    command = ['bash', '-c', 'source ../env/bin/activate && python ./manage.py collectstatic --noinput --clear']
+    command: list[str] = [
+        str(uv_path),
+        'run',
+        './manage.py',
+        'collectstatic',
+        '--noinput',
+        '--clear',
+    ]
     log.debug(f'command: {command}')
     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
     log.debug(f'result: {result}')
