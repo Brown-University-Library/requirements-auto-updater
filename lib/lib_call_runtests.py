@@ -82,7 +82,7 @@ def make_run_tests_command(project_path: Path, uv_path: Path) -> list[str]:
     Called by run_initial_tests() and run_followup_tests().
     """
     run_tests_path = project_path / 'run_tests.py'  # no need to resolve; project_path is already resolved
-    command = [str(uv_path), 'run', str(run_tests_path)]
+    command = [str(uv_path), 'run', '--no-active', str(run_tests_path)]
     log.debug(f'command, ``{command}``')
     return command
 

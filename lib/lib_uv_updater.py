@@ -107,7 +107,7 @@ class UvUpdater:
             log.exception(msg)
             raise Exception(msg)
         iso_date: str = self.make_iso_date()  # the iso-date for a week ago
-        cmnd: list[str] = [str(uv_path), 'sync', sync_type, '--group', group, '--exclude-newer', iso_date]
+        cmnd: list[str] = [str(uv_path), 'sync', '--no-active', sync_type, '--group', group, '--exclude-newer', iso_date]
         log.debug(f'cmnd, ``{cmnd}``')
         return cmnd
 
