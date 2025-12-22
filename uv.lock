@@ -2,6 +2,10 @@ version = 1
 revision = 3
 requires-python = "==3.12.*"
 
+[options]
+exclude-newer = "2025-12-15T17:19:52.738567Z"
+exclude-newer-span = "P1W"
+
 [[package]]
 name = "python-dotenv"
 version = "1.2.1"
