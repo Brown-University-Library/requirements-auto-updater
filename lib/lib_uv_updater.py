@@ -10,8 +10,21 @@ import pprint
 import shutil
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 
 log = logging.getLogger(__name__)
+
+
+class CompareResult(TypedDict):
+    """
+    Structured result for comparing uv.lock with its backup.
+
+    - changes: True if files differ; False otherwise (or on error)
+    - diff: unified diff text if differences exist; empty string otherwise
+    """
+
+    changes: bool
+    diff: str
 
 
 class UvUpdater:
@@ -144,7 +157,7 @@ class UvUpdater:
             error_str = 'problem: restoring previous uv sync failed; see log output.'
         return error_str
 
-    def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> dict[str, str | bool]:
+    def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> 'CompareResult':
         """
         Compares the current `uv.lock` file with its backup and returns a structured result.
 
@@ -173,11 +186,11 @@ class UvUpdater:
             diff_text: str = '\n'.join(diff) + '\n'
             log.debug(f'diff_text: \n{diff_text}')
             changes: bool = bool(diff)
-            return {'changes': changes, 'diff': diff_text}
+            return CompareResult(changes=changes, diff=diff_text)
         except Exception as e:
             log.error(f'Error comparing uv.lock files: {str(e)}')
             # TODO: email admins
-            return {'changes': False, 'diff': ''}
+            return CompareResult(changes=False, diff='')
 
     # def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> str | None:
     #     """
