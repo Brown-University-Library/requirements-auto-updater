@@ -32,6 +32,7 @@ from lib.lib_uv_updater import UvUpdater
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
+## load envars from .env file -- not needed if using ```uv run --env-file "../.env" ./auto_updater.py...```
 # dotenv_path = stuff_dir / '.env'
 # assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 # load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
