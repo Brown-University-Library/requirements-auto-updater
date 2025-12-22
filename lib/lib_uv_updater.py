@@ -173,11 +173,11 @@ class UvUpdater:
             diff_text: str = '\n'.join(diff) + '\n'
             log.debug(f'diff_text: \n{diff_text}')
             changes: bool = bool(diff)
-            return {"changes": changes, "diff": diff_text}
+            return {'changes': changes, 'diff': diff_text}
         except Exception as e:
             log.error(f'Error comparing uv.lock files: {str(e)}')
             # TODO: email admins
-            return {"changes": False, "diff": ""}
+            return {'changes': False, 'diff': ''}
 
     # def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> str | None:
     #     """
