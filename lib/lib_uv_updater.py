@@ -144,10 +144,13 @@ class UvUpdater:
             error_str = 'problem: restoring previous uv sync failed; see log output.'
         return error_str
 
-    def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> str | None:
+    def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> dict[str, str | bool]:
         """
-        Compares the uv.lock file with the backup and returns True if they differ.
-        Uses Python's difflib to generate a unified diff.
+        Compares the current `uv.lock` file with its backup and returns a structured result.
+
+        Returns a dictionary with keys:
+        - "changes": bool — True if files differ; False otherwise (or on error)
+        - "diff": str — unified diff text if differences exist; empty string otherwise
         """
         log.info('::: comparing uv.lock files ----------')
         try:
@@ -169,11 +172,12 @@ class UvUpdater:
                     log.info('ok / no differences found between uv.lock and its backup')
             diff_text: str = '\n'.join(diff) + '\n'
             log.debug(f'diff_text: \n{diff_text}')
-            return diff_text
+            changes: bool = bool(diff)
+            return {"changes": changes, "diff": diff_text}
         except Exception as e:
             log.error(f'Error comparing uv.lock files: {str(e)}')
             # TODO: email admins
-            return None
+            return {"changes": False, "diff": ""}
 
     # def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> str | None:
     #     """

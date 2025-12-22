@@ -132,10 +132,11 @@ def manage_update(project_path_str: str) -> None:
     ## run uv sync --------------------------------------------------
     uv_updater.manage_sync(uv_path, project_path, environment_type)
     ## check if new uv.lock file is different -----------------------
-    diff_text: str | None = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
+    compare_result: dict[str, str | bool] = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
     ## ::: act on differences :::
-    if diff_text:
+    if compare_result.get('changes') is True:
+        diff_text: str = str(compare_result.get('diff', ''))
         ## check for django update ----------------------------------
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
