@@ -207,7 +207,7 @@ class TestEnvironmentChecks(unittest.TestCase):
 
             [dependency-groups]
             staging = ["pkgA>=1.0"]
-            production = ["pkgB>=1.0"]
+            prod = ["pkgB>=1.0"]
             """
             (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
