@@ -27,7 +27,7 @@ from lib import lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
 from lib.lib_emailer import send_email_of_diffs
 from lib.lib_git_handler import GitHandler
-from lib.lib_uv_updater import UvUpdater
+from lib.lib_uv_updater import CompareResult, UvUpdater
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
@@ -132,7 +132,7 @@ def manage_update(project_path_str: str) -> None:
     ## run uv sync --------------------------------------------------
     uv_updater.manage_sync(uv_path, project_path, environment_type)
     ## check if new uv.lock file is different -----------------------
-    compare_result: dict[str, str | bool] = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
+    compare_result: CompareResult = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
     ## ::: act on differences :::
     if compare_result.get('changes') is True:
