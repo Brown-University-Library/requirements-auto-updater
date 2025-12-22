@@ -124,6 +124,7 @@ class UvUpdater:
         """
         Runs the initial --upgrade sync command.
         """
+        log.debug(f'project_path, ``{project_path}``')
         result: subprocess.CompletedProcess = subprocess.run(
             sync_command, cwd=str(project_path), capture_output=True, text=True
         )
