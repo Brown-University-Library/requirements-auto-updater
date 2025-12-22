@@ -135,8 +135,9 @@ def manage_update(project_path_str: str) -> None:
     compare_result: CompareResult = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
     ## ::: act on differences :::
-    if compare_result.get('changes') is True:
-        diff_text: str = str(compare_result.get('diff', ''))
+    # if compare_result.get('changes') is True:
+    if compare_result['changes'] is True:
+        diff_text: str = compare_result['diff']
         ## check for django update ----------------------------------
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
