@@ -175,6 +175,37 @@ class UvUpdater:
             # TODO: email admins
             return None
 
+    # def compare_uv_lock_files(self, uv_lock_path: Path, uv_lock_backup_path: Path) -> str | None:
+    #     """
+    #     Compares the uv.lock file with the backup and returns True if they differ.
+    #     Uses Python's difflib to generate a unified diff.
+    #     """
+    #     log.info('::: comparing uv.lock files ----------')
+    #     try:
+    #         with uv_lock_path.open() as curr, uv_lock_backup_path.open() as prev:
+    #             ## read lines ---------------------------------------
+    #             curr_lines = [line.rstrip() for line in curr.readlines()]
+    #             prev_lines = [line.rstrip() for line in prev.readlines()]
+    #             ## generate unified diff ----------------------------
+    #             diff: list[str] = list(
+    #                 difflib.unified_diff(
+    #                     prev_lines, curr_lines, fromfile=str(uv_lock_backup_path), tofile=str(uv_lock_path), lineterm=''
+    #                 )
+    #             )
+    #             log.debug(f'diff: \n{pprint.pformat(diff)}')
+    #             ## log the diff if there are differences ------------
+    #             if diff:
+    #                 log.info('ok / differences found between uv.lock and its backup')
+    #             else:
+    #                 log.info('ok / no differences found between uv.lock and its backup')
+    #         diff_text: str = '\n'.join(diff) + '\n'
+    #         log.debug(f'diff_text: \n{diff_text}')
+    #         return diff_text
+    #     except Exception as e:
+    #         log.error(f'Error comparing uv.lock files: {str(e)}')
+    #         # TODO: email admins
+    #         return None
+
 
 ## end class UvUpdater
 
