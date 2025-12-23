@@ -95,6 +95,10 @@ class UvUpdater:
     def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
         """
         Makes the sync command.
+        - The `--no-active` suppresses `uv` warnings that there may be an active venv-environment that is not
+          this project's venv. That's fine, because the `sync` command by default will check _this_ project's `pyproject.toml`
+          against _this_ project's `uv.lock`, and update _this_ project's .venv directory.
+        Called by self.manage_sync().
         """
         if environment_type == 'local':
             group = 'local'
