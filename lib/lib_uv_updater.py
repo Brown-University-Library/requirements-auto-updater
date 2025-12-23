@@ -106,8 +106,7 @@ class UvUpdater:
             msg = f'Invalid environment_type: {environment_type}'
             log.exception(msg)
             raise Exception(msg)
-        iso_date: str = self.make_iso_date()  # the iso-date for a week ago
-        cmnd: list[str] = [str(uv_path), 'sync', '--no-active', sync_type, '--group', group, '--exclude-newer', iso_date]
+        cmnd: list[str] = [str(uv_path), 'sync', '--no-active', sync_type, '--group', group]
         log.debug(f'cmnd, ``{cmnd}``')
         return cmnd
 
