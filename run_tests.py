@@ -9,11 +9,26 @@ Usage examples:
     (method) uv run ./run_tests.py -v tests.test_environment_checks.TestEnvironmentChecks.test_check_branch_non_main_raises
 """
 
-import argparse
 import os
+from pathlib import Path
+
+from dotenv import find_dotenv, load_dotenv
+
+## set settings as early as possible --------------------------------
+is_running_on_github: bool = os.environ.get('GITHUB_ACTIONS', '').lower() == 'true'
+if is_running_on_github:
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings_run_tests'
+else:
+    this_file_path = Path(__file__).resolve()
+    stuff_dir = this_file_path.parent.parent
+    dotenv_path = stuff_dir / '.env'
+    assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
+    load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
+
+
+import argparse
 import sys
 import unittest
-from pathlib import Path
 
 
 def main() -> None:

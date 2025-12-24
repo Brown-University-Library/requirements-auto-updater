@@ -14,8 +14,8 @@ from pathlib import Path
 
 
 ## load envars ------------------------------------------------------
-this_file_path = Path(__file__).resolve()
-stuff_dir = this_file_path.parent.parent.parent
+# this_file_path = Path(__file__).resolve()
+# stuff_dir = this_file_path.parent.parent.parent
 # dotenv_path = stuff_dir / '.env'
 # assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
 # load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
