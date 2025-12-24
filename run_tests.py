@@ -9,7 +9,10 @@ Usage examples:
     (method) uv run ./run_tests.py -v tests.test_environment_checks.TestEnvironmentChecks.test_check_branch_non_main_raises
 """
 
+import argparse
 import os
+import sys
+import unittest
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -29,11 +32,6 @@ else:
     dotenv_path = stuff_dir / '.env'
     assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
     load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
-
-
-import argparse
-import sys
-import unittest
 
 
 def main() -> None:
