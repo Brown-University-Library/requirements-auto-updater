@@ -12,3 +12,5 @@ dependencies = [
 local = []
 staging = []
 prod = []
+ci_tests = []
+
