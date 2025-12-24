@@ -52,6 +52,7 @@ def send_email_of_diffs(
         log.info('ok / no problem_message')
     ## send email ---------------------------------------------------
     emailer = Emailer(project_path)
+    log.debug(f'emailer.email_host, ``{emailer.email_host}``')
     if problem_message:
         email_message: str = emailer.create_update_problem_message(diff_text, problem_message)
     else:
