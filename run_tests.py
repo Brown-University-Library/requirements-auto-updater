@@ -17,7 +17,8 @@ from dotenv import find_dotenv, load_dotenv
 ## set settings as early as possible --------------------------------
 is_running_on_github: bool = os.environ.get('GITHUB_ACTIONS', '').lower() == 'true'
 if is_running_on_github:
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings_run_tests'
+    ## what should go here?
+    pass
 else:
     this_file_path = Path(__file__).resolve()
     stuff_dir = this_file_path.parent.parent
