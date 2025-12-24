@@ -19,7 +19,7 @@ from pathlib import Path
 def main() -> None:
     """
     Discover and run unittests for this repository.
-    - Uses standard library unittest (per AGENTS.md)
+    - Uses standard library unittest
     - Discovers tests under tests/ with pattern "test*.py"
     - Sets top-level directory to the repository root so `lib/` is importable
     """
