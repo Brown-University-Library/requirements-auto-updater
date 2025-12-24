@@ -17,8 +17,12 @@ from dotenv import find_dotenv, load_dotenv
 ## set settings as early as possible --------------------------------
 is_running_on_github: bool = os.environ.get('GITHUB_ACTIONS', '').lower() == 'true'
 if is_running_on_github:
-    ## what should go here?
-    pass
+    ## set required env vars explicitly for CI ----------------------
+    os.environ.setdefault('AUTO_UPDTR__SYS_ADMIN_RECIPIENTS_JSON', '[["CI Sysadmin","ci@example.com"]]')
+    os.environ.setdefault('AUTO_UPDTR__EMAIL_FROM', 'donotreply-auto-updater@example.com')
+    os.environ.setdefault('AUTO_UPDTR__EMAIL_HOST', 'localhost')
+    os.environ.setdefault('AUTO_UPDTR__EMAIL_HOST_PORT', '1026')
+    os.environ.setdefault('AUTO_UPDTR__UV_PATH', 'uv')
 else:
     this_file_path = Path(__file__).resolve()
     stuff_dir = this_file_path.parent.parent
