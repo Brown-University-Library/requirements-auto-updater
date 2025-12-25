@@ -131,7 +131,7 @@ class GitHandler:
     #     return_val = (ok, output)
     #     return return_val
 
-    def run_git_pull(self, project_path: Path) -> None:
+    def run_git_pull(self, project_path: Path) -> tuple[bool, dict]:
         """
         Runs the git pull command.
         """
