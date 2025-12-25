@@ -3,9 +3,11 @@ Old test file; will be updated.
 """
 
 import logging
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ## set up logging ---------------------------------------------------
 logging.basicConfig(
@@ -39,9 +41,17 @@ class TestGitCommands(unittest.TestCase):
         """
         cur_dir = Path('./').resolve()
         log.debug(f'cur_dir: {cur_dir}')
-        git_result: tuple[bool, dict] = self.git_handler.run_git_pull(cur_dir)
-        (ok, output) = git_result
-        self.assertTrue(ok is True)
+        ## Mock subprocess.run to avoid relying on CI/local git state
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=['git', 'pull', 'origin', 'main'],
+                returncode=0,
+                stdout='Already up to date.\n',
+                stderr='',
+            )
+            git_result: tuple[bool, dict] = self.git_handler.run_git_pull(cur_dir)
+            (ok, output) = git_result
+            self.assertTrue(ok is True)
         # self.assertIn('Already up to date.', output['stdout'])
 
 

@@ -1,3 +1,6 @@
+[![CI tests](https://github.com/Brown-University-Library/requirements-auto-updater/actions/workflows/ci_tests.yaml/badge.svg?branch=main)](https://github.com/Brown-University-Library/requirements-auto-updater/actions/workflows/ci_tests.yaml)
+
+
 ## On this page...
 
 - [Overview](#overview)
