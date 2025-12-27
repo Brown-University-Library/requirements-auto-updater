@@ -4,63 +4,67 @@ from lib.lib_django_updater import check_for_django_update
 
 
 class TestDjangoUpdater(unittest.TestCase):
-    def test_check_for_django_update_happy_path_returns_true(self) -> None:
+    def test_version_bump_in_uv_lock_diff_returns_true(self) -> None:
         """
-        Checks that check_for_django_update() returns True when the diff shows a django addition ("+django==").
+        Checks that a version bump within Django's [[package]] block returns True.
         """
-        django_addition_diff_text = """
+        diff_text = """
         --- a/uv.lock
         +++ b/uv.lock
-        @@ -1,4 +1,4 @@
-         version = 1
-         [project]
-        -django==5.1.2
-        +django==5.1.3
-        -somepkg==1.0.0
-        +somepkg==1.1.0
+         [[package]]
+          name = "django"
+         -version = "4.2.20"
+         +version = "4.2.27"
+          requires-python = ">=3.9"
         """.strip()
-        self.assertTrue(check_for_django_update(django_addition_diff_text))
+        self.assertTrue(check_for_django_update(diff_text))
 
-    def test_check_for_django_update_happy_path_returns_true_on_new_addition_only(self) -> None:
+    def test_wheels_only_changes_return_false(self) -> None:
         """
-        Checks that check_for_django_update() returns True when Django is newly added (no matching removal line).
+        Checks that changes to files/hashes only (no version change) return False.
         """
-        django_new_addition_only_diff_text = """
+        diff_text = """
         --- a/uv.lock
         +++ b/uv.lock
-        @@ -1,3 +1,4 @@
-         version = 1
-         [project]
-        -somepkg==1.0.0
-        +somepkg==1.1.0
-        +django==5.1.3
+         [[package]]
+          name = "django"
+          version = "4.2.27"
+         -files = [
+         -  {file = "django-4.2.27-py3-none-any.whl", hash = "sha256:OLD"},
+         -]
+         +files = [
+         +  {file = "django-4.2.27-py3-none-any.whl", hash = "sha256:NEW"},
+         +]
         """.strip()
-        self.assertTrue(check_for_django_update(django_new_addition_only_diff_text))
+        self.assertFalse(check_for_django_update(diff_text))
 
-    def test_check_for_django_update_failure_returns_false_when_no_exact_match(self) -> None:
+    def test_same_version_lines_return_false(self) -> None:
         """
-        Checks that check_for_django_update() returns False when there is no
-        exact lowercase "+django==" addition (e.g., case-mismatch or only removals).
+        Checks that if both -version and +version are the same, returns False.
         """
-        no_django_addition_diff_text = """
+        diff_text = """
         --- a/uv.lock
         +++ b/uv.lock
-        @@ -1,3 +1,3 @@
-         version = 1
-        -django==5.1.2
-         [project]
+         [[package]]
+          name = "django"
+         -version = "4.2.27"
+         +version = "4.2.27"
         """.strip()
-        self.assertFalse(check_for_django_update(no_django_addition_diff_text))
+        self.assertFalse(check_for_django_update(diff_text))
 
-        case_mismatch_text = """
+    def test_case_insensitive_name_matching_returns_true(self) -> None:
+        """
+        Checks that name = "Django" (capitalized) still matches and detects a bump.
+        """
+        diff_text = """
         --- a/uv.lock
         +++ b/uv.lock
-        @@ -1,3 +1,4 @@
-         version = 1
-         [project]
-        +Django==5.1.3
+         [[package]]
+          name = "Django"
+         -version = "4.2.20"
+         +version = "4.2.27"
         """.strip()
-        self.assertFalse(check_for_django_update(case_mismatch_text))
+        self.assertTrue(check_for_django_update(diff_text))
 
 
 if __name__ == '__main__':
