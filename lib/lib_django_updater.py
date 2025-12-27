@@ -60,7 +60,7 @@ def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[boo
             try:
                 first_quote = content.index('"')
                 second_quote = content.index('"', first_quote + 1)
-                current_package_name = content[first_quote + 1:second_quote]
+                current_package_name = content[first_quote + 1 : second_quote]
             except ValueError:
                 current_package_name = None
             continue
@@ -76,14 +76,14 @@ def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[boo
             try:
                 first_quote = content.index('"')
                 second_quote = content.index('"', first_quote + 1)
-                old_version = content[first_quote + 1:second_quote]
+                old_version = content[first_quote + 1 : second_quote]
             except ValueError:
                 old_version = None
         elif effective_marker == '+' and content.startswith('version ='):
             try:
                 first_quote = content.index('"')
                 second_quote = content.index('"', first_quote + 1)
-                new_version = content[first_quote + 1:second_quote]
+                new_version = content[first_quote + 1 : second_quote]
             except ValueError:
                 new_version = None
 
@@ -125,7 +125,6 @@ def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
         './manage.py',
         'collectstatic',
         '--noinput',
-        '--clear',
     ]
     log.debug(f'command: {command}')
     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
