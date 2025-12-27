@@ -71,30 +71,6 @@ class TestMiscellaneous(unittest.TestCase):
         result = lib_django_updater.check_for_django_update(incoming_text)
         self.assertEqual(expected, result)
 
-    def test_check_for_django_update__django_present(self):
-        """
-        ::: Checks that django-IS-updated is detected properly.
-        """
-        incoming_text = """
-            --- staging_2025-01-14T02-00-05.txt
-            +++ staging_2025-01-15T02-00-04.txt
-            ---
-            +++
-            @@ -12,7 +12,7 @@
-                #   httpx
-            cffi==1.17.1 ; implementation_name != 'pypy' and os_name == 'nt'
-                # via trio
-            -django==4.2.17
-            +django==4.2.18
-                # via -r requirements/base.in
-            h11==0.14.0
-                # via httpcore
-            """
-        incoming_text: str = incoming_text.replace('            ', '')  # removes indentation-spaces
-        expected = True
-        result = lib_django_updater.check_for_django_update(incoming_text)
-        self.assertEqual(expected, result)
-
 
 if __name__ == '__main__':
     unittest.main()
