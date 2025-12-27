@@ -108,18 +108,6 @@ def check_for_django_update(incoming_text: str) -> bool:
     if updated:
         log.info(f'ok / django version updated: {old_v} -> {new_v}')
         return True
-
-    # Fallback: handle requirements.txt-style diffs e.g., lines with '+django=='
-    incoming_lines: list[str] = incoming_text.split('\n')
-    has_addition = any('+django==' in line for line in incoming_lines)
-    has_removal = any('-django==' in line for line in incoming_lines)
-    if has_addition and has_removal:
-        log.info('ok / django version updated (requirements.txt style diff detected)')
-        return True
-    if has_addition:
-        log.info('ok / django addition detected (requirements.txt style)')
-        return True
-
     # Preserve the previous log shape for backward compatibility
     log.info('ok / django-updated, ``False``')
     return False
