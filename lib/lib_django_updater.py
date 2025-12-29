@@ -34,52 +34,50 @@ def parse_uv_lock_version_change(
 
     Called by check_for_django_update().
     """
+    ## sets vars ----------------------------------------------------
     in_package_block: bool = False
     current_package_name: str | None = None
     old_version: str | None = None
     new_version: str | None = None
     found_change: bool = False
-
     target_name: str = package_name.lower()
-
+    ## starts looping through diff lines ----------------------------
     for raw_line in diff_text.splitlines():
         if not raw_line:
             continue
-
+        ## look for relevant diff markers ---------------------------
         marker: str = raw_line[0]
         has_diff_marker: bool = marker in {' ', '+', '-'}
-
-        # In a normal unified diff, only these three markers represent file content.
-        # Non-marker lines (diff headers, @@ hunks, etc.) are ignored by content checks anyway.
+        """
+        In a normal unified diff, only these three markers represent file content.
+        Non-marker lines (diff headers, @@ hunks, etc.) are ignored.
+        """
         content: str = raw_line[1:] if has_diff_marker else raw_line
         content = content.strip()
-
+        ## look for package block start -----------------------------
         if content == '[[package]]':
             in_package_block = True
             current_package_name = None
             old_version = None
             new_version = None
             continue
-
         if not in_package_block:
             continue
-
+        ## look for django package name -----------------------------
         if content.startswith('name ='):
             current_package_name = _extract_first_quoted_value(content)
             continue
-
         if (current_package_name or '').lower() != target_name:
             continue
-
+        ## look for django version ----------------------------------
         if marker == '-' and content.startswith('version ='):
             old_version = _extract_first_quoted_value(content)
         elif marker == '+' and content.startswith('version ='):
             new_version = _extract_first_quoted_value(content)
-
         if old_version is not None and new_version is not None and old_version != new_version:
             found_change = True
             break
-
+    ## return -------------------------------------------------------
     return found_change, old_version, new_version
 
     ## end def parse_uv_lock_version_change()
