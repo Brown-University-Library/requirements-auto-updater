@@ -33,6 +33,7 @@ def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[boo
 
     Called by check_for_django_update().
     """
+    ## setup vars
     in_package_block: bool = False
     current_package_name: str | None = None
     old_version: str | None = None
@@ -142,25 +143,3 @@ def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
         output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
         problem_message = f'Problem running collectstatic; output, ``{pprint.pformat(output)}``'
     return problem_message
-
-
-# def run_collectstatic(project_path: Path) -> None | str:
-#     """
-#     Runs collectstatic command.
-#     """
-#     log.info('::: running collectstatic ----------')
-#     log.debug(f'cwd: {os.getcwd()}')
-#     command = ['bash', '-c', 'source ../env/bin/activate && python ./manage.py collectstatic --noinput']
-#     log.debug(f'command: {command}')
-#     # subprocess.run(command, check=True)
-#     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
-#     log.debug(f'result: {result}')
-#     ok = True if result.returncode == 0 else False
-#     if ok is True:
-#         log.info('ok / collectstatic successful')
-#         problem_message = None
-#     else:
-#         log.info('problem / collectstatic failed; see log; problem message will be emailed')
-#         output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
-#         problem_message = f'Problem running collectstatic; output, ``{pprint.pformat(output)}``'
-#     return problem_message
