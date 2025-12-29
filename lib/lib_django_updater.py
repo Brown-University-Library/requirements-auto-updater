@@ -22,23 +22,6 @@ def check_for_django_update(incoming_text: str) -> bool:
         return False
 
 
-def _extract_first_quoted_value(line: str) -> str | None:
-    """
-    Extracts the first double-quoted value from a TOML-like assignment line.
-
-    Returns None when the line does not contain a pair of double quotes.
-    """
-    first_quote: int = line.find('"')
-    if first_quote == -1:
-        return None
-
-    second_quote: int = line.find('"', first_quote + 1)
-    if second_quote == -1:
-        return None
-
-    return line[first_quote + 1 : second_quote]
-
-
 def parse_uv_lock_version_change(
     diff_text: str,
     package_name: str,
@@ -48,6 +31,8 @@ def parse_uv_lock_version_change(
 
     Tracks when inside a [[package]] block, reads the most recent name entry, and
     (within the matching package block) captures -version/+version values.
+
+    Called by check_for_django_update().
     """
     in_package_block: bool = False
     current_package_name: str | None = None
@@ -96,6 +81,55 @@ def parse_uv_lock_version_change(
             break
 
     return found_change, old_version, new_version
+
+    ## end def parse_uv_lock_version_change()
+
+
+def _extract_first_quoted_value(line: str) -> str | None:
+    """
+    Extracts the first double-quoted value from a TOML-like assignment line.
+
+    Returns None when the line does not contain a pair of double quotes.
+
+    Called by parse_uv_lock_version_change().
+    """
+    first_quote: int = line.find('"')
+    if first_quote == -1:
+        return None
+
+    second_quote: int = line.find('"', first_quote + 1)
+    if second_quote == -1:
+        return None
+
+    return line[first_quote + 1 : second_quote]
+
+
+def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
+    """
+    Runs collectstatic command.
+    Called by auto_updater.manage_update().
+    """
+    log.info('::: running collectstatic ----------')
+    log.debug(f'cwd: {os.getcwd()}')
+    command: list[str] = [
+        str(uv_path),
+        'run',
+        './manage.py',
+        'collectstatic',
+        '--noinput',
+    ]
+    log.debug(f'command: {command}')
+    result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
+    log.debug(f'result: {result}')
+    ok = True if result.returncode == 0 else False
+    if ok is True:
+        log.info('ok / collectstatic successful')
+        problem_message = None
+    else:
+        log.info('problem / collectstatic failed; see log; problem message will be emailed')
+        output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
+        problem_message = f'Problem running collectstatic; output, ``{pprint.pformat(output)}``'
+    return problem_message
 
 
 # def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[bool, str | None, str | None]:
@@ -194,31 +228,3 @@ def parse_uv_lock_version_change(
 #     return False, old_version, new_version
 
 #     ## end def parse_uv_lock_version_change()
-
-
-def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
-    """
-    Runs collectstatic command.
-    Called by auto_updater.manage_update().
-    """
-    log.info('::: running collectstatic ----------')
-    log.debug(f'cwd: {os.getcwd()}')
-    command: list[str] = [
-        str(uv_path),
-        'run',
-        './manage.py',
-        'collectstatic',
-        '--noinput',
-    ]
-    log.debug(f'command: {command}')
-    result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
-    log.debug(f'result: {result}')
-    ok = True if result.returncode == 0 else False
-    if ok is True:
-        log.info('ok / collectstatic successful')
-        problem_message = None
-    else:
-        log.info('problem / collectstatic failed; see log; problem message will be emailed')
-        output = {'stdout': f'{result.stdout}', 'stderr': f'{result.stderr}'}
-        problem_message = f'Problem running collectstatic; output, ``{pprint.pformat(output)}``'
-    return problem_message
