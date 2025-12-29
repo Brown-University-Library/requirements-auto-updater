@@ -7,6 +7,21 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
+def check_for_django_update(incoming_text: str) -> bool:
+    """
+    Checks if the uv.lock unified diff indicates a Django version update.
+    Called by auto_updater.manage_update().
+    """
+    log.info('::: check_for_django_update ----------')
+    updated, old_v, new_v = parse_uv_lock_version_change(incoming_text, 'django')
+    if updated:
+        log.info(f'ok / django version updated: {old_v} -> {new_v}')
+        return True
+    else:
+        log.info('ok / django-updated, ``False``')
+        return False
+
+
 def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[bool, str | None, str | None]:
     """
     Parses a unified diff of uv.lock to detect a version change for a given package.
@@ -15,24 +30,26 @@ def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[boo
     the most recent name and version entries. Within the block where the package
     name matches (case-insensitive), captures pairs of -version/+version lines
     and compares their values. Returns early on positive detection.
+
+    Called by check_for_django_update().
     """
     in_package_block: bool = False
     current_package_name: str | None = None
     old_version: str | None = None
     new_version: str | None = None
 
-    # Iterate through diff lines
+    ## Iterate through diff lines
     for raw_line in diff_text.splitlines():
         if not raw_line:
             continue
 
-        # Determine diff marker and content; accept space, '-', '+'
+        ## Determine diff marker and content; accept space, '-', '+'
         marker = raw_line[0]
         content = raw_line[1:] if marker in {' ', '+', '-'} else raw_line
         content = content.rstrip()  # keep potential leading symbol for effective marker detection
 
-        # Compute effective marker: some diffs (or copied snippets) may have a leading space
-        # followed by '-' or '+'. Normalize by inspecting first non-space char of content.
+        ## Compute effective marker: some diffs (or copied snippets) may have a leading space
+        ## followed by '-' or '+'. Normalize by inspecting first non-space char of content.
         stripped_leading = content.lstrip()
         leading_ws_len = len(content) - len(stripped_leading)
         effective_marker = marker
@@ -99,23 +116,10 @@ def parse_uv_lock_version_change(diff_text: str, package_name: str) -> tuple[boo
     return False, old_version, new_version
 
 
-def check_for_django_update(incoming_text: str) -> bool:
-    """
-    Checks if the uv.lock unified diff indicates a Django version update.
-    """
-    log.info('::: check_for_django_update ----------')
-    updated, old_v, new_v = parse_uv_lock_version_change(incoming_text, 'django')
-    if updated:
-        log.info(f'ok / django version updated: {old_v} -> {new_v}')
-        return True
-    # Preserve the previous log shape for backward compatibility
-    log.info('ok / django-updated, ``False``')
-    return False
-
-
 def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
     """
     Runs collectstatic command.
+    Called by auto_updater.manage_update().
     """
     log.info('::: running collectstatic ----------')
     log.debug(f'cwd: {os.getcwd()}')
