@@ -13,10 +13,10 @@ class TestDjangoUpdater(unittest.TestCase):
         --- a/uv.lock
         +++ b/uv.lock
          [[package]]
-          name = "django"
-         -version = "4.2.20"
-         +version = "4.2.27"
-          requires-python = ">=3.9"
+         name = "django"
+        -version = "4.2.20"
+        +version = "4.2.27"
+         requires-python = ">="3.9
         
 """)
         self.assertTrue(check_for_django_update(diff_text))
@@ -29,14 +29,14 @@ class TestDjangoUpdater(unittest.TestCase):
         --- a/uv.lock
         +++ b/uv.lock
          [[package]]
-          name = "django"
-          version = "4.2.27"
-         -files = [
-         -  {file = "django-4.2.27-py3-none-any.whl", hash = "sha256:OLD"},
-         -]
-         +files = [
-         +  {file = "django-4.2.27-py3-none-any.whl", hash = "sha256:NEW"},
-         +]
+         name = "django"
+         version = "4.2.27"
+        -files = [
+        -  {file = "django-4.2.27-py3-none-any.whl", hash = "sha256:OLD"},
+        -]
+        +files = [
+        +  {file = "django-4.2.27-py3-none-any.whl", hash = "sha256:NEW"},
+        +]
         
 """)
         self.assertFalse(check_for_django_update(diff_text))
@@ -49,9 +49,9 @@ class TestDjangoUpdater(unittest.TestCase):
         --- a/uv.lock
         +++ b/uv.lock
          [[package]]
-          name = "django"
-         -version = "4.2.27"
-         +version = "4.2.27"
+         name = "django"
+        -version = "4.2.27"
+        +version = "4.2.27"
         
 """)
         self.assertFalse(check_for_django_update(diff_text))
@@ -64,9 +64,9 @@ class TestDjangoUpdater(unittest.TestCase):
         --- a/uv.lock
         +++ b/uv.lock
          [[package]]
-          name = "Django"
-         -version = "4.2.20"
-         +version = "4.2.27"
+         name = "Django"
+        -version = "4.2.20"
+        +version = "4.2.27"
         
 """)
         self.assertTrue(check_for_django_update(diff_text))
