@@ -153,51 +153,79 @@ def check_git_status(project_path: Path, project_email_addresses: list[tuple[str
     return
 
 
+def validate_pyproject_toml(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None:
+    """
+    Validates the project's pyproject.toml file structure and required fields.
+    Checks for:
+    - File existence
+    - [project] section with requires-python field
+    - [dependency-groups] section with staging and prod keys
+    If validation fails:
+    - Sends an email to the project admins
+    - Exits the script
+    """
+    log.info('::: validating pyproject.toml ----------')
+    ## check for pyproject.toml existence ----------------------
+    pyproject_path: Path = project_path / 'pyproject.toml'
+    if not pyproject_path.exists():
+        message = f'Error: Missing pyproject.toml at `{pyproject_path}`'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## parse TOML file -----------------------------------------
+    with pyproject_path.open('rb') as f:
+        pyproject: dict = tomllib.load(f)
+    ## check for [project] section -----------------------------
+    project_section: dict | None = pyproject.get('project')  # type: ignore[assignment]
+    if not isinstance(project_section, dict):
+        message = 'Error: `[project]` section missing from pyproject.toml'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## check for requires-python field -------------------------
+    requires_python: str | None = project_section.get('requires-python')  # type: ignore[assignment]
+    if not isinstance(requires_python, str) or not requires_python:
+        message = 'Error: `requires-python` field missing from [project] section in pyproject.toml'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## check for [dependency-groups] section -------------------
+    dep_groups: dict | None = pyproject.get('dependency-groups')  # type: ignore[assignment]
+    if not isinstance(dep_groups, dict):
+        message = 'Error: `[dependency-groups]` section missing from pyproject.toml'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## check for required dependency group keys ----------------
+    required_keys: list[str] = ['staging', 'prod']
+    missing: list[str] = [k for k in required_keys if k not in dep_groups]
+    if missing:
+        message = 'Error: `[dependency-groups]` in pyproject.toml is missing required key(s): ' + ', '.join(missing)
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## log success ---------------------------------------------
+    log.info(f'ok / pyproject.toml validated (python version: {requires_python})')
+    return
+
+
 def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
     """
     Infers environment type based on the system hostname.
-    Returns 'local', 'staging', or 'prod'.
+    Returns 'local', 'staging', or 'production'.
+    Note: pyproject.toml validation is handled by validate_pyproject_toml().
     """
     log.info('::: determining environment type ----------')
-    ## check dependency-groups --------------------------------------
-    try:
-        ## confirm pyproject.toml exists ----------------------------
-        pyproject_path: Path = project_path / 'pyproject.toml'
-        if not pyproject_path.exists():
-            message = f'Error: Missing pyproject.toml at ``{pyproject_path}``'
-            log.exception(message)
-            emailer = Emailer(project_path)
-            email_message: str = emailer.create_setup_problem_message(message)
-            emailer.send_email(project_email_addresses, email_message)
-            raise Exception(message)
-        ## confirm pyproject.toml has dependency-groups -------------
-        with pyproject_path.open('rb') as f:
-            pyproject: dict = tomllib.load(f)
-        dep_groups: dict | None = pyproject.get('dependency-groups')  # type: ignore[assignment]
-        if not isinstance(dep_groups, dict):
-            message = 'Error: `[dependency-groups]` section missing from pyproject.toml'
-            log.exception(message)
-            emailer = Emailer(project_path)
-            email_message: str = emailer.create_setup_problem_message(message)
-            emailer.send_email(project_email_addresses, email_message)
-            raise Exception(message)
-        ## confirm expected groups ----------------------------------
-        required_keys: list[str] = ['staging', 'prod']
-        missing: list[str] = [k for k in required_keys if k not in dep_groups]
-        if missing:
-            message = 'Error: `[dependency-groups]` in pyproject.toml is missing required key(s): ' + ', '.join(missing)
-            log.exception(message)
-            emailer = Emailer(project_path)
-            email_message: str = emailer.create_setup_problem_message(message)
-            emailer.send_email(project_email_addresses, email_message)
-            raise Exception(message)
-        log.info('ok / pyproject.toml dependency-groups validated')
-    except Exception:
-        # exception already logged and emailed above if it's a validation error;
-        # for unexpected issues, propagate after logging.
-        raise
-
-    ## determine proper one -----------------------------------------
     hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
     if hostname.startswith('d') or hostname.startswith('q'):
         env_type: str = 'staging'

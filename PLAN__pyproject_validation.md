@@ -3,6 +3,8 @@
 ## Overview
 Implement comprehensive `pyproject.toml` validation to consolidate and improve project configuration checks. This addresses the Python version check referenced in README.md line 40 and identified as missing in FLOW_ANALYSIS.md, while also refactoring existing dependency-groups validation from `determine_environment_type()` into a dedicated validation function.
 
+Before making any code-changes, review `requirements-auto-updater/AGENTS.md`.
+
 **Scope**: This validation consolidates all `pyproject.toml` checks into a single function:
 - File existence
 - `[project]` section presence

@@ -113,6 +113,8 @@ def manage_update(project_path_str: str) -> None:
     lib_environment_checker.check_branch(project_path, project_email_addresses)
     ## check git status ---------------------------------------------
     lib_environment_checker.check_git_status(project_path, project_email_addresses)
+    ## validate pyproject.toml --------------------------------------
+    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
     ## validate uv path -----------------------------------------------
