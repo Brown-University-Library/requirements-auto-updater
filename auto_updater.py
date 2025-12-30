@@ -137,13 +137,14 @@ def manage_update(project_path_str: str) -> None:
     ## ::: act on differences :::
     # if compare_result.get('changes') is True:
     if compare_result['changes'] is True:
-        diff_text: str = compare_result['diff']
         ## check for django update ----------------------------------
+        diff_text: str = compare_result['diff']
         followup_collectstatic_problems: None | str = None
         django_update: bool = lib_django_updater.check_for_django_update(diff_text)
         if django_update:
             followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path, uv_path)
             subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
+
         ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
         followup_tests_problems = run_followup_tests(uv_path, project_path)
