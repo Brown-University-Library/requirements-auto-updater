@@ -45,16 +45,19 @@ The `manage_update()` function implements most of the documented flow:
 
 ## Missing or Incomplete Steps
 
-### ❌ 1. Python Version Validation
-**README Reference:** Line 40 - "ensures a python version is listed -- TODO"
+### ✅ 1. Python Version Validation
+**README Reference:** Line 40 - "ensures a python version is listed"
 
-**Status:** Not implemented
+**Status:** Implemented
 
 **Details:** 
-- No validation that `pyproject.toml` contains a Python version specification
-- This check is explicitly marked as TODO in the README
+- Validation implemented in `lib_environment_checker.validate_pyproject_toml()`
+- Checks for `requires-python` field in `[project]` section of `pyproject.toml`
+- Validates that the field exists and is a non-empty string
+- Emails project admins and exits on validation failure
+- Comprehensive test coverage in `tests/test_environment_checks.py`
 
-**Impact:** Low - Projects will likely fail early if Python version is misconfigured, but explicit validation would provide clearer error messages
+**Implementation:** Added in validate_pyproject_toml() function, called after git status check and before environment type determination
 
 ---
 

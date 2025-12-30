@@ -191,15 +191,73 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('Error: git-status check failed.', str(ctx.exception))
                 mock_send.assert_called_once()
 
-    ## environment-type checks ---------------------------------------
+    ## pyproject.toml validation checks -----------------------------
 
-    def test_determine_environment_type_valid_value(self) -> None:
+    def test_validate_pyproject_toml_ok(self) -> None:
         """
-        Checks environment-type mapping from hostname with valid pyproject.toml.
+        Checks that validation passes with complete valid pyproject.toml.
         """
         with TemporaryDirectory() as temp_dir:
             project_path = Path(temp_dir)
-            ## write a minimal, valid pyproject.toml with dependency-groups
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            try:
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    self.assertIsNone(
+                        lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                    )
+                    mock_send.assert_not_called()
+            except Exception as exc:
+                self.fail(f'Unexpected exception raised: {exc!r}')
+
+    def test_validate_pyproject_toml_missing_file_raises(self) -> None:
+        """
+        Checks that missing pyproject.toml triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('Error: Missing pyproject.toml', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_missing_project_section_raises(self) -> None:
+        """
+        Checks that missing [project] section triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`[project]` section missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_missing_requires_python_raises(self) -> None:
+        """
+        Checks that missing requires-python field triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
             pyproject_content = """
             [project]
             name = "example"
@@ -211,6 +269,190 @@ class TestEnvironmentChecks(unittest.TestCase):
             """
             (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`requires-python` field missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_empty_requires_python_raises(self) -> None:
+        """
+        Checks that empty requires-python value triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ""
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`requires-python` field missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_wrong_type_requires_python_raises(self) -> None:
+        """
+        Checks that non-string requires-python value triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = 3.12
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`requires-python` field missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_missing_dependency_groups_raises(self) -> None:
+        """
+        Checks that missing [dependency-groups] section triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`[dependency-groups]` section missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_wrong_type_dependency_groups_raises(self) -> None:
+        """
+        Checks that non-dict dependency-groups value triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            dependency-groups = "oops"
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`[dependency-groups]` section missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_missing_dependency_group_keys_raises(self) -> None:
+        """
+        Checks that missing required keys in [dependency-groups] triggers error and email.
+        """
+        ## case A: missing prod key
+        with TemporaryDirectory() as temp_dir_a:
+            project_path_a = Path(temp_dir_a)
+            pyproject_content_a = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            """
+            (project_path_a / 'pyproject.toml').write_text(pyproject_content_a.strip() + '\n', encoding='utf-8')
+            pea = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_a:
+                with self.assertRaises(Exception) as ctx_a:
+                    lib_environment_checker.validate_pyproject_toml(project_path_a, pea)
+                self.assertIn('missing required key(s): prod', str(ctx_a.exception))
+                mock_send_a.assert_called_once()
+
+        ## case B: missing staging key
+        with TemporaryDirectory() as temp_dir_b:
+            project_path_b = Path(temp_dir_b)
+            pyproject_content_b = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            prod = ["pkgB>=1.0"]
+            """
+            (project_path_b / 'pyproject.toml').write_text(pyproject_content_b.strip() + '\n', encoding='utf-8')
+            peb = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_b:
+                with self.assertRaises(Exception) as ctx_b:
+                    lib_environment_checker.validate_pyproject_toml(project_path_b, peb)
+                self.assertIn('missing required key(s): staging', str(ctx_b.exception))
+                mock_send_b.assert_called_once()
+
+    def test_validate_pyproject_toml_various_formats_ok(self) -> None:
+        """
+        Checks that various valid requires-python formats pass validation.
+        """
+        formats = [
+            ('>=3.12', 'minimum version'),
+            ('>=3.12,<3.13', 'range'),
+            ('==3.12.*', 'specific minor'),
+            ('~=3.12.0', 'compatible release'),
+        ]
+        for version_spec, description in formats:
+            with self.subTest(version_spec=version_spec, description=description):
+                with TemporaryDirectory() as temp_dir:
+                    project_path = Path(temp_dir)
+                    pyproject_content = f"""
+                    [project]
+                    name = "example"
+                    version = "0.0.0"
+                    requires-python = "{version_spec}"
+
+                    [dependency-groups]
+                    staging = ["pkgA>=1.0"]
+                    prod = ["pkgB>=1.0"]
+                    """
+                    (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+                    project_email_addresses = [('Admin', 'admin@example.com')]
+                    try:
+                        with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                            self.assertIsNone(
+                                lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                            )
+                            mock_send.assert_not_called()
+                    except Exception as exc:
+                        self.fail(f'Unexpected exception raised for {description}: {exc!r}')
+
+    ## environment-type checks ---------------------------------------
+
+    def test_determine_environment_type_valid_value(self) -> None:
+        """
+        Checks environment-type mapping from hostname.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            project_email_addresses = [('Admin', 'admin@example.com')]
 
             cases = [
                 ('dev-ci-01', 'staging'),
@@ -221,109 +463,10 @@ class TestEnvironmentChecks(unittest.TestCase):
             for hostname, expected in cases:
                 with self.subTest(hostname=hostname, expected=expected):
                     with patch('lib.lib_environment_checker.subprocess.check_output', return_value=hostname + '\n'):
-                        with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
-                            result = lib_environment_checker.determine_environment_type(
-                                project_path, project_email_addresses
-                            )
-                            self.assertEqual(expected, result)
-                            mock_send.assert_not_called()
-
-    def test_determine_environment_type_missing_pyproject_raises(self) -> None:
-        """
-        Checks error when pyproject.toml is missing.
-        """
-        with TemporaryDirectory() as temp_dir:
-            project_path = Path(temp_dir)
-            project_email_addresses = [('Admin', 'admin@example.com')]
-            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
-                with self.assertRaises(Exception) as ctx:
-                    lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-                self.assertIn('Error: Missing pyproject.toml', str(ctx.exception))
-                mock_send.assert_called_once()
-
-    def test_determine_environment_type_missing_dependency_groups_raises(self) -> None:
-        """
-        Checks error when `[dependency-groups]` is missing.
-        """
-        with TemporaryDirectory() as temp_dir:
-            project_path = Path(temp_dir)
-            ## write pyproject.toml without dependency-groups
-            pyproject_content = """
-            [project]
-            name = "example"
-            version = "0.0.0"
-            """
-            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
-            project_email_addresses = [('Admin', 'admin@example.com')]
-            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
-                with self.assertRaises(Exception) as ctx:
-                    lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-                self.assertIn('`[dependency-groups]` section missing', str(ctx.exception))
-                mock_send.assert_called_once()
-
-    def test_determine_environment_type_dependency_groups_wrong_type_raises(self) -> None:
-        """
-        Checks error when `[dependency-groups]` is not a table (treated as missing).
-        """
-        with TemporaryDirectory() as temp_dir:
-            project_path = Path(temp_dir)
-            # write pyproject.toml with dependency-groups wrong type
-            pyproject_content = """
-            [project]
-            name = "example"
-            version = "0.0.0"
-
-            dependency-groups = "oops"
-            """
-            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
-            project_email_addresses = [('Admin', 'admin@example.com')]
-            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
-                with self.assertRaises(Exception) as ctx:
-                    lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-                self.assertIn('`[dependency-groups]` section missing', str(ctx.exception))
-                mock_send.assert_called_once()
-
-    def test_determine_environment_type_missing_required_keys_raises(self) -> None:
-        """
-        Checks error when required keys in `[dependency-groups]` are missing.
-        """
-        ## case A: missing production
-        with TemporaryDirectory() as temp_dir_a:
-            project_path_a = Path(temp_dir_a)
-            pyproject_content_a = """
-            [project]
-            name = "example"
-            version = "0.0.0"
-
-            [dependency-groups]
-            staging = ["pkgA>=1.0"]
-            """
-            (project_path_a / 'pyproject.toml').write_text(pyproject_content_a.strip() + '\n', encoding='utf-8')
-            pea = [('Admin', 'admin@example.com')]
-            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_a:
-                with self.assertRaises(Exception) as ctx_a:
-                    lib_environment_checker.determine_environment_type(project_path_a, pea)
-                self.assertIn('missing required key(s): prod', str(ctx_a.exception))
-                mock_send_a.assert_called_once()
-
-        ## case B: missing staging
-        with TemporaryDirectory() as temp_dir_b:
-            project_path_b = Path(temp_dir_b)
-            pyproject_content_b = """
-            [project]
-            name = "example"
-            version = "0.0.0"
-
-            [dependency-groups]
-            production = ["pkgB>=1.0"]
-            """
-            (project_path_b / 'pyproject.toml').write_text(pyproject_content_b.strip() + '\n', encoding='utf-8')
-            peb = [('Admin', 'admin@example.com')]
-            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send_b:
-                with self.assertRaises(Exception) as ctx_b:
-                    lib_environment_checker.determine_environment_type(project_path_b, peb)
-                self.assertIn('missing required key(s): staging', str(ctx_b.exception))
-                mock_send_b.assert_called_once()
+                        result = lib_environment_checker.determine_environment_type(
+                            project_path, project_email_addresses
+                        )
+                        self.assertEqual(expected, result)
 
     ## uv-path checks -----------------------------------------------
 

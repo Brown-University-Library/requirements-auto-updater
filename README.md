@@ -37,7 +37,7 @@ Called directly -- or, typically, by a cron job -- this script:
     - determines the admin-emails
     - validates expected branch
     - validates expected git-status
-    - ensures a python version is listed -- TODO
+    - ensures a python version is listed
     - determines the local/staging/production environment
     - validates the `uv` path
     - determines the group
