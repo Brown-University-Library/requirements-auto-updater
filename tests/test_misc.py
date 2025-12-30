@@ -1,5 +1,5 @@
 """
-Old test file; will be updated.
+Miscellaneous tests for git operations and other utilities.
 """
 
 import logging
@@ -9,6 +9,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+## add project to path ----------------------------------------------
+this_file_path = Path(__file__).resolve()
+stuff_dir = this_file_path.parent.parent
+sys.path.append(str(stuff_dir))
+from lib.lib_git_handler import GitHandler  # noqa: E402  (suppresses linter warning)
+
 ## set up logging ---------------------------------------------------
 logging.basicConfig(
     level=logging.DEBUG,
@@ -16,12 +22,6 @@ logging.basicConfig(
     datefmt='%d/%b/%Y %H:%M:%S',
 )
 log = logging.getLogger(__name__)
-
-## add project to path ----------------------------------------------
-this_file_path = Path(__file__).resolve()
-stuff_dir = this_file_path.parent.parent
-sys.path.append(str(stuff_dir))
-from lib.lib_git_handler import GitHandler
 
 
 class TestGitCommands(unittest.TestCase):
