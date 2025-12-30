@@ -160,7 +160,7 @@ git_handler.manage_git(project_path, diff_text)
 3. **Review git error handling** - Ensure `GitHandler` properly handles and reports failures
 
 ### 🟢 Low Priority
-4. **Implement Python version check** - Complete the TODO item for better error messages
+4. **Implement Python-version / pyproject.toml check** - DONE.
 5. **Consider no-changes notification** - Decide if periodic "all clear" emails are valuable
 
 ---
