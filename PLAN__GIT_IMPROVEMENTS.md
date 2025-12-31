@@ -195,11 +195,6 @@ self.run_git_add(project_path / 'requirements.txt', project_path)
 self.run_git_add(project_path / 'uv.lock', project_path)
 ```
 
-Or better yet, add all changed files:
-```python
-self.run_git_add(project_path, project_path)  # git add .
-```
-
 ---
 
 ### 🟡 4. Unused `diff_text` Parameter
