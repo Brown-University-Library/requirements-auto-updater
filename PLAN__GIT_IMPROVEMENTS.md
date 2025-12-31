@@ -3,6 +3,8 @@
 **Analysis Date:** 2025-12-31  
 **Analyzed By:** Code Review of `lib/lib_git_handler.py` and related files
 
+Note: For any code-changes, refer to `requirements-auto-updater/AGENTS.md`.
+
 ---
 
 ## Executive Summary
