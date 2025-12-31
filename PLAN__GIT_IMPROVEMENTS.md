@@ -109,7 +109,7 @@ def manage_git(self, project_path: Path, diff_text: str) -> tuple[bool, str]:
 
 ---
 
-### 🔴 2. Inconsistent Return Types
+### ✅ 2. Inconsistent Return Types (RESOLVED - 2025-12-31)
 
 **Problem:**
 - `run_git_pull()`: returns `tuple[bool, dict]` (line 134)
@@ -119,7 +119,13 @@ def manage_git(self, project_path: Path, diff_text: str) -> tuple[bool, str]:
 
 **Impact:** HIGH - Makes error handling impossible for commit and push operations
 
-**Recommendation:** Standardize all methods to return `tuple[bool, dict]`:
+**Resolution:** Standardized both `run_git_commit()` and `run_git_push()` to return `tuple[bool, dict]`. Both methods now:
+- Capture stdout and stderr with `capture_output=True, text=True`
+- Return `(ok: bool, output: dict)` tuple
+- Include proper logging for success and failure cases
+- Handle special cases (e.g., "nothing to commit" message)
+
+**Original Recommendation:** Standardize all methods to return `tuple[bool, dict]`:
 
 ```python
 def run_git_commit(self, project_path: Path, diff_text: str) -> tuple[bool, dict]:
