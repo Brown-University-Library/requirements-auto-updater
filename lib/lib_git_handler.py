@@ -31,7 +31,7 @@ class GitHandler:
         """
         log.info('::: starting git process ----------')
         self.run_git_pull(project_path)
-        self.run_git_add(project_path / 'requirements.txt', project_path)
+        self.run_git_add(project_path / 'uv.lock', project_path)
         self.run_git_commit(project_path, diff_text)
         self.run_git_push(project_path)
         return
