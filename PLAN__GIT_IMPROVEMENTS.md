@@ -241,34 +241,9 @@ git_pull_command: list[str] = ['git', 'pull', 'origin', 'main']
 
 **Problem:**
 - Assumes branch is always `main`
-- Some projects might use `master` or other branch names
-- The pre-flight check validates we're on `main`, but this creates tight coupling
 
-**Impact:** MEDIUM - Won't work for projects with different default branches
-
-**Recommendation:**
-```python
-def run_git_pull(self, project_path: Path, branch: str = 'main') -> tuple[bool, dict]:
-    """
-    Runs the git pull command.
-    """
-    log.info('::: running git pull ----------')
-    git_pull_command: list[str] = ['git', 'pull', 'origin', branch]
-    # ... rest of implementation
-```
-
-Or dynamically detect the current branch:
-```python
-def get_current_branch(self, project_path: Path) -> str:
-    """Get the current git branch name."""
-    result = subprocess.run(
-        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-        cwd=str(project_path),
-        capture_output=True,
-        text=True
-    )
-    return result.stdout.strip() if result.returncode == 0 else 'main'
-```
+**Update:**
+- Ignore this issue -- I do want to assume `main`.
 
 ---
 
