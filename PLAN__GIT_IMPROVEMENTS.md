@@ -176,24 +176,25 @@ def run_git_push(self, project_path: Path) -> tuple[bool, dict]:
 
 ---
 
-### 🟡 3. Wrong File Being Added to Git
+### ✅ 3. Wrong File Being Added to Git — RESOLVED
 
-**Current Code (line 111):**
+**Previous Code (line 34):**
 ```python
 self.run_git_add(project_path / 'requirements.txt', project_path)
 ```
 
 **Problem:**
 - The project uses `uv.lock`, not `requirements.txt`
-- This is adding a file that doesn't exist or isn't being updated
+- This was adding a file that doesn't exist or isn't being updated
 - The actual file that changes is `uv.lock`
 
-**Impact:** MEDIUM - The wrong file is being tracked, though `git commit -am` might catch it
+**Impact:** MEDIUM - The wrong file was being tracked, though `git commit -am` might catch it
 
-**Recommendation:**
+**Resolution (2025-12-31):**
 ```python
 self.run_git_add(project_path / 'uv.lock', project_path)
 ```
+Changed in `lib/lib_git_handler.py` line 34. All tests pass.
 
 ---
 
