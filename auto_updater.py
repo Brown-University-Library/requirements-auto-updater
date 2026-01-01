@@ -18,6 +18,7 @@ Usage...
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -151,23 +152,62 @@ def manage_update(project_path_str: str) -> None:
         followup_tests_problems: None | str = None
         followup_tests_problems = run_followup_tests(uv_path, project_path)
 
-        ## git commit -----------------------------------------------
-        git_handler = GitHandler()
-        git_success, git_message = git_handler.manage_git(project_path, diff_text)
-        followup_git_problems: None | str = None
-        if not git_success:
-            followup_git_problems = git_message
-            log.warning(f'Git operations failed: {git_message}')
+        ## handle test failure rollback ----------------------------
+        if followup_tests_problems is not None:
+            log.warning('Post-update tests failed; initiating rollback')
 
-        ## send diff email ------------------------------------------
-        followup_problems = {
-            'collectstatic_problems': followup_collectstatic_problems,
-            'test_problems': followup_tests_problems,
-            'git_problems': followup_git_problems,
-        }
-        log.debug(f'followup_problems, ``{followup_problems}``')
-        send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
-        log.debug('email sent')
+            ## 1. Restore original uv.lock from backup
+            backup_path = project_path.parent / 'uv.lock.bak'
+            shutil.copy(backup_path, project_path / 'uv.lock')
+            log.info('Restored original uv.lock from backup')
+
+            ## 2. Run uv sync --frozen to update .venv from restored uv.lock
+            sync_command = [str(uv_path), 'sync', '--frozen', '--group', environment_type]
+            try:
+                subprocess.run(sync_command, cwd=str(project_path), check=True, capture_output=True, text=True)
+                log.info('Synced .venv from restored uv.lock')
+            except subprocess.CalledProcessError as e:
+                log.error(f'Failed to sync .venv during rollback: {e.stderr}')
+
+            ## 3. Re-run tests to verify restoration worked
+            verification_result = run_followup_tests(uv_path, project_path)
+            if verification_result is not None:
+                log.error('Tests still failing after rollback - environment may be corrupted')
+            else:
+                log.info('Tests passing after rollback - environment successfully restored')
+
+            ## 4. Email about rollback
+            rollback_problems = {
+                'collectstatic_problems': None,
+                'test_problems': followup_tests_problems,
+                'git_problems': None,
+                'rollback_occurred': True,
+                'verification_result': verification_result,
+            }
+            send_email_of_diffs(project_path, diff_text, rollback_problems, project_email_addresses)
+            log.info('Rollback email sent')
+
+            ## 5. Skip git operations and continue to cleanup
+            log.info('Skipping git operations due to test failure and rollback')
+
+        else:  # means `compare_result['changes']` is `False`
+            ## git commit -----------------------------------------------
+            git_handler = GitHandler()
+            git_success, git_message = git_handler.manage_git(project_path, diff_text)
+            followup_git_problems: None | str = None
+            if not git_success:
+                followup_git_problems = git_message
+                log.warning(f'Git operations failed: {git_message}')
+
+            ## send diff email --------------`----------------------------
+            followup_problems = {
+                'collectstatic_problems': followup_collectstatic_problems,
+                'test_problems': followup_tests_problems,
+                'git_problems': followup_git_problems,
+            }
+            log.debug(f'followup_problems, ``{followup_problems}``')
+            send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
+            log.debug('email sent')
 
     ## ::: clean up :::
     ## try group and permissions update -----------------------------
