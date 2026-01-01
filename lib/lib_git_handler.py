@@ -35,14 +35,14 @@ class GitHandler:
         ## Pull first
         ok, output = self.run_git_pull(project_path)
         if not ok:
-            error_msg = f"Git pull failed: {output['stderr']}"
+            error_msg = f'Git pull failed: {output["stderr"]}'
             log.error(error_msg)
             return (False, error_msg)
 
         ## Add changes
         ok, output = self.run_git_add(project_path / 'uv.lock', project_path)
         if not ok:
-            error_msg = f"Git add failed: {output['stderr']}"
+            error_msg = f'Git add failed: {output["stderr"]}'
             log.error(error_msg)
             return (False, error_msg)
 
@@ -53,14 +53,14 @@ class GitHandler:
             if 'nothing to commit' in output.get('stdout', ''):
                 log.info('No changes to commit')
                 return (True, 'No changes to commit')
-            error_msg = f"Git commit failed: {output['stderr']}"
+            error_msg = f'Git commit failed: {output["stderr"]}'
             log.error(error_msg)
             return (False, error_msg)
 
         ## Push
         ok, output = self.run_git_push(project_path)
         if not ok:
-            error_msg = f"Git push failed: {output['stderr']}"
+            error_msg = f'Git push failed: {output["stderr"]}'
             log.error(error_msg)
             return (False, error_msg)
 
@@ -112,7 +112,7 @@ class GitHandler:
         Called by manage_git()
         """
         log.info('::: running git commit ----------')
-        git_commit_command: list[str] = ['git', 'commit', '-am', 'auto-updater: update dependencies']
+        git_commit_command: list[str] = ['git', 'commit', '-am', 'auto-updater: updates dependencies']
         result: subprocess.CompletedProcess = subprocess.run(
             git_commit_command, cwd=str(project_path), capture_output=True, text=True
         )
