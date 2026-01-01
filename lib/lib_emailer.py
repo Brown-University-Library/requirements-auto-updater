@@ -37,6 +37,9 @@ def send_email_of_diffs(
 
     Called by: auto_updater.manage_update()
     """
+    ## check for rollback scenario --------------------------------
+    rollback_occurred: bool = followup_problems.get('rollback_occurred', False)
+    
     ## prepare problem-message --------------------------------------
     log.info('::: preparing problem-message ----------')
     problem_message: str = ''
@@ -53,7 +56,10 @@ def send_email_of_diffs(
     ## send email ---------------------------------------------------
     emailer = Emailer(project_path)
     log.debug(f'emailer.email_host, ``{emailer.email_host}``')
-    if problem_message:
+    if rollback_occurred:
+        verification_result = followup_problems.get('verification_result')
+        email_message: str = emailer.create_rollback_message(diff_text, problem_message, verification_result)
+    elif problem_message:
         email_message: str = emailer.create_update_problem_message(diff_text, problem_message)
     else:
         email_message: str = emailer.create_update_ok_message(diff_text)
@@ -128,6 +134,40 @@ class Emailer:
         {followup_test_problems}
         
         The requirements.txt diff:\n\n{diff_text}.
+
+        (end-of-message)
+        """
+        email_message: str = email_message.replace('        ', '')  # removes indentation-spaces
+        return email_message
+
+    def create_rollback_message(self, diff_text: str, test_problems: str, verification_result: str | None) -> str:
+        """
+        Prepares rollback email message.
+        Includes information about the failed update, rollback, and verification test results.
+        """
+        log.debug('starting create_rollback_message()')
+        
+        verification_status = ''
+        if verification_result is None:
+            verification_status = '✓ Tests are now passing after rollback. The environment has been successfully restored.'
+        else:
+            verification_status = f'✗ WARNING: Tests are still failing after rollback. The environment may be corrupted.\n\nVerification test output:\n{verification_result}'
+        
+        email_message = f"""
+        ROLLBACK PERFORMED: The venv for the project ``{self.project_path.name}`` has been rolled back to its previous state.
+
+        The auto-updater attempted to update dependencies, but post-update tests failed.
+        As a safety measure, the original uv.lock and .venv have been restored.
+
+        Original test failure:
+        {test_problems}
+
+        Rollback verification:
+        {verification_status}
+
+        The attempted update diff (NOT applied):\n\n{diff_text}.
+
+        Action required: Review the test failures and the attempted dependency changes before manually attempting the update.
 
         (end-of-message)
         """
