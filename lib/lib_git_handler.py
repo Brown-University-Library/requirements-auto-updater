@@ -24,17 +24,48 @@ class GitHandler:
     def __init__(self):
         pass
 
-    def manage_git(self, project_path: Path, diff_text: str) -> None:
+    def manage_git(self, project_path: Path, diff_text: str) -> tuple[bool, str]:
         """
-        Manages the git process.
+        Manages the git process with proper error handling.
+        Returns (success: bool, error_message: str)
         Called by auto_updater.manage_update()
         """
         log.info('::: starting git process ----------')
-        self.run_git_pull(project_path)
-        self.run_git_add(project_path / 'uv.lock', project_path)
-        self.run_git_commit(project_path, diff_text)
-        self.run_git_push(project_path)
-        return
+
+        ## Pull first
+        ok, output = self.run_git_pull(project_path)
+        if not ok:
+            error_msg = f"Git pull failed: {output['stderr']}"
+            log.error(error_msg)
+            return (False, error_msg)
+
+        ## Add changes
+        ok, output = self.run_git_add(project_path / 'uv.lock', project_path)
+        if not ok:
+            error_msg = f"Git add failed: {output['stderr']}"
+            log.error(error_msg)
+            return (False, error_msg)
+
+        ## Commit
+        ok, output = self.run_git_commit(project_path, diff_text)
+        if not ok:
+            ## Check if it's just "nothing to commit"
+            if 'nothing to commit' in output.get('stdout', ''):
+                log.info('No changes to commit')
+                return (True, 'No changes to commit')
+            error_msg = f"Git commit failed: {output['stderr']}"
+            log.error(error_msg)
+            return (False, error_msg)
+
+        ## Push
+        ok, output = self.run_git_push(project_path)
+        if not ok:
+            error_msg = f"Git push failed: {output['stderr']}"
+            log.error(error_msg)
+            return (False, error_msg)
+
+        log.info('Git operations completed successfully')
+        return (True, 'Success')
 
     def run_git_pull(self, project_path: Path) -> tuple[bool, dict]:
         """
