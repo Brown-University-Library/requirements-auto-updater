@@ -153,12 +153,17 @@ def manage_update(project_path_str: str) -> None:
 
         ## git commit -----------------------------------------------
         git_handler = GitHandler()
-        git_handler.manage_git(project_path, diff_text)
+        git_success, git_message = git_handler.manage_git(project_path, diff_text)
+        followup_git_problems: None | str = None
+        if not git_success:
+            followup_git_problems = git_message
+            log.warning(f'Git operations failed: {git_message}')
 
         ## send diff email ------------------------------------------
         followup_problems = {
             'collectstatic_problems': followup_collectstatic_problems,
             'test_problems': followup_tests_problems,
+            'git_problems': followup_git_problems,
         }
         log.debug(f'followup_problems, ``{followup_problems}``')
         send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)

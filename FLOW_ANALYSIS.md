@@ -6,6 +6,8 @@
 
 This document analyzes the `auto_updater.py` implementation against the documented flow in `README.md` to identify any missing or incomplete functionality.
 
+For any code-changes, refer to `requirements-auto-updater/AGENTS.md`.
+
 ---
 
 ## Flow Coverage - What's Implemented
