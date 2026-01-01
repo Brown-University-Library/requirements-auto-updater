@@ -108,7 +108,7 @@ if followup_tests_problems is not None:
 - When `compare_result['changes']` is False (line 139), code skips to cleanup
 - No email notification sent to admins
 
-**Impact:** Low - This is likely intentional to reduce email noise from cron jobs
+**Impact:** Low - This is intentional to reduce email noise from cron jobs
 
 **Note:** May want to add optional logging or periodic "all clear" emails
 
