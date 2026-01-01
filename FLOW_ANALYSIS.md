@@ -76,8 +76,8 @@ The `manage_update()` function implements most of the documented flow:
 ```
 
 **Current Implementation:**
-- Lines 149-150 capture `followup_tests_problems` but don't handle rollback
-- If tests fail, code still proceeds to git commit (line 154) and email (line 162)
+- Lines 151-152 capture `followup_tests_problems` but don't handle rollback
+- If tests fail, code still proceeds to git commit (line 155) and email (line 162)
 - No restoration of original `uv.lock`
 - No `uv sync --frozen` execution
 - No re-run of tests after rollback
@@ -86,18 +86,58 @@ The `manage_update()` function implements most of the documented flow:
 
 **Required Implementation:**
 ```python
-# After line 150, need to add:
+# After line 152, need to add:
 if followup_tests_problems is not None:
-    # Restore original uv.lock
-    shutil.copy(uv_lock_backup_path, project_path / 'uv.lock')
-    # Run uv sync --frozen to update .venv from restored uv.lock
-    subprocess.run([str(uv_path), 'sync', '--frozen'], cwd=project_path, check=True)
-    # Re-run tests to verify restoration
-    run_followup_tests(uv_path, project_path)
-    # Email about rollback (don't commit to git)
-    send_email_about_rollback(...)
-    return  # Exit without git commit
+    log.warning('Post-update tests failed; initiating rollback')
+    
+    # 1. Restore original uv.lock from backup
+    # Note: backup is at project_path.parent / 'uv.lock.bak' (created by UvUpdater.backup_uv_lock)
+    import shutil
+    backup_path = project_path.parent / 'uv.lock.bak'
+    shutil.copy(backup_path, project_path / 'uv.lock')
+    log.info('Restored original uv.lock from backup')
+    
+    # 2. Run uv sync --frozen to update .venv from restored uv.lock
+    # Must include --group flag with environment_type
+    sync_command = [str(uv_path), 'sync', '--frozen', '--group', environment_type]
+    subprocess.run(sync_command, cwd=str(project_path), check=True)
+    log.info('Synced .venv from restored uv.lock')
+    
+    # 3. Re-run tests to verify restoration worked
+    verification_result = run_followup_tests(uv_path, project_path)
+    if verification_result is not None:
+        log.error('Tests still failing after rollback - environment may be corrupted')
+    else:
+        log.info('Tests passing after rollback - environment successfully restored')
+    
+    # 4. Email about rollback (modify send_email_of_diffs to handle rollback scenario)
+    # Need to create a new email type or modify existing to indicate rollback occurred
+    rollback_problems = {
+        'collectstatic_problems': None,
+        'test_problems': followup_tests_problems,
+        'git_problems': None,
+        'rollback_occurred': True,
+        'verification_result': verification_result
+    }
+    send_email_of_diffs(project_path, diff_text, rollback_problems, project_email_addresses)
+    
+    # 5. Skip git operations and continue to cleanup
+    # Update permissions (line 174) will still run
+    log.info('Skipping git operations due to test failure and rollback')
+    update_group_and_permissions(project_path, uv_lock_backup_path, group)
+    return  # Exit without git commit/push
 ```
+
+**Additional Changes Needed:**
+1. **Import shutil** at top of `auto_updater.py` (currently not imported)
+2. **Modify `lib_emailer.py`** to handle rollback scenario:
+   - Update `send_email_of_diffs()` to check for `rollback_occurred` flag
+   - Create new email message type or modify `create_update_problem_message()` to indicate rollback
+   - Include verification test results in email
+3. **Consider**: Should collectstatic be run AFTER tests pass, not before?
+   - Current flow: tests → collectstatic → git
+   - If collectstatic fails, we don't rollback (only test failures trigger rollback)
+   - This seems inconsistent with the safety-first approach
 
 ---
 
