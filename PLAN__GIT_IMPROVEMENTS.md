@@ -35,14 +35,14 @@ git_handler.manage_git(project_path, diff_text)
 
 ## Critical Issues
 
-### 🔴 1. No Error Handling or Rollback in `manage_git()`
+### ✅ 1. No Error Handling or Rollback in `manage_git()` — RESOLVED (2026-01-01)
 
-**Current Code (lines 105-114):**
+**Previous Code (lines 27-37):**
 ```python
 def manage_git(self, project_path: Path, diff_text: str) -> None:
     log.info('::: starting git process ----------')
     self.run_git_pull(project_path)
-    self.run_git_add(project_path / 'requirements.txt', project_path)
+    self.run_git_add(project_path / 'uv.lock', project_path)
     self.run_git_commit(project_path, diff_text)
     self.run_git_push(project_path)
     return
@@ -61,7 +61,16 @@ def manage_git(self, project_path: Path, diff_text: str) -> None:
 - Merge conflicts from failed pulls
 - No visibility into git operation failures
 
-**Recommendation:**
+**Resolution (2026-01-01):**
+- Updated `manage_git()` to return `tuple[bool, str]` for proper error propagation
+- Added error handling with early returns when operations fail
+- Implemented sequential validation - each git operation is checked before proceeding
+- Special handling for "nothing to commit" as a success case
+- Updated `auto_updater.py` to capture return values and add git failures to `followup_problems`
+- Git errors are now logged with `log.error()` and included in email notifications
+- All tests pass
+
+**Original Recommendation:**
 ```python
 def manage_git(self, project_path: Path, diff_text: str) -> tuple[bool, str]:
     """
