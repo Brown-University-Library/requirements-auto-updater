@@ -138,7 +138,6 @@ def manage_update(project_path_str: str) -> None:
     compare_result: CompareResult = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
     ## ::: act on differences :::
-    # if compare_result.get('changes') is True:
     if compare_result['changes'] is True:
         ## check for django update ----------------------------------
         diff_text: str = compare_result['diff']
@@ -190,7 +189,7 @@ def manage_update(project_path_str: str) -> None:
             ## 5. Skip git operations and continue to cleanup
             log.info('Skipping git operations due to test failure and rollback')
 
-        else:  # means `compare_result['changes']` is `False`
+        else:  # means there were no `followup_tests_problems`
             ## git commit -----------------------------------------------
             git_handler = GitHandler()
             git_success, git_message = git_handler.manage_git(project_path, diff_text)
@@ -208,6 +207,9 @@ def manage_update(project_path_str: str) -> None:
             log.debug(f'followup_problems, ``{followup_problems}``')
             send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
             log.debug('email sent')
+
+    else:  # means `compare_result['changes']` is `False`
+        log.info('No changes detected - skipping git operations')
 
     ## ::: clean up :::
     ## try group and permissions update -----------------------------
