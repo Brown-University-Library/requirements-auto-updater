@@ -74,7 +74,7 @@ Called directly -- or, typically, by a cron job -- this script:
 
 - Via cron on servers (eg to run every day at 12:01am) (all one line):
     ```
-    1 0 * * * PATH=/usr/local/bin:$PATH cd "/path/to/requirements-auto-updater/" && uv run --env-file "../.env" ./auto_updater.py --project "/path/to/project_to_update_code_dir/"
+    1 0 * * * PATH=/usr/local/bin:$PATH cd "/path/to/requirements-auto-updater/" && /path/to/uv run --env-file "../.env" ./auto_updater.py --project "/path/to/project_to_update_code_dir/"
     ```
 
 ---
