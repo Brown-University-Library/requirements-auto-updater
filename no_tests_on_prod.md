@@ -1,7 +1,14 @@
 # Plan: Skip Tests on Production Servers
 
 ## Overview
-This document outlines the plan to modify the auto-updater script to detect production servers (hostnames starting with 'p') and skip test execution on those servers while maintaining the update workflow.
+This document outlines the plan to modify the auto-updater script to skip test execution on production servers while maintaining the update workflow.
+
+**UPDATE**: After reviewing the code, the `environment_type` variable is already being determined in `lib_environment_checker.py` (line 222-237) based on hostname:
+- `'production'` for hostnames starting with 'p'
+- `'staging'` for hostnames starting with 'd' or 'q'  
+- `'local'` otherwise
+
+This variable should be passed to the test functions instead of re-implementing hostname detection.
 
 ## Current Test Execution Flow
 
@@ -14,6 +21,10 @@ This document outlines the plan to modify the auto-updater script to detect prod
    - Runs after virtualenv updates
    - On failure: returns error message but continues processing (for rollback/email/permissions)
 
+### Environment Type Determination
+- Line 120 in `auto_updater.py`: `environment_type = lib_environment_checker.determine_environment_type(...)`
+- This variable contains: `'production'`, `'staging'`, or `'local'`
+
 ### Test Implementation (`lib/lib_call_runtests.py`)
 - Both functions create command: `[uv_path, 'run', '--no-active', run_tests.py]`
 - Execute via `subprocess.run()` with project directory as cwd
@@ -21,82 +32,76 @@ This document outlines the plan to modify the auto-updater script to detect prod
 
 ## Proposed Changes
 
-### 1. Add Server Detection Function
-**Location**: `lib/lib_common.py` (or new `lib/lib_server_detector.py`)
+### 1. Update Function Signatures to Accept environment_type
 
+#### In `auto_updater.py` (Line 129):
 ```python
-def is_production_server() -> bool:
-    """
-    Detects if the current server is a production server.
-    Production servers have hostnames that start with 'p'.
-    """
-    import socket
-    hostname = socket.gethostname().lower()
-    return hostname.startswith('p')
+## ::: initial tests :::
+run_initial_tests(uv_path, project_path, project_email_addresses, environment_type)  # Pass environment_type
 ```
 
-**Alternative Implementation** (using platform):
+#### In `auto_updater.py` (Line 152):
 ```python
-def is_production_server() -> bool:
-    """
-    Detects if the current server is a production server.
-    Production servers have hostnames that start with 'p'.
-    """
-    import platform
-    hostname = platform.node().lower()
-    return hostname.startswith('p')
+## run post-update tests ------------------------------------
+followup_tests_problems: None | str = None
+followup_tests_problems = run_followup_tests(uv_path, project_path, environment_type)  # Pass environment_type
 ```
 
 ### 2. Modify Test Functions in `lib/lib_call_runtests.py`
 
-#### Update `run_initial_tests()`
+#### Update `run_initial_tests()` signature and logic:
 ```python
-def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]]) -> None:
+def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]], environment_type: str) -> None:
     """
     Run initial tests to ensure that the script can run.
-    Skips tests on production servers (hostname starts with 'p').
+    Skips tests on production servers (environment_type == 'production').
     """
     log.info('::: running initial tests ----------')
     
-    ## Check if production server
-    if is_production_server():
-        log.info('Production server detected (hostname starts with "p") - skipping initial tests')
+    ## Skip tests on production
+    if environment_type == 'production':
+        log.info('Production environment detected - skipping initial tests')
         return
     
+    ## prep the command ---------------------------------------------
+    command: list[str] = make_run_tests_command(project_path, uv_path)
     ## [Rest of existing implementation...]
 ```
 
-#### Update `run_followup_tests()`
+#### Update `run_followup_tests()` signature and logic:
 ```python
-def run_followup_tests(uv_path: Path, project_path: Path) -> None | str:
+def run_followup_tests(uv_path: Path, project_path: Path, environment_type: str) -> None | str:
     """
     Runs followup tests on the updated venv.
-    Skips tests on production servers (hostname starts with 'p').
+    Skips tests on production servers (environment_type == 'production').
     """
     log.info('::: running followup tests ----------')
     
-    ## Check if production server
-    if is_production_server():
-        log.info('Production server detected (hostname starts with "p") - skipping followup tests')
+    ## Skip tests on production
+    if environment_type == 'production':
+        log.info('Production environment detected - skipping followup tests')
         return None
     
+    ## prep the command ---------------------------------------------
+    command: list[str] = make_run_tests_command(project_path, uv_path)
     ## [Rest of existing implementation...]
 ```
 
-### 3. Import Requirements
-Add import at top of `lib/lib_call_runtests.py`:
+### 3. Update Rollback Logic (Line 172 in `auto_updater.py`)
+When calling `run_followup_tests()` during rollback verification:
 ```python
-from lib.lib_common import is_production_server  # or from lib.lib_server_detector
+## 3. Re-run tests to verify restoration worked
+verification_result = run_followup_tests(uv_path, project_path, environment_type)  # Pass environment_type
 ```
 
 ## Implementation Steps
 
-1. **Create server detection function**
-   - Add `is_production_server()` to `lib/lib_common.py`
-   - Include appropriate logging for transparency
+1. **Update function calls in `auto_updater.py`**
+   - Pass `environment_type` to `run_initial_tests()` at line 129
+   - Pass `environment_type` to `run_followup_tests()` at line 152
+   - Pass `environment_type` to `run_followup_tests()` at line 172 (rollback verification)
 
-2. **Update test runner functions**
-   - Import the detection function
+2. **Update test runner function signatures in `lib/lib_call_runtests.py`**
    - Add production server check at the beginning of both test functions
    - Log when tests are skipped due to production environment
 
