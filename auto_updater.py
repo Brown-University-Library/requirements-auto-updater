@@ -126,7 +126,7 @@ def manage_update(project_path_str: str) -> None:
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
 
     ## ::: initial tests :::
-    run_initial_tests(uv_path, project_path, project_email_addresses)  # emails admins and exits on failure
+    run_initial_tests(uv_path, project_path, project_email_addresses, environment_type)  # emails admins and exits on failure
 
     ## ::: update :::
     ## backup uv.lock -----------------------------------------------
@@ -149,7 +149,7 @@ def manage_update(project_path_str: str) -> None:
 
         ## run post-update tests ------------------------------------
         followup_tests_problems: None | str = None
-        followup_tests_problems = run_followup_tests(uv_path, project_path)
+        followup_tests_problems = run_followup_tests(uv_path, project_path, environment_type)
 
         ## handle test failure rollback ----------------------------
         if followup_tests_problems is not None:
@@ -169,7 +169,7 @@ def manage_update(project_path_str: str) -> None:
                 log.error(f'Failed to sync .venv during rollback: {e.stderr}')
 
             ## 3. Re-run tests to verify restoration worked
-            verification_result = run_followup_tests(uv_path, project_path)
+            verification_result = run_followup_tests(uv_path, project_path, environment_type)
             if verification_result is not None:
                 log.error('Tests still failing after rollback - environment may be corrupted')
             else:
