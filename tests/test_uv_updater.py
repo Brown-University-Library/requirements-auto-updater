@@ -1,7 +1,9 @@
 import logging
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from lib.lib_uv_updater import UvUpdater
 
@@ -65,6 +67,51 @@ class TestUvUpdater(unittest.TestCase):
             self.assertIsInstance(result, dict)
             self.assertFalse(result.get('changes', True))
             self.assertEqual(result.get('diff', None), '')
+
+    def test_manage_sync_failure_sends_email_and_raises(self) -> None:
+        """
+        Checks that manage_sync() emails project admins and raises on sync failure.
+        """
+        updater = UvUpdater()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            project_path = tmp_path / 'project'
+            project_path.mkdir(parents=True, exist_ok=True)
+            uv_lock_path = project_path / 'uv.lock'
+            uv_lock_path.write_text('version = 1\n', encoding='utf-8')
+            uv_lock_backup_path = project_path.parent / 'uv.lock.bak'
+            uv_lock_backup_path.write_text('version = 1\n', encoding='utf-8')
+            sync_failure = subprocess.CompletedProcess(
+                args=['uv', 'sync'],
+                returncode=2,
+                stdout='',
+                stderr='sync failed',
+            )
+            sync_revert = subprocess.CompletedProcess(
+                args=['uv', 'sync', '--frozen'],
+                returncode=0,
+                stdout='',
+                stderr='',
+            )
+            run_tests_result = subprocess.CompletedProcess(
+                args=['uv', 'run', 'run_tests.py'],
+                returncode=0,
+                stdout='',
+                stderr='',
+            )
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with (
+                patch('subprocess.run', side_effect=[sync_failure, sync_revert, run_tests_result]),
+                patch('lib.lib_emailer.Emailer.send_email', return_value=None) as mock_send,
+            ):
+                with self.assertRaises(Exception):
+                    updater.manage_sync(
+                        Path('uv'),
+                        project_path,
+                        'staging',
+                        project_email_addresses,
+                    )
+                mock_send.assert_called_once()
 
 
 if __name__ == '__main__':
