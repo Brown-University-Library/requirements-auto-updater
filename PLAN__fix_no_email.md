@@ -97,7 +97,7 @@ Use existing infrastructure:
 
 Message format options:
 - **Option 1 (minimal / consistent):** Use `emailer.create_setup_problem_message(...)` with a clear message that this is an update-phase failure.
-- **Option 2 (clearer UX):** Add a new `Emailer.create_sync_problem_message(...)` (preferred long-term), but this is a bigger change.
+- ~~**Option 2 (clearer UX):** Add a new `Emailer.create_sync_problem_message(...)` (preferred long-term), but this is a bigger change.~~ Use Option 1.
 
 The message should include:
 - The exact command attempted (`sync_command`)
