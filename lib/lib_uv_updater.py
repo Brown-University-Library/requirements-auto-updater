@@ -12,6 +12,9 @@ import subprocess
 from pathlib import Path
 from typing import TypedDict
 
+from lib.lib_call_runtests import make_run_tests_command, run_run_tests_command
+from lib.lib_emailer import Emailer
+
 log = logging.getLogger(__name__)
 
 
@@ -31,7 +34,13 @@ class UvUpdater:
     def __init__(self):
         pass
 
-    def manage_sync(self, uv_path: Path, project_path: Path, environment_type: str) -> None:
+    def manage_sync(
+        self,
+        uv_path: Path,
+        project_path: Path,
+        environment_type: str,
+        project_email_addresses: list[tuple[str, str]],
+    ) -> None:
         """
         Manages the sync process.
         """
@@ -43,22 +52,35 @@ class UvUpdater:
         ok, std_dct = output
         if ok is True:
             pass
-        else:  ## revert / TODO: do these in steps, building good problem message for email
-            problem_message = 'problem / uv sync failed'
+        else:  ## revert
+            problem_details: list[str] = ['problem / uv sync failed']
+            problem_details.append(f'command: {sync_command}')
+            problem_details.append(f'stdout: {std_dct["stdout"]}')
+            problem_details.append(f'stderr: {std_dct["stderr"]}')
             ## copy the backup back to uv.lock
-            shutil.copy(project_path.parent / 'uv.lock.bak', project_path / 'uv.lock')
+            try:
+                shutil.copy(project_path.parent / 'uv.lock.bak', project_path / 'uv.lock')
+                log.info('restored uv.lock from backup')
+            except Exception as e:
+                message = f'Error restoring uv.lock from backup: {e}'
+                log.exception(message)
+                problem_details.append(message)
             ## run `uv sync --frozen` to revert the .venv
-            sync_command: list[str] = self.make_sync_command(uv_path, environment_type, '--frozen')
-            error_str: str = self.run_frozen_sync_command(sync_command, project_path)
+            sync_command = self.make_sync_command(uv_path, environment_type, '--frozen')
+            error_str = self.run_frozen_sync_command(sync_command, project_path)
             if error_str:
-                problem_message = '\n\n' + error_str
+                problem_details.append(error_str)
             ## check run_tests again
-            run_tests_command: list[str] = self.make_run_tests_command(uv_path, environment_type)
-            error_str: str = self.run_run_tests_command(run_tests_command, project_path)
-            if error_str:
-                problem_message = '\n\n' + error_str
+            run_tests_command = make_run_tests_command(project_path, uv_path)
+            tests_ok, tests_output = run_run_tests_command(run_tests_command, project_path)
+            if not tests_ok:
+                problem_details.append(f'Error on rollback run_tests() call: {tests_output}')
             ## email admins with all errors
-            # email_admins_with_errors(problem_message)  # TODO
+            problem_message = '\n'.join(problem_details)
+            emailer = Emailer(project_path)
+            email_message = emailer.create_setup_problem_message(problem_message)
+            emailer.send_email(project_email_addresses, email_message)
+            raise Exception(problem_message)
         return
 
     def backup_uv_lock(self, uv_path: Path, project_path: Path) -> Path:
@@ -73,24 +95,6 @@ class UvUpdater:
         shutil.copy(uv_lock_path, backup_file_path)
         assert backup_file_path.exists(), f'backup_file_path does not exist, ``{backup_file_path}``'
         return backup_file_path
-
-    # def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
-    #     """
-    #     Makes the sync command.
-    #     """
-    #     if environment_type == 'local':
-    #         group = 'local'
-    #     elif environment_type == 'staging':
-    #         group = 'staging'
-    #     elif environment_type == 'production':
-    #         group = 'production'
-    #     else:
-    #         msg = f'Invalid environment_type: {environment_type}'
-    #         log.exception(msg)
-    #         raise Exception(msg)
-    #     cmnd: list[str] = [str(uv_path), 'sync', sync_type, '--group', group]
-    #     log.debug(f'cmnd, ``{cmnd}``')
-    #     return cmnd
 
     def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
         """
