@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import TypedDict
 
-from lib.lib_call_runtests import make_run_tests_command, run_run_tests_command
+from lib.lib_call_runtests import make_run_tests_command, run_run_tests_command, should_run_tests
 from lib.lib_emailer import Emailer
 
 log = logging.getLogger(__name__)
@@ -71,10 +71,13 @@ class UvUpdater:
             if error_str:
                 problem_details.append(error_str)
             ## check run_tests again
-            run_tests_command = make_run_tests_command(project_path, uv_path)
-            tests_ok, tests_output = run_run_tests_command(run_tests_command, project_path)
-            if not tests_ok:
-                problem_details.append(f'Error on rollback run_tests() call: {tests_output}')
+            if should_run_tests(environment_type):
+                run_tests_command = make_run_tests_command(project_path, uv_path)
+                tests_ok, tests_output = run_run_tests_command(run_tests_command, project_path)
+                if not tests_ok:
+                    problem_details.append(f'Error on rollback run_tests() call: {tests_output}')
+            else:
+                log.info('Production environment detected - skipping rollback tests')
             ## email admins with all errors
             problem_message = '\n'.join(problem_details)
             emailer = Emailer(project_path)

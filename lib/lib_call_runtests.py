@@ -22,7 +22,16 @@ from lib.lib_emailer import Emailer
 log = logging.getLogger(__name__)
 
 
-def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]], environment_type: str) -> None:
+def should_run_tests(environment_type: str) -> bool:
+    """
+    Determines whether tests should run for the given environment.
+    """
+    return environment_type != 'production'
+
+
+def run_initial_tests(
+    uv_path: Path, project_path: Path, project_email_addresses: list[tuple[str, str]], environment_type: str
+) -> None:
     """
     Run initial tests to ensure that the script can run.
     Skips tests on production servers (environment_type == 'production').
@@ -32,9 +41,9 @@ def run_initial_tests(uv_path: Path, project_path: Path, project_email_addresses
     - Raises an exception
     """
     log.info('::: running initial tests ----------')
-    
+
     ## Skip tests on production
-    if environment_type == 'production':
+    if not should_run_tests(environment_type):
         log.info('Production environment detected - skipping initial tests')
         return
     ## prep the command ---------------------------------------------
@@ -68,9 +77,9 @@ def run_followup_tests(uv_path: Path, project_path: Path, environment_type: str)
     - does not exit, so that diffs can be emailed and permissions updated
     """
     log.info('::: running followup tests ----------')
-    
+
     ## Skip tests on production
-    if environment_type == 'production':
+    if not should_run_tests(environment_type):
         log.info('Production environment detected - skipping followup tests')
         return None
     ## prep the command ---------------------------------------------
