@@ -112,7 +112,7 @@ class UvUpdater:
         elif environment_type == 'staging':
             group = 'staging'
         elif environment_type == 'production':
-            group = 'production'
+            group = 'prod'
         else:
             msg = f'Invalid environment_type: {environment_type}'
             log.exception(msg)
