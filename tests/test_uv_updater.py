@@ -113,6 +113,47 @@ class TestUvUpdater(unittest.TestCase):
                     )
                 mock_send.assert_called_once()
 
+    def test_manage_sync_failure_skips_tests_on_production(self) -> None:
+        """
+        Checks that manage_sync() skips rollback tests on production sync failure.
+        """
+        updater = UvUpdater()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            project_path = tmp_path / 'project'
+            project_path.mkdir(parents=True, exist_ok=True)
+            uv_lock_path = project_path / 'uv.lock'
+            uv_lock_path.write_text('version = 1\n', encoding='utf-8')
+            uv_lock_backup_path = project_path.parent / 'uv.lock.bak'
+            uv_lock_backup_path.write_text('version = 1\n', encoding='utf-8')
+            sync_failure = subprocess.CompletedProcess(
+                args=['uv', 'sync'],
+                returncode=2,
+                stdout='',
+                stderr='sync failed',
+            )
+            sync_revert = subprocess.CompletedProcess(
+                args=['uv', 'sync', '--frozen'],
+                returncode=0,
+                stdout='',
+                stderr='',
+            )
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with (
+                patch('subprocess.run', side_effect=[sync_failure, sync_revert]),
+                patch('lib.lib_call_runtests.run_run_tests_command') as mock_run_tests,
+                patch('lib.lib_emailer.Emailer.send_email', return_value=None) as mock_send,
+            ):
+                with self.assertRaises(Exception):
+                    updater.manage_sync(
+                        Path('uv'),
+                        project_path,
+                        'production',
+                        project_email_addresses,
+                    )
+                mock_run_tests.assert_not_called()
+                mock_send.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()
