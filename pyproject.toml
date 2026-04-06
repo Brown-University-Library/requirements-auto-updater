@@ -14,3 +14,5 @@ staging = []
 prod = []
 ci_tests = []
 
+[tool.uv]
+exclude-newer = "1 week"
