@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import TypedDict
 
 from lib.lib_call_runtests import make_run_tests_command, run_run_tests_command, should_run_tests
-from lib.lib_uv_dry_run_classifier import DryRunClassification, classify_dry_run_output
 from lib.lib_emailer import Emailer
+from lib.lib_uv_dry_run_classifier import DryRunClassification, classify_dry_run_output
 
 log = logging.getLogger(__name__)
 
@@ -209,7 +209,7 @@ class UvUpdater:
         classification: DryRunClassification | None = None
         if ok is True:
             classification = classify_dry_run_output(combined_output)
-            log.info(f'dry-run classification: {classification["summary"]}')
+            log.info(f'ok / dry-run classification: {classification["summary"]}')
         else:
             log.info('problem / uv sync dry-run failed')
         return DryRunResult(
