@@ -22,8 +22,10 @@ Called directly -- or, typically, by a cron job -- this script:
     - if expectations fail, an email noting the failure will go out to: 
         - the target-project admins if possible 
         - otherwise the auto-updater admins
-- checks to see if a `uv sync --upgrade --group X` performs any updates. (Running that updates the `uv.lock` file and from that, updates the `.venv`.)
-    - if the resultant `uv.lock` file is different, this script re-runs the project's tests, runs django's `collectstatic` if necessary, and notifies the project-admins.
+- runs `uv sync --upgrade --group X --dry-run --output-format json` to see whether a real update is needed before mutating the target repo.
+    - if the dry run reports no changes, the script does nothing further.
+    - if the dry run reports lockfile-only metadata churn (currently the `exclude-newer` case), the script does nothing further.
+    - if the dry run reports a substantive dependency change, the script performs the real update, then re-runs the project's tests, runs django's `collectstatic` if necessary, and notifies the project-admins.
 
 ---
 
@@ -44,10 +46,15 @@ Called directly -- or, typically, by a cron job -- this script:
     - validates group and permissions on the venv and the `requirements_backups` directories
     - runs project's `run_tests.py`
 - If any of the above steps fail, emails project-admins (or updater-admins)
-- Saves a backup of `uv.lock` to `../requirements_backups/uv.lock_ISODATETIME`
-- Runs `uv sync --upgrade --group staging` (for dev) or `uv sync --upgrade --group production` (for prod)
-- Evaluates if `uv.lock` has changed
-- If `uv.lock` has changed (meaning the `.venv` has been updated):
+- Runs `uv sync --upgrade --group staging --dry-run --output-format json` (for dev) or `uv sync --upgrade --group prod --dry-run --output-format json` (for prod)
+- If the dry run reports no changes:
+    - stops without backing up `uv.lock` or updating `.venv`
+- If the dry run reports lockfile-only metadata churn:
+    - stops without backing up `uv.lock` or updating `.venv`
+- If the dry run reports a substantive change:
+    - saves a backup of `uv.lock` to `../uv.lock.bak`
+    - runs the real `uv sync --upgrade --group ...`
+    - evaluates whether `uv.lock` actually changed
     - runs project's `run_tests.py`
         - on test success
             - performs a diff on new and old `uv.lock` showing the change, and creates diff text 

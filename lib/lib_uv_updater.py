@@ -14,6 +14,7 @@ from typing import TypedDict
 
 from lib.lib_call_runtests import make_run_tests_command, run_run_tests_command, should_run_tests
 from lib.lib_emailer import Emailer
+from lib.lib_uv_dry_run_classifier import DryRunClassification, classify_dry_run_output
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +29,17 @@ class CompareResult(TypedDict):
 
     changes: bool
     diff: str
+
+
+class DryRunResult(TypedDict):
+    """
+    Structured result for running uv sync in dry-run mode.
+    """
+
+    ok: bool
+    stdout: str
+    stderr: str
+    classification: DryRunClassification | None
 
 
 class UvUpdater:
@@ -86,6 +98,30 @@ class UvUpdater:
             raise Exception(problem_message)
         return
 
+    def inspect_pending_sync(
+        self,
+        uv_path: Path,
+        project_path: Path,
+        environment_type: str,
+        project_email_addresses: list[tuple[str, str]],
+    ) -> DryRunClassification:
+        """
+        Runs uv sync dry-run and returns a structured classification result.
+        """
+        dry_run_command: list[str] = self.make_dry_run_sync_command(uv_path, environment_type)
+        dry_run_result: DryRunResult = self.run_dry_run_sync_command(dry_run_command, project_path)
+        if dry_run_result['ok'] is True and dry_run_result['classification'] is not None:
+            return dry_run_result['classification']
+        problem_details: list[str] = ['problem / uv dry-run sync failed']
+        problem_details.append(f'command: {dry_run_command}')
+        problem_details.append(f'stdout: {dry_run_result["stdout"]}')
+        problem_details.append(f'stderr: {dry_run_result["stderr"]}')
+        problem_message: str = '\n'.join(problem_details)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(problem_message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(problem_message)
+
     def backup_uv_lock(self, uv_path: Path, project_path: Path) -> Path:
         """
         Backs up the uv.lock file.
@@ -98,6 +134,15 @@ class UvUpdater:
         shutil.copy(uv_lock_path, backup_file_path)
         assert backup_file_path.exists(), f'backup_file_path does not exist, ``{backup_file_path}``'
         return backup_file_path
+
+    def make_dry_run_sync_command(self, uv_path: Path, environment_type: str) -> list[str]:
+        """
+        Makes the uv sync dry-run command.
+        """
+        cmnd: list[str] = self.make_sync_command(uv_path, environment_type, '--upgrade')
+        cmnd.extend(['--dry-run', '--output-format', 'json'])
+        log.debug(f'dry-run cmnd, ``{cmnd}``')
+        return cmnd
 
     def make_sync_command(self, uv_path: Path, environment_type: str, sync_type: str) -> list[str]:
         """
@@ -148,6 +193,31 @@ class UvUpdater:
         return_val = (ok, output)
         log.debug(f'return_val: {return_val}')
         return return_val
+
+    def run_dry_run_sync_command(self, sync_command: list[str], project_path: Path) -> DryRunResult:
+        """
+        Runs uv sync in dry-run mode and classifies the result.
+        """
+        log.info('::: running uv sync dry-run ----------')
+        result: subprocess.CompletedProcess = subprocess.run(
+            sync_command, cwd=str(project_path), capture_output=True, text=True
+        )
+        ok: bool = result.returncode == 0
+        stdout: str = f'{result.stdout}'
+        stderr: str = f'{result.stderr}'
+        combined_output: str = f'{stdout}\n{stderr}'.strip()
+        classification: DryRunClassification | None = None
+        if ok is True:
+            classification = classify_dry_run_output(combined_output)
+            log.info(f'ok / dry-run classification: {classification["summary"]}')
+        else:
+            log.info('problem / uv sync dry-run failed')
+        return DryRunResult(
+            ok=ok,
+            stdout=stdout,
+            stderr=stderr,
+            classification=classification,
+        )
 
     def run_frozen_sync_command(self, sync_command: list[str], project_path: Path) -> str:
         """

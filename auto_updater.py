@@ -26,6 +26,7 @@ from pathlib import Path
 # from dotenv import find_dotenv, load_dotenv
 from lib import lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
+from lib.lib_uv_dry_run_classifier import DryRunClassification
 from lib.lib_emailer import send_email_of_diffs
 from lib.lib_git_handler import GitHandler
 from lib.lib_uv_updater import CompareResult, UvUpdater
@@ -63,7 +64,7 @@ log = logging.getLogger(__name__)
 ## ------------------------------------------------------------------
 
 
-def update_group_and_permissions(project_path: Path, backup_file_path: Path, group: str) -> None:
+def update_group_and_permissions(project_path: Path, backup_file_path: Path | None, group: str) -> None:
     """
     Tries to update group-ownership and group-permissions for relevant directories.
     Intentionally does not fail if the commands fail.
@@ -72,7 +73,10 @@ def update_group_and_permissions(project_path: Path, backup_file_path: Path, gro
     relative_env_path: Path = project_path / '.venv'
     venv_path: Path = relative_env_path.resolve()
     log.debug(f'env_path: ``{venv_path}``')
-    for path in [venv_path, backup_file_path]:
+    target_paths: list[Path] = [venv_path]
+    if backup_file_path is not None:
+        target_paths.append(backup_file_path)
+    for path in target_paths:
         log.debug(f'updating group and permissions for path: ``{path}``')
         chgrp_result: subprocess.CompletedProcess[str] = subprocess.run(
             ['chgrp', '-R', group, str(path)], capture_output=True, text=True, check=False
@@ -129,87 +133,99 @@ def manage_update(project_path_str: str) -> None:
     run_initial_tests(uv_path, project_path, project_email_addresses, environment_type)  # emails admins and exits on failure
 
     ## ::: update :::
-    ## backup uv.lock -----------------------------------------------
+    uv_lock_backup_path: Path | None = None
     uv_updater = UvUpdater()
-    uv_lock_backup_path: Path = uv_updater.backup_uv_lock(uv_path, project_path)
-    ## run uv sync --------------------------------------------------
-    uv_updater.manage_sync(uv_path, project_path, environment_type, project_email_addresses)
-    ## check if new uv.lock file is different -----------------------
-    compare_result: CompareResult = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
+    dry_run_classification: DryRunClassification = uv_updater.inspect_pending_sync(
+        uv_path,
+        project_path,
+        environment_type,
+        project_email_addresses,
+    )
+    if dry_run_classification['has_pending_change'] is False:
+        log.info(dry_run_classification['summary'])
+    elif dry_run_classification['is_exclude_newer_only'] is True:
+        log.info(dry_run_classification['summary'])
+    else:
+    ## backup uv.lock -----------------------------------------------
+        uv_lock_backup_path = uv_updater.backup_uv_lock(uv_path, project_path)
+        ## run uv sync --------------------------------------------------
+        uv_updater.manage_sync(uv_path, project_path, environment_type, project_email_addresses)
+        ## check if new uv.lock file is different -----------------------
+        compare_result: CompareResult = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
 
-    ## ::: act on differences :::
-    if compare_result['changes'] is True:
-        ## check for django update ----------------------------------
-        diff_text: str = compare_result['diff']
-        followup_collectstatic_problems: None | str = None
-        django_update: bool = lib_django_updater.check_for_django_update(diff_text)
-        if django_update:
-            followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path, uv_path)
-            subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
+        ## ::: act on differences :::
+        if compare_result['changes'] is True:
+            ## check for django update ----------------------------------
+            diff_text: str = compare_result['diff']
+            followup_collectstatic_problems: None | str = None
+            django_update: bool = lib_django_updater.check_for_django_update(diff_text)
+            if django_update:
+                followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path, uv_path)
+                subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
 
-        ## run post-update tests ------------------------------------
-        followup_tests_problems: None | str = None
-        followup_tests_problems = run_followup_tests(uv_path, project_path, environment_type)
+            ## run post-update tests ------------------------------------
+            followup_tests_problems: None | str = None
+            followup_tests_problems = run_followup_tests(uv_path, project_path, environment_type)
 
-        ## handle test failure rollback ----------------------------
-        if followup_tests_problems is not None:
-            log.warning('Post-update tests failed; initiating rollback')
+            ## handle test failure rollback ----------------------------
+            if followup_tests_problems is not None:
+                log.warning('Post-update tests failed; initiating rollback')
 
-            ## 1. Restore original uv.lock from backup
-            backup_path = project_path.parent / 'uv.lock.bak'
-            shutil.copy(backup_path, project_path / 'uv.lock')
-            log.info('Restored original uv.lock from backup')
+                ## 1. Restore original uv.lock from backup
+                backup_path = project_path.parent / 'uv.lock.bak'
+                shutil.copy(backup_path, project_path / 'uv.lock')
+                log.info('Restored original uv.lock from backup')
 
-            ## 2. Run uv sync --frozen to update .venv from restored uv.lock
-            sync_command = [str(uv_path), 'sync', '--frozen', '--group', environment_type]
-            try:
-                subprocess.run(sync_command, cwd=str(project_path), check=True, capture_output=True, text=True)
-                log.info('Synced .venv from restored uv.lock')
-            except subprocess.CalledProcessError as e:
-                log.error(f'Failed to sync .venv during rollback: {e.stderr}')
+                ## 2. Run uv sync --frozen to update .venv from restored uv.lock
+                sync_command = [str(uv_path), 'sync', '--frozen', '--group', environment_type]
+                try:
+                    subprocess.run(sync_command, cwd=str(project_path), check=True, capture_output=True, text=True)
+                    log.info('Synced .venv from restored uv.lock')
+                except subprocess.CalledProcessError as e:
+                    log.error(f'Failed to sync .venv during rollback: {e.stderr}')
 
-            ## 3. Re-run tests to verify restoration worked
-            verification_result = run_followup_tests(uv_path, project_path, environment_type)
-            if verification_result is not None:
-                log.error('Tests still failing after rollback - environment may be corrupted')
+                ## 3. Re-run tests to verify restoration worked
+                verification_result = run_followup_tests(uv_path, project_path, environment_type)
+                if verification_result is not None:
+                    log.error('Tests still failing after rollback - environment may be corrupted')
+                else:
+                    log.info('Tests passing after rollback - environment successfully restored')
+
+                ## 4. Email about rollback
+                rollback_problems = {
+                    'collectstatic_problems': None,
+                    'test_problems': followup_tests_problems,
+                    'git_problems': None,
+                    'rollback_occurred': True,
+                    'verification_result': verification_result,
+                }
+                send_email_of_diffs(project_path, diff_text, rollback_problems, project_email_addresses)
+                log.info('Rollback email sent')
+
+                ## 5. Skip git operations and continue to cleanup
+                log.info('Skipping git operations due to test failure and rollback')
+
             else:
-                log.info('Tests passing after rollback - environment successfully restored')
+                ## git commit -----------------------------------------------
+                git_handler = GitHandler()
+                git_success, git_message = git_handler.manage_git(project_path, diff_text)
+                followup_git_problems: None | str = None
+                if not git_success:
+                    followup_git_problems = git_message
+                    log.warning(f'Git operations failed: {git_message}')
 
-            ## 4. Email about rollback
-            rollback_problems = {
-                'collectstatic_problems': None,
-                'test_problems': followup_tests_problems,
-                'git_problems': None,
-                'rollback_occurred': True,
-                'verification_result': verification_result,
-            }
-            send_email_of_diffs(project_path, diff_text, rollback_problems, project_email_addresses)
-            log.info('Rollback email sent')
+                ## send diff email --------------`----------------------------
+                followup_problems = {
+                    'collectstatic_problems': followup_collectstatic_problems,
+                    'test_problems': followup_tests_problems,
+                    'git_problems': followup_git_problems,
+                }
+                log.debug(f'followup_problems, ``{followup_problems}``')
+                send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
+                log.debug('email sent')
 
-            ## 5. Skip git operations and continue to cleanup
-            log.info('Skipping git operations due to test failure and rollback')
-
-        else:  # means there were no `followup_tests_problems`
-            ## git commit -----------------------------------------------
-            git_handler = GitHandler()
-            git_success, git_message = git_handler.manage_git(project_path, diff_text)
-            followup_git_problems: None | str = None
-            if not git_success:
-                followup_git_problems = git_message
-                log.warning(f'Git operations failed: {git_message}')
-
-            ## send diff email --------------`----------------------------
-            followup_problems = {
-                'collectstatic_problems': followup_collectstatic_problems,
-                'test_problems': followup_tests_problems,
-                'git_problems': followup_git_problems,
-            }
-            log.debug(f'followup_problems, ``{followup_problems}``')
-            send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
-            log.debug('email sent')
-
-    else:  # means `compare_result['changes']` is `False`
-        log.info('No changes detected - skipping git operations')
+        else:  # means `compare_result['changes']` is `False`
+            log.info('No changes detected after substantive dry-run - skipping git operations')
 
     ## ::: clean up :::
     ## try group and permissions update -----------------------------
