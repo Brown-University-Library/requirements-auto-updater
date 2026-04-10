@@ -87,7 +87,7 @@ That target project is assumed to contain, at minimum:
 - possibly `manage.py` for Django projects
 - a `.venv` managed by uv in the project directory
 
-This matters because any dry-run / temp-copy implementation should be written around the target project, not around the updater repo.
+This matters because the dry-run-based implementation should be written around the target project, not around the updater repo.
 
 ### Existing environment-group mapping
 
@@ -171,24 +171,28 @@ If implementation happens later and there is uncertainty about the exact uv diff
 
 This is the safest first release because false positives are operationally annoying, but false negatives could suppress real dependency updates.
 
-### Practical implementation seam options
+### Chosen implementation approach
 
-There are at least three plausible implementation strategies. If a later session needs to choose quickly, use this order of preference:
+Use this implementation strategy:
 
-1. ~~Preferred: dry-run preflight plus isolated temp-copy prospective diff~~
-   - ~~stable and explicit~~
-   - ~~avoids mutating the real target repo~~
-   - ~~does not depend entirely on parsing human-oriented dry-run text~~
+1. Run `uv sync --no-active --upgrade --group <group> --dry-run`.
+2. Parse the dry-run output.
+3. Decide from that output whether the update is:
+   - no-op
+   - `exclude-newer`-only metadata churn
+   - substantive dependency change
+4. Only if the dry-run output indicates a substantive dependency change should the code proceed to the existing real-update flow.
 
-2. Acceptable if uv output proves sufficiently stable: dry-run preflight plus parsing dry-run plan text
-   - simpler
-   - but potentially more brittle if uv output wording changes
+Reason for choosing this approach:
 
-3. ~~Fallback only if needed: isolated temp-copy real lock update without relying on dry-run output semantics~~
-   - ~~still avoids mutating the real target repo~~
-   - ~~slightly heavier, but likely robust~~
+- it keeps the implementation smaller
+- it avoids mutating the target repo before the decision is made
+- it aligns with the current goal of making `uv` dry-run output the new decision gate
 
-DEVELOPER RESPONSE: use option-2.
+Tradeoff:
+
+- this approach depends on the stability of uv's human-readable dry-run output
+- the implementation should therefore keep parsing logic narrow, explicit, and well tested
 
 ### Known downstream effects that must remain gated
 
@@ -213,12 +217,6 @@ Dry-run preflight candidate:
 
 ```bash
 uv sync --no-active --upgrade --group staging --dry-run
-```
-
-Prospective lock-only planning candidate:
-
-```bash
-uv lock --upgrade --dry-run
 ```
 
 Real sync currently used by repo logic:
@@ -262,22 +260,34 @@ uv run ./run_tests.py
 
 - Because the feature is mostly orchestration and diff classification, unit tests with mocked `subprocess.run()` should cover most of the work.
 - Avoid depending on live package-index responses in unit tests.
-- If an implementation session chooses to use a temp directory to compute a prospective diff, tests should exercise that logic with local temp files and mocked uv subprocess responses where practical.
 
-### Open implementation questions to resolve when coding
+### Resolved implementation decisions
 
-These do not block the plan, but a future session should answer them deliberately instead of by accident:
+These decisions have already been made and should be treated as part of the plan:
 
-1. Does current `uv lock --upgrade --dry-run` output provide enough stable detail to classify "metadata-only" vs "substantive" without a temp-copy fallback?
-    - DEVELOPER RESPONSE: let's make this work.
-2. Should the new classifier live in `lib/lib_uv_updater.py`, or is it cleaner to create a small dedicated helper module?
-    - DEVELOPER RESPONSE: let's create a small dedicated helper module.
-3. Should metadata-only skips be logged only, or should they also generate a lightweight informational email?
-    - DEVELOPER RESPONSE: let's log only for now.
-4. Should the actual post-sync `compare_uv_lock_files()` check remain in place as a defensive verification, even after the new preflight gate is added?
-    - DEVELOPER RESPONSE: that logic may still be useful -- make your own determination.
-5. Should the classifier ignore only `exclude-newer`, or should it also ignore future uv-generated metadata-only fields if they appear?
-    - DEVELOPER RESPONSE: i think ignoring only exclude-newer is the safe way to start.
+1. Use the dry-run-output parsing approach.
+   - Do not use the temp-copy prospective-diff approach for the first implementation.
+
+2. Put the new parsing/classification code in a small dedicated helper module.
+   - Do not keep this logic embedded directly inside `auto_updater.py`.
+
+3. For metadata-only skips, log only.
+   - Do not send a lightweight informational email in the first implementation.
+
+4. Ignore only `exclude-newer` metadata churn at first.
+   - Do not generalize to other uv-generated metadata-only fields yet.
+
+### Remaining judgment call during coding
+
+One design question remains open enough to decide during implementation:
+
+1. Whether to keep the existing post-sync `compare_uv_lock_files()` check as a defensive verification after the new dry-run gate is added.
+
+Current recommendation:
+
+- keep it, unless the implementation becomes noticeably more complex because of it
+- the dry-run gate should become the main decision point
+- the post-sync compare can still serve as a defensive confirmation of what actually changed
 
 ## Problems to solve
 
@@ -300,7 +310,7 @@ These do not block the plan, but a future session should answer them deliberatel
 Use a two-stage decision path:
 
 1. A **dry-run preflight** to determine whether `uv` sees any pending upgrade at all.
-2. A **prospective diff classifier** to determine whether the pending change is substantive or only lockfile metadata churn.
+2. A **dry-run output classifier** to determine whether the pending change is substantive or only `exclude-newer` metadata churn.
 
 Only after both stages say "yes" should the updater perform the real `uv sync --upgrade`.
 
@@ -334,65 +344,44 @@ The dry-run helper should not decide substantive vs metadata-only; it should onl
 - did uv report any pending change?
 - what text should be logged or inspected later?
 
-### 2. Add a prospective-update classifier before the real sync
+### 2. Add a dry-run output classifier before the real sync
 
 The main design requirement is to decide whether to proceed **without touching the real repo**.
 
-Because the dry-run output is documented as human-readable, but not clearly documented as a stable machine interface, the safer design is:
+The chosen approach is:
 
-- use `uv sync --upgrade --dry-run` as the first gate
-- if it reports no pending change, stop immediately
-- if it reports pending change, compute a **prospective lockfile diff in isolation**
+- run `uv sync --upgrade --dry-run`
+- inspect the dry-run output text
+- stop immediately if the output indicates no pending changes
+- stop immediately if the output indicates only `exclude-newer`-driven lockfile churn
+- proceed only if the output indicates a substantive dependency change
 
-Recommended approach for the second step:
+Implementation notes:
 
-- create a temporary working directory
-- copy in the minimum files needed for lock resolution:
-  - `pyproject.toml`
-  - current `uv.lock`
-  - any other uv config file only if this repo already depends on one
-- run a lock-only resolution there, preferably:
+- put this parsing/classification code in a new small helper module
+- keep the parser narrow and purpose-built
+- do not try to build a general uv output parser in the first pass
 
-```bash
-uv lock --upgrade --dry-run
-```
+Suggested responsibility for the helper:
 
-If `uv lock --dry-run` does not provide enough detail in practice, the fallback design is:
+- inspect dry-run stdout/stderr
+- detect whether uv is reporting any update at all
+- detect whether the only reported lockfile change is the rolling `exclude-newer` / `exclude-newer-span` metadata
+- return a structured classification result
 
-- create the temp copy
-- run real `uv lock --upgrade` in the temp copy only
-- diff the temp-copy `uv.lock` against the original repo `uv.lock`
+Conservative rule:
 
-This keeps the target repo untouched while still producing the exact prospective diff needed for classification.
-
-### 3. Add a uv.lock diff classifier that distinguishes substantive vs metadata-only changes
-
-Add a focused helper in `lib/lib_uv_updater.py` or a new small helper module.
-
-Suggested responsibility:
-
-- inspect a unified diff of `uv.lock`
-- return whether the diff is:
-  - substantive
-  - metadata-only
-  - specifically limited to `[options] exclude-newer` / `exclude-newer-span`
-
-For the first pass, the classifier can be deliberately narrow:
-
-- treat changes as **ignorable** only when the diff is confined to the `[options]` block lines:
-  - `exclude-newer = "..."`
-  - `exclude-newer-span = "..."`
-- treat everything else as substantive
-
-That conservative rule is preferable to a broader heuristic. It avoids suppressing real dependency changes by accident.
+- ignore only clearly identified `exclude-newer` metadata churn
+- treat anything else as substantive unless the parser can confidently classify it as no-op
 
 Suggested shape:
 
-- `classify_uv_lock_diff(diff_text: str) -> dict[str, bool | str]`
+- `classify_dry_run_output(output_text: str) -> dict[str, bool | str]`
 - or a small `TypedDict` / dataclass with flags such as:
-  - `has_changes`
+  - `has_pending_change`
   - `is_substantive`
   - `is_exclude_newer_only`
+  - `summary`
 
 ### 4. Refactor `auto_updater.manage_update()` to gate the real update
 
@@ -405,11 +394,10 @@ Replace the current sequence:
 with a gated sequence:
 
 1. run dry-run preflight
-2. if dry run says "no pending changes", log and exit update path
-3. if dry run says "pending changes", compute prospective diff
-4. classify the prospective diff
-5. if classifier says "exclude-newer only", log and exit update path
-6. only then:
+2. classify the dry-run output
+3. if classifier says "no pending changes", log and exit update path
+4. if classifier says "exclude-newer only", log and exit update path
+5. only then:
    - back up `uv.lock`
    - run real `uv sync --upgrade`
    - compare actual `uv.lock` vs backup
@@ -435,7 +423,7 @@ The only change to this area should be that it is reached less often, because me
 
 That logic should remain downstream of the new substantive gate:
 
-- if the classifier says the prospective diff is metadata-only, the code should never reach Django update handling
+- if the classifier says the dry-run result is metadata-only, the code should never reach Django update handling
 - if a substantive update does proceed, Django detection can continue to operate on the actual post-sync diff as it does now
 
 ### 7. Adjust logging and email semantics
@@ -471,8 +459,8 @@ Add tests for the new preflight and classification helpers:
 - dry-run helper returns success and indicates no pending changes
 - dry-run helper returns success and indicates pending changes
 - dry-run helper failure path preserves stderr details
-- diff classifier returns substantive for normal package version bumps
-- diff classifier returns metadata-only for this exact pattern:
+- dry-run output classifier returns substantive for normal dependency-update output
+- dry-run output classifier returns metadata-only for output that reflects this exact `uv.lock` pattern:
 
 ```diff
 --- a/uv.lock
@@ -486,7 +474,7 @@ Add tests for the new preflight and classification helpers:
  exclude-newer-span = "P1W"
 ```
 
-- diff classifier returns substantive if any package block also changes
+- dry-run output classifier returns substantive if any package block also changes
 
 ### `auto_updater.manage_update()` behavior tests
 
@@ -520,7 +508,7 @@ Keep or update tests covering:
 
 - The updater uses a dry-run step before any real `uv.lock` or `.venv` mutation.
 - A dry run that reports no pending upgrade causes the updater to stop without creating a backup or running a real sync.
-- A prospective diff consisting only of `[options] exclude-newer` / `exclude-newer-span` changes does not trigger:
+- A dry-run result classified as `[options] exclude-newer` / `exclude-newer-span` metadata-only churn does not trigger:
   - real `uv.lock` rewrite
   - `.venv` update
   - follow-up tests
@@ -532,7 +520,7 @@ Keep or update tests covering:
 
 ## Notes for implementation
 
-- Keep the classifier conservative. It is safer to let an uncertain diff count as substantive than to suppress a real dependency update.
+- Keep the classifier conservative. It is safer to let uncertain dry-run output count as substantive than to suppress a real dependency update.
 - Prefer structured return values over ad hoc tuples for any new dry-run/planning helpers.
 - Keep the real mutation path as small a delta from current behavior as possible.
 - Follow `AGENTS.md`: Python 3.12 typing, `uv` commands for execution, focused tests, minimal correct change.
