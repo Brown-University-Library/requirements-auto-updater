@@ -1,6 +1,6 @@
 # Plan: dry-run gate plus exclude-newer delay
 
-Goal: change the updater so it decides whether to proceed **before** mutating the target repo's `uv.lock` file or `.venv`, while also ignoring lockfile-only churn caused by:
+Goal: change the updater so it decides whether to proceed **before** mutating the target repo's `uv.lock` file or `.venv`, while also ignoring lockfile-only churn caused by different `exclude-newer` values such as:
 
 ```toml
 [tool.uv]
@@ -141,7 +141,7 @@ The planned target-project setting is:
 exclude-newer = "1 week"
 ```
 
-The key nuance is that uv writes a concrete timestamp into `uv.lock`, not the literal `"1 week"` string. That means even if package versions are unchanged, the lockfile can still change over time in the `[options]` section because the moving cutoff date advances.
+(The specific exclude-newer time-period may represent days instead.) The key nuance is that uv writes a concrete timestamp into `uv.lock`, not the literal `"1 week"` string. That means even if package versions are unchanged, the lockfile can still change over time in the `[options]` section because the moving cutoff date advances.
 
 This produces a diff like:
 
@@ -175,18 +175,20 @@ This is the safest first release because false positives are operationally annoy
 
 There are at least three plausible implementation strategies. If a later session needs to choose quickly, use this order of preference:
 
-1. Preferred: dry-run preflight plus isolated temp-copy prospective diff
-   - stable and explicit
-   - avoids mutating the real target repo
-   - does not depend entirely on parsing human-oriented dry-run text
+1. ~~Preferred: dry-run preflight plus isolated temp-copy prospective diff~~
+   - ~~stable and explicit~~
+   - ~~avoids mutating the real target repo~~
+   - ~~does not depend entirely on parsing human-oriented dry-run text~~
 
 2. Acceptable if uv output proves sufficiently stable: dry-run preflight plus parsing dry-run plan text
    - simpler
    - but potentially more brittle if uv output wording changes
 
-3. Fallback only if needed: isolated temp-copy real lock update without relying on dry-run output semantics
-   - still avoids mutating the real target repo
-   - slightly heavier, but likely robust
+3. ~~Fallback only if needed: isolated temp-copy real lock update without relying on dry-run output semantics~~
+   - ~~still avoids mutating the real target repo~~
+   - ~~slightly heavier, but likely robust~~
+
+DEVELOPER RESPONSE: use option-2.
 
 ### Known downstream effects that must remain gated
 
@@ -267,10 +269,15 @@ uv run ./run_tests.py
 These do not block the plan, but a future session should answer them deliberately instead of by accident:
 
 1. Does current `uv lock --upgrade --dry-run` output provide enough stable detail to classify "metadata-only" vs "substantive" without a temp-copy fallback?
+    - DEVELOPER RESPONSE: let's make this work.
 2. Should the new classifier live in `lib/lib_uv_updater.py`, or is it cleaner to create a small dedicated helper module?
+    - DEVELOPER RESPONSE: let's create a small dedicated helper module.
 3. Should metadata-only skips be logged only, or should they also generate a lightweight informational email?
+    - DEVELOPER RESPONSE: let's log only for now.
 4. Should the actual post-sync `compare_uv_lock_files()` check remain in place as a defensive verification, even after the new preflight gate is added?
+    - DEVELOPER RESPONSE: that logic may still be useful -- make your own determination.
 5. Should the classifier ignore only `exclude-newer`, or should it also ignore future uv-generated metadata-only fields if they appear?
+    - DEVELOPER RESPONSE: i think ignoring only exclude-newer is the safe way to start.
 
 ## Problems to solve
 
