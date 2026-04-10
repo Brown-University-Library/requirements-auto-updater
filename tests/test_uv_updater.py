@@ -17,6 +17,44 @@ log = logging.getLogger(__name__)
 
 
 class TestUvUpdater(unittest.TestCase):
+    def test_make_dry_run_sync_command_staging(self) -> None:
+        """
+        Checks that the dry-run sync command includes json output for the staging group.
+        """
+        updater = UvUpdater()
+        command = updater.make_dry_run_sync_command(Path('/usr/local/bin/uv'), 'staging')
+        self.assertEqual(
+            command,
+            [
+                '/usr/local/bin/uv',
+                'sync',
+                '--no-active',
+                '--upgrade',
+                '--group',
+                'staging',
+                '--dry-run',
+                '--output-format',
+                'json',
+            ],
+        )
+
+    def test_run_dry_run_sync_command_returns_metadata_only_classification(self) -> None:
+        """
+        Checks that run_dry_run_sync_command() classifies lock-only change output as metadata-only.
+        """
+        updater = UvUpdater()
+        completed_process = subprocess.CompletedProcess(
+            args=['uv', 'sync', '--dry-run'],
+            returncode=0,
+            stdout='{"sync":{"action":"check"},"lock":{"action":"write"},"dry_run":true}',
+            stderr='',
+        )
+        with patch('subprocess.run', return_value=completed_process):
+            result = updater.run_dry_run_sync_command(['uv', 'sync', '--dry-run'], Path('/tmp/project'))
+        self.assertTrue(result['ok'])
+        self.assertIsNotNone(result['classification'])
+        self.assertTrue(result['classification']['is_exclude_newer_only'])
+
     def test_compare_uv_lock_files_happy_path_returns_diff(self) -> None:
         """
         Checks that compare_uv_lock_files() returns a dict indicating changes with unified diff text when files differ.
