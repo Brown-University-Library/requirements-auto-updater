@@ -22,10 +22,11 @@ Called directly -- or, typically, by a cron job -- this script:
     - if expectations fail, an email noting the failure will go out to: 
         - the target-project admins if possible 
         - otherwise the auto-updater admins
-- runs `uv sync --upgrade --group X --dry-run --output-format json` to see whether a real update is needed before mutating the target repo.
+- on `staging`, runs `uv sync --upgrade --group staging --dry-run --output-format json` to see whether a real update is needed before mutating the target repo.
     - if the dry run reports no changes, the script does nothing further.
     - if the dry run reports lockfile-only metadata churn (currently the `exclude-newer` case), the script does nothing further.
     - if the dry run reports a substantive dependency change, the script performs the real update, then re-runs the project's tests, runs django's `collectstatic` if necessary, and notifies the project-admins.
+- on `production`, skips upgrade discovery entirely and runs `uv sync --locked --group prod` so the deployed `.venv` matches the already-committed `uv.lock`.
 
 ---
 
@@ -46,28 +47,34 @@ Called directly -- or, typically, by a cron job -- this script:
     - validates group and permissions on the venv and the `requirements_backups` directories
     - runs project's `run_tests.py`
 - If any of the above steps fail, emails project-admins (or updater-admins)
-- Runs `uv sync --upgrade --group staging --dry-run --output-format json` (for dev) or `uv sync --upgrade --group prod --dry-run --output-format json` (for prod)
-- If the dry run reports no changes:
-    - stops without backing up `uv.lock` or updating `.venv`
-- If the dry run reports lockfile-only metadata churn:
-    - stops without backing up `uv.lock` or updating `.venv`
-- If the dry run reports a substantive change:
-    - saves a backup of `uv.lock` to `../uv.lock.bak`
-    - runs the real `uv sync --upgrade --group ...`
-    - evaluates whether `uv.lock` actually changed
-    - runs project's `run_tests.py`
-        - on test success
-            - performs a diff on new and old `uv.lock` showing the change, and creates diff text 
-            - if a django app
-                - runs its `collectstatic` command
-                - runs the usual `touch` command to let passenger know to reload the django-app
-            - runs a git-pull, then a git-add, then a git-commit, then a git-push
-            - emails the diff (and any issues) to the project-admins
-        - on test failure
-            - restores original `uv.lock`
-            - runs `uv sync --frozen`  # just updates the `.venv` from the `uv.lock` file
-            - runs project's `run_tests.py` again
-            - emails the canceled-diff (and test-failures) to the project-admins
+- On `staging`:
+    - runs `uv sync --upgrade --group staging --dry-run --output-format json`
+    - if the dry run reports no changes, stops without backing up `uv.lock` or updating `.venv`
+    - if the dry run reports lockfile-only metadata churn, stops without backing up `uv.lock` or updating `.venv`
+    - if the dry run reports a substantive change:
+        - saves a backup of `uv.lock` to `../uv.lock.bak`
+        - runs the real `uv sync --upgrade --group staging`
+        - evaluates whether `uv.lock` actually changed
+        - runs project's `run_tests.py`
+            - on test success
+                - performs a diff on new and old `uv.lock` showing the change, and creates diff text
+                - if a django app
+                    - runs its `collectstatic` command
+                    - runs the usual `touch` command to let passenger know to reload the django-app
+                - runs a git-pull, then a git-add, then a git-commit, then a git-push
+                - emails the diff (and any issues) to the project-admins
+            - on test failure
+                - restores original `uv.lock`
+                - runs `uv sync --frozen --group staging`
+                - runs project's `run_tests.py` again
+                - emails the canceled-diff (and test-failures) to the project-admins
+- On `production`:
+    - skips upgrade discovery entirely
+    - runs `uv sync --locked --group prod`
+    - does not back up or diff `uv.lock`
+    - does not run git commit/push operations
+    - skips tests as before
+    - still runs django `collectstatic` and restart handling if the installed django version changed across the locked sync
 - Finally, attempts to update group & permissions on the venv and the `requirements_backups` directories
 
 

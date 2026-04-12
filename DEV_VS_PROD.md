@@ -18,15 +18,18 @@ In practice, a dev server run is handled as a `staging` run, while a production 
 
 ## Actual processing differences
 
-### 1. Different dependency groups are synced
+### 1. Different dependency groups and sync semantics are used
 
-The `uv sync` command uses different dependency groups depending on environment:
+The `uv sync` command now uses different dependency groups and different sync modes depending on environment:
 
-- `staging` uses `--group staging`
-- `production` uses `--group prod`
+- `staging` uses upgrade discovery and real upgrade syncs:
+  - `uv sync --no-active --upgrade --group staging --dry-run --output-format json`
+  - `uv sync --no-active --upgrade --group staging`
+- `production` skips upgrade discovery and realizes the committed lockfile:
+  - `uv sync --no-active --locked --group prod`
 
 Source:
-- `requirements-auto-updater/lib/lib_uv_updater.py:147`
+- `requirements-auto-updater/lib/lib_uv_updater.py`
 
 ### 2. Dev/staging runs tests; production skips them
 
@@ -41,45 +44,59 @@ That means:
 Source:
 - `requirements-auto-updater/lib/lib_call_runtests.py:25`
 
-### 3. Post-update rollback due to failed tests is effectively dev/staging-only
+### 3. Only staging mutates and diffs `uv.lock`
 
-After a substantive update, `manage_update()` runs follow-up tests and rolls back if those tests fail.
+Staging still backs up `uv.lock`, upgrades dependencies, and diffs the resulting lockfile.
 
-Because production skips follow-up tests, this rollback path is only realistically triggered on dev/staging.
+Production no longer:
 
-Source:
-- `requirements-auto-updater/auto_updater.py:166`
-
-### 4. Rollback verification tests are skipped on production
-
-If `uv sync` itself fails inside `UvUpdater.manage_sync()`, the code restores the old `uv.lock` and runs `uv sync --frozen`.
-
-After that:
-
-- Dev/staging reruns tests to verify the environment is healthy again
-- Production skips that rollback verification test pass
+- runs upgrade dry-run classification
+- backs up `uv.lock`
+- mutates `uv.lock`
+- diffs `uv.lock`
+- commits or pushes git changes
 
 Source:
-- `requirements-auto-updater/lib/lib_uv_updater.py:49`
-- `requirements-auto-updater/tests/test_uv_updater.py:154`
+- `requirements-auto-updater/auto_updater.py`
 
-## What does not change between dev and production
+### 4. Rollback due to failed follow-up tests is staging-only
 
-These parts of processing are the same in both environments:
+After a substantive staging update, `manage_update()` still runs follow-up tests and rolls back if those tests fail.
+
+That rollback restores the old `uv.lock`, runs `uv sync --frozen --group staging`, and reruns tests to confirm the environment is healthy again.
+
+Production no longer participates in that rollback path because it no longer upgrades or diffs `uv.lock`.
+
+Source:
+- `requirements-auto-updater/auto_updater.py`
+- `requirements-auto-updater/lib/lib_uv_updater.py`
+
+### 5. Django follow-up detection differs
+
+Staging still decides whether Django follow-up work is required by inspecting the `uv.lock` diff.
+
+Production now decides whether Django follow-up work is required by comparing the installed Django version before and after the locked sync.
+
+This keeps `collectstatic` and restart handling available on production without making production behave like an upgrade-discovery environment.
+
+Source:
+- `requirements-auto-updater/auto_updater.py`
+- `requirements-auto-updater/lib/lib_django_updater.py`
+
+## What still does not change between dev and production
+
+These parts of processing are still the same in both environments:
 
 - the initial project/environment validation steps
-- the dry-run classification step
-- backup and diff generation for `uv.lock`
-- notification email flow
-- Django `collectstatic` and restart handling when a Django update is detected
-- git add/commit/push handling after a successful substantive update
 - final group/permission updates
+- Django operational follow-up when a Django change has been activated
+- setup-problem email notifications when a sync command itself fails
 
 ## Practical summary
 
 The main behavioral distinction is:
 
-- dev server: updates the `staging` dependency group and uses tests as pre- and post-update safety gates
-- production server: updates the `prod` dependency group and skips all test execution
+- dev/staging server: discovers upgrades, mutates `uv.lock`, tests the result, and commits/pushes safe lockfile changes
+- production server: consumes the committed `uv.lock` with `--locked`, skips all test execution, and does not perform git work
 
-So production is the less conservative path. It still performs dry-run analysis, backup, syncing, diffing, notifications, and cleanup, but it does not block or validate the run with test execution.
+So production is now a lockfile-realization path rather than an upgrade-discovery path.
