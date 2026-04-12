@@ -41,6 +41,7 @@ Called directly -- or, typically, by a cron job -- this script:
     - validates expected branch
     - validates expected git-status
     - ensures a python version is listed
+    - ensures `pyproject.toml` includes a `[tool.uv] exclude-newer` setting
     - determines the local/staging/production environment
     - validates the `uv` path
     - determines the group
@@ -96,7 +97,7 @@ Called directly -- or, typically, by a cron job -- this script:
 
 ## Project assumptions...
 
-- A `pyproject.toml` file exists, with a `dependencies = []` entry, and a `[dependency-groups]` entry, with `staging` and `prod` entries.
+- A `pyproject.toml` file exists, with a `dependencies = []` entry, a `[dependency-groups]` entry with `staging` and `prod` entries, and a `[tool.uv]` section with an `exclude-newer` setting (for example, `"2 days"`).
 - The dependencies use tilde-notation (`package~=1.2.0`) wherever possible. That third numeral is important; we only want to update the `patch` version.
 - There is a `.env` file in the "outer-stuff" directory.
 - The `.env` file contains an `ADMINS_JSON` entry with the following structure:
@@ -118,7 +119,9 @@ Called directly -- or, typically, by a cron job -- this script:
 
 - Suggestion: we do not tweak this script for different project-structures; rather, we restructure our apps to fit these assumptions (to keep this script simple, and for the benefits of a more standardized project structure).
 
-- To monitor: using the tilde-notation to ensure that only the `patch` version is updated _could_ still install new non-patch-level versions of dependencies. In the 2 months of monitoring this in real usage on two projects, this has not caused an issue.
+- The `exclude-newer` setting reduces the chance of pulling a newly published poisoned registry package. The specific value can vary by project.
+
+- To monitor: using the tilde-notation to ensure that only the `patch` version is updated _could_ still install new non-patch-level versions of dependencies. In the many months of monitoring this in real usage on three projects, this has not caused an issue.
 
 ---
 
