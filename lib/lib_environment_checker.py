@@ -23,6 +23,8 @@ def validate_project_path(project_path: Path) -> None:
     If path is invalid:
     - Sends an email to the auto-updater sys-admins
     - Exits the script
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: validating project_path ----------')
     # log.debug(f'project_path: ``{project_path}``')
@@ -55,6 +57,8 @@ def determine_project_email_addresses(project_path: Path) -> list[tuple[str, str
     If there's an error:
     - Sends an email to the auto-updater sys-admins
     - Exits the script
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: determining email addresses ----------')
     log.debug(f'project_path: ``{project_path}``')
@@ -83,6 +87,8 @@ def check_branch(project_path, project_email_addresses) -> None:
     """
     Checks that the project is on the `main` branch.
     If not, sends an email to the project sys-admins, then exits.
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: checking branch ----------')
     branch = fetch_branch_data(project_path)
@@ -103,7 +109,8 @@ def check_branch(project_path, project_email_addresses) -> None:
 def fetch_branch_data(project_path: Path) -> str:
     """
     Fetches branch-data by reading the `.git/HEAD` file (avoiding calling git via subprocess due to `dubious ownership` issue).
-    Called by check_branch()
+
+    Called by check_branch().
     """
     # log.debug('starting fetch_branch_data')
     git_dir = project_path / '.git'
@@ -134,6 +141,8 @@ def check_git_status(project_path: Path, project_email_addresses: list[tuple[str
 
     Note: just looking for the word 'clean' because one version of git says "working tree clean"
         and another says "working directory clean". TODO: consider just checking the ok boolean.
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: checking git status ----------')
     ## check for uncommitted changes --------------------------
@@ -163,6 +172,8 @@ def validate_pyproject_toml(project_path: Path, project_email_addresses: list[tu
     If validation fails:
     - Sends an email to the project admins
     - Exits the script
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: validating pyproject.toml ----------')
     ## check for pyproject.toml existence ----------------------
@@ -224,6 +235,8 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     Infers environment type based on the system hostname.
     Returns 'local', 'staging', or 'production'.
     Note: pyproject.toml validation is handled by validate_pyproject_toml().
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: determining environment type ----------')
     hostname: str = subprocess.check_output(['hostname'], text=True).strip().lower()
@@ -275,6 +288,8 @@ def validate_uv_path(uv_path: Path, project_path: Path) -> None:
     If path is invalid:
     - Sends an email to the auto-updater sys-admins
     - Exits the script
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: validating uv_path ----------')
     # log.debug(f'project_path: ``{project_path}``')
@@ -300,6 +315,8 @@ def determine_group(project_path: Path, project_email_addresses: list[tuple[str,
     If there's an error:
     - Sends an email to the project sys-admins
     - Exits the script
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: determining group ----------')
     try:
@@ -327,6 +344,8 @@ def check_group_and_permissions(
     If there are any problems:
     - Sends an email to the project sys-admins
     - Exits the script
+
+    Called by auto_updater.run_preflight_checks().
     """
     log.info('::: checking group and permissions ----------')
     ## get venv path ------------------------------------------------

@@ -15,6 +15,8 @@ def determine_venv_paths(project_path: Path) -> tuple[Path, Path]:
         subprocess.run(the_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
 
     Essentially allows a subprocess.run() command to act as if it's running in an activated venv.
+
+    Called by no active functions.
     """
     venv_bin_path: Path = project_path.parent / 'env' / 'bin'
     venv_bin_path = venv_bin_path.resolve()

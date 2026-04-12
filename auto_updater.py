@@ -18,26 +18,22 @@ Usage...
 import argparse
 import logging
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypedDict
 
-# from dotenv import find_dotenv, load_dotenv
 from lib import lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
-from lib.lib_uv_dry_run_classifier import DryRunClassification
 from lib.lib_emailer import send_email_of_diffs
 from lib.lib_git_handler import GitHandler
+from lib.lib_uv_dry_run_classifier import DryRunClassification
 from lib.lib_uv_updater import CompareResult, UvUpdater
+from lib.lib_workflow_helpers import handle_staging_failure_rollback, run_django_followup
 
 ## load envars ------------------------------------------------------
 this_file_path = Path(__file__).resolve()
 stuff_dir = this_file_path.parent.parent
-## load envars from .env file -- not needed if using ```uv run --env-file "../.env" ./auto_updater.py...```
-# dotenv_path = stuff_dir / '.env'
-# assert dotenv_path.exists(), f'file does not exist, ``{dotenv_path}``'
-# load_dotenv(find_dotenv(str(dotenv_path), raise_error_if_not_found=True), override=True)
 
 ## define constants -------------------------------------------------
 ENVAR_EMAIL_FROM = os.environ['AUTO_UPDTR__EMAIL_FROM']
@@ -48,7 +44,7 @@ uv_path: Path = Path(UV_PATH).resolve()
 
 ## set up logging ---------------------------------------------------
 log_dir: Path = stuff_dir / 'logs'
-log_dir.mkdir(parents=True, exist_ok=True)  # creates the log-directory inside the stuff-directory if it doesn't exist
+log_dir.mkdir(parents=True, exist_ok=True)
 log_file_path: Path = log_dir / 'auto_updater.log'
 logging.basicConfig(
     level=logging.DEBUG,
@@ -59,15 +55,23 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-## ------------------------------------------------------------------
-## main code -- called by manage_update() ---------------------------
-## ------------------------------------------------------------------
+class PreflightData(TypedDict):
+    """
+    Shared validated data used by the environment-specific workflows.
+    """
+
+    project_path: Path
+    project_email_addresses: list[tuple[str, str]]
+    environment_type: str
+    group: str
 
 
 def update_group_and_permissions(project_path: Path, backup_file_path: Path | None, group: str) -> None:
     """
     Tries to update group-ownership and group-permissions for relevant directories.
     Intentionally does not fail if the commands fail.
+
+    Called by manage_update().
     """
     log.info('::: updating group and permissions ----------')
     relative_env_path: Path = project_path / '.venv'
@@ -90,25 +94,14 @@ def update_group_and_permissions(project_path: Path, backup_file_path: Path | No
     return
 
 
-## ------------------------------------------------------------------
-## main manager function --------------------------------------------
-## ------------------------------------------------------------------
-
-
-def manage_update(project_path_str: str) -> None:
+def run_preflight_checks(project_path_str: str) -> PreflightData:
     """
-    Main function to manage the update process for the project's dependencies.
-    Note that `project_path_str` is not this project's path, but the path to the project to be updated.
-    Calls various helper functions to validate, compile, compare, sync, and update permissions.
-    """
-    log.debug('starting manage_update()')
+    Runs shared setup and validation before branching into staging or production workflows.
 
-    ## ::: run environmental checks :::
-    """
-    All environmental checks that can fail will, on failure, email relevant admins, then exit.
+    Called by manage_update().
     """
     ## validate project path ----------------------------------------
-    project_path: Path = Path(project_path_str).resolve()  # ensures an absolute path now
+    project_path: Path = Path(project_path_str).resolve()
     lib_environment_checker.validate_project_path(project_path)
     ## cd to project dir --------------------------------------------
     os.chdir(project_path)
@@ -122,19 +115,33 @@ def manage_update(project_path_str: str) -> None:
     lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
     ## get environment-type -----------------------------------------
     environment_type: str = lib_environment_checker.determine_environment_type(project_path, project_email_addresses)
-    ## validate uv path -----------------------------------------------
+    ## validate uv path ---------------------------------------------
     lib_environment_checker.validate_uv_path(uv_path, project_path)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
-    ## check for correct group and group-write permissions ---------
+    ## check for correct group and group-write permissions ----------
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
+    preflight_data = PreflightData(
+        project_path=project_path,
+        project_email_addresses=project_email_addresses,
+        environment_type=environment_type,
+        group=group,
+    )
+    return preflight_data
 
-    ## ::: initial tests :::
-    run_initial_tests(uv_path, project_path, project_email_addresses, environment_type)  # emails admins and exits on failure
 
-    ## ::: update :::
+def run_staging_update_workflow(
+    project_path: Path,
+    project_email_addresses: list[tuple[str, str]],
+    environment_type: str,
+    uv_updater: UvUpdater,
+) -> Path | None:
+    """
+    Runs the upgrade-oriented staging workflow.
+
+    Called by manage_update().
+    """
     uv_lock_backup_path: Path | None = None
-    uv_updater = UvUpdater()
     dry_run_classification: DryRunClassification = uv_updater.inspect_pending_sync(
         uv_path,
         project_path,
@@ -146,98 +153,108 @@ def manage_update(project_path_str: str) -> None:
     elif dry_run_classification['is_exclude_newer_only'] is True:
         log.info(dry_run_classification['summary'])
     else:
-    ## backup uv.lock -----------------------------------------------
+        ## backup uv.lock --------------------------------------------
         uv_lock_backup_path = uv_updater.backup_uv_lock(uv_path, project_path)
-        ## run uv sync --------------------------------------------------
-        uv_updater.manage_sync(uv_path, project_path, environment_type, project_email_addresses)
-        ## check if new uv.lock file is different -----------------------
+        ## run uv sync -----------------------------------------------
+        uv_updater.run_upgrade_sync(uv_path, project_path, environment_type, project_email_addresses)
+        ## check if new uv.lock file is different --------------------
         compare_result: CompareResult = uv_updater.compare_uv_lock_files(project_path / 'uv.lock', uv_lock_backup_path)
-
-        ## ::: act on differences :::
         if compare_result['changes'] is True:
-            ## check for django update ----------------------------------
+            ## check for django update -------------------------------
             diff_text: str = compare_result['diff']
-            followup_collectstatic_problems: None | str = None
             django_update: bool = lib_django_updater.check_for_django_update(diff_text)
-            if django_update:
-                followup_collectstatic_problems = lib_django_updater.run_collectstatic(project_path, uv_path)
-                subprocess.run(['touch', './config/tmp/restart.txt'], check=True)  # TODO: make this more robust
-
-            ## run post-update tests ------------------------------------
-            followup_tests_problems: None | str = None
-            followup_tests_problems = run_followup_tests(uv_path, project_path, environment_type)
-
-            ## handle test failure rollback ----------------------------
+            ## run django follow-up if needed ------------------------
+            followup_collectstatic_problems: None | str = run_django_followup(project_path, uv_path, django_update)
+            ## run post-update tests ---------------------------------
+            followup_tests_problems: None | str = run_followup_tests(uv_path, project_path, environment_type)
             if followup_tests_problems is not None:
-                log.warning('Post-update tests failed; initiating rollback')
-
-                ## 1. Restore original uv.lock from backup
-                backup_path = project_path.parent / 'uv.lock.bak'
-                shutil.copy(backup_path, project_path / 'uv.lock')
-                log.info('Restored original uv.lock from backup')
-
-                ## 2. Run uv sync --frozen to update .venv from restored uv.lock
-                sync_command = [str(uv_path), 'sync', '--frozen', '--group', environment_type]
-                try:
-                    subprocess.run(sync_command, cwd=str(project_path), check=True, capture_output=True, text=True)
-                    log.info('Synced .venv from restored uv.lock')
-                except subprocess.CalledProcessError as e:
-                    log.error(f'Failed to sync .venv during rollback: {e.stderr}')
-
-                ## 3. Re-run tests to verify restoration worked
-                verification_result = run_followup_tests(uv_path, project_path, environment_type)
-                if verification_result is not None:
-                    log.error('Tests still failing after rollback - environment may be corrupted')
-                else:
-                    log.info('Tests passing after rollback - environment successfully restored')
-
-                ## 4. Email about rollback
-                rollback_problems = {
-                    'collectstatic_problems': None,
-                    'test_problems': followup_tests_problems,
-                    'git_problems': None,
-                    'rollback_occurred': True,
-                    'verification_result': verification_result,
-                }
-                send_email_of_diffs(project_path, diff_text, rollback_problems, project_email_addresses)
-                log.info('Rollback email sent')
-
-                ## 5. Skip git operations and continue to cleanup
+                ## handle test-failure rollback -----------------------
+                handle_staging_failure_rollback(
+                    project_path,
+                    uv_path,
+                    uv_updater,
+                    diff_text,
+                    followup_tests_problems,
+                    project_email_addresses,
+                )
                 log.info('Skipping git operations due to test failure and rollback')
-
             else:
-                ## git commit -----------------------------------------------
+                ## git commit/push ------------------------------------
                 git_handler = GitHandler()
                 git_success, git_message = git_handler.manage_git(project_path, diff_text)
                 followup_git_problems: None | str = None
-                if not git_success:
+                if git_success is False:
                     followup_git_problems = git_message
                     log.warning(f'Git operations failed: {git_message}')
-
-                ## send diff email --------------`----------------------------
                 followup_problems = {
                     'collectstatic_problems': followup_collectstatic_problems,
                     'test_problems': followup_tests_problems,
                     'git_problems': followup_git_problems,
                 }
                 log.debug(f'followup_problems, ``{followup_problems}``')
+                ## send diff email ------------------------------------
                 send_email_of_diffs(project_path, diff_text, followup_problems, project_email_addresses)
                 log.debug('email sent')
-
-        else:  # means `compare_result['changes']` is `False`
+        else:
             log.info('No changes detected after substantive dry-run - skipping git operations')
+    return uv_lock_backup_path
 
-    ## ::: clean up :::
-    ## try group and permissions update -----------------------------
-    update_group_and_permissions(project_path, uv_lock_backup_path, group)
+
+def run_production_sync_workflow(
+    project_path: Path,
+    project_email_addresses: list[tuple[str, str]],
+    uv_updater: UvUpdater,
+) -> None:
+    """
+    Runs the locked production sync workflow.
+
+    Called by manage_update().
+    """
+    ## determine installed django version before sync ---------------
+    django_before_version: str | None = lib_django_updater.find_installed_package_version(project_path, 'django')
+    ## run locked sync ----------------------------------------------
+    uv_updater.run_locked_sync(uv_path, project_path, 'production', project_email_addresses)
+    ## determine installed django version after sync ----------------
+    django_after_version: str | None = lib_django_updater.find_installed_package_version(project_path, 'django')
+    ## run django follow-up if needed -------------------------------
+    django_update: bool = lib_django_updater.did_package_version_change(django_before_version, django_after_version)
+    run_django_followup(project_path, uv_path, django_update)
     return
 
-    ## end def manage_update()
+
+def manage_update(project_path_str: str) -> None:
+    """
+    Main function to manage the update process for the project's dependencies.
+    Note that `project_path_str` is not this project's path, but the path to the project to be updated.
+
+    Called by __main__.
+    """
+    log.debug('starting manage_update()')
+    ## run environmental checks -------------------------------------
+    preflight_data: PreflightData = run_preflight_checks(project_path_str)
+    project_path: Path = preflight_data['project_path']
+    project_email_addresses: list[tuple[str, str]] = preflight_data['project_email_addresses']
+    environment_type: str = preflight_data['environment_type']
+    group: str = preflight_data['group']
+    ## initial tests ------------------------------------------------
+    run_initial_tests(uv_path, project_path, project_email_addresses, environment_type)
+    uv_lock_backup_path: Path | None = None
+    uv_updater = UvUpdater()
+    if environment_type == 'production':
+        ## production locked-sync workflow ---------------------------
+        run_production_sync_workflow(project_path, project_email_addresses, uv_updater)
+    else:
+        ## staging upgrade workflow ---------------------------------
+        uv_lock_backup_path = run_staging_update_workflow(
+            project_path, project_email_addresses, environment_type, uv_updater
+        )
+    ## clean up -----------------------------------------------------
+    update_group_and_permissions(project_path, uv_lock_backup_path, group)
+    return
 
 
 if __name__ == '__main__':
     log.debug('\n\nstarting dundermain')
-
     parser = argparse.ArgumentParser(description='Updates dependencies for the specified project')
     parser.add_argument('--project', required=True, help='Path to the project directory')
     try:
@@ -249,126 +266,3 @@ if __name__ == '__main__':
         log.error(f'Argument error: {e}')
         parser.print_help()
         sys.exit(1)
-
-
-## older code, for reference during construction --------------------
-
-# def compile_requirements(project_path: Path, python_version: str, environment_type: str, uv_path: Path) -> Path:
-#     """
-#     Compiles the project's `requirements.in` file into a versioned `requirements.txt` backup.
-#     Returns the path to the newly created backup file.
-#     """
-#     log.info('::: compiling requirements ----------')
-#     ## prepare requirements.in filepath -----------------------------
-#     requirements_in: Path = project_path / 'requirements' / f'{environment_type}.in'  # local.in, staging.in, production.in
-#     log.debug(f'requirements.in path, ``{requirements_in}``')
-#     ## ensure backup-directory is ready -----------------------------
-#     backup_dir: Path = project_path.parent / 'requirements_backups'
-#     log.debug(f'backup_dir: ``{backup_dir}``')
-#     backup_dir.mkdir(parents=True, exist_ok=True)
-#     ## prepare compiled_filepath ------------------------------------
-#     timestamp: str = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-#     compiled_filepath: Path = backup_dir / f'{environment_type}_{timestamp}.txt'
-#     log.debug(f'backup_file: ``{compiled_filepath}``')
-#     ## prepare compile command --------------------------------------
-#     compile_command: list[str] = [
-#         str(uv_path),
-#         'pip',
-#         'compile',
-#         str(requirements_in),
-#         '--output-file',
-#         str(compiled_filepath),
-#         '--universal',
-#         '--python',
-#         python_version,
-#     ]
-#     log.debug(f'compile_command: ``{compile_command}``')
-#     ## run compile command ------------------------------------------
-#     try:
-#         subprocess.run(compile_command, check=True)
-#         log.info('ok / uv pip compile was successful')
-#     except subprocess.CalledProcessError:
-#         message = 'Error during pip compile'
-#         log.exception(message)
-#         raise Exception(message)
-#     return compiled_filepath
-
-#     ## end def compile_requirements()
-
-
-# def remove_old_backups(project_path: Path, keep_recent: int = 30) -> None:
-#     """
-#     Removes all files in the backup directory other than the most-recent files.
-#     """
-#     log.info('::: removing old backups ----------')
-#     backup_dir: Path = project_path.parent / 'requirements_backups'
-#     backups: list[Path] = sorted([f for f in backup_dir.iterdir() if f.is_file() and f.suffix == '.txt'], reverse=True)
-#     old_backups: list[Path] = backups[keep_recent:]
-#     for old_backup in old_backups:
-#         log.debug(f'removing old backup: {old_backup}')
-#         old_backup.unlink()
-#     log.info('ok / old backups removed')
-#     return
-
-
-# def sync_dependencies(project_path: Path, backup_file: Path, uv_path: Path) -> None:
-#     """
-#     Prepares the venv environment.
-#     Syncs the recent `--output` requirements.in file to the venv.
-#     Exits the script if any command fails.
-
-#     Why this works, without explicitly "activate"-ing the venv...
-
-#     When a Python virtual environment is traditionally 'activated' -- ie via `source venv/bin/activate`
-#     in a shell -- what is really happening is that a set of environment variables is adjusted
-#     to ensure that when python or other commands are run, they refer to the virtual environment's
-#     binaries and site-packages rather than the system-wide python installation.
-
-#     This code mimics that environment modification by explicitly setting
-#     the PATH and VIRTUAL_ENV environment variables before running the command.
-#     """
-#     log.info('::: syncing dependencies ----------')
-#     ## prepare env-path variables -----------------------------------
-#     venv_tuple: tuple[Path, Path] = lib_common.determine_venv_paths(project_path)
-#     (venv_bin_path, venv_path) = venv_tuple
-#     ## set the local-env paths ---------------------------------------
-#     local_scoped_env = os.environ.copy()
-#     local_scoped_env['PATH'] = f'{venv_bin_path}:{local_scoped_env["PATH"]}'  # prioritizes venv-path
-#     local_scoped_env['VIRTUAL_ENV'] = str(venv_path)
-#     ## prepare sync command ------------------------------------------
-#     sync_command: list[str] = [str(uv_path), 'pip', 'sync', str(backup_file)]
-#     log.debug(f'sync_command: ``{sync_command}``')
-#     try:
-#         ## run sync command ------------------------------------------
-#         subprocess.run(sync_command, check=True, env=local_scoped_env)  # so all installs will go to the venv
-#         log.info('ok / `uv pip sync` was successful')
-#     except subprocess.CalledProcessError:
-#         message = 'Error during `uv pip sync`'
-#         log.exception(message)
-#         raise Exception(message)
-#     try:
-#         ## run `touch` to make the changes take effect ---------------
-#         log.info('::: running `touch` ----------')
-#         subprocess.run(['touch', './config/tmp/restart.txt'], check=True)
-#         log.info('ok / ran `touch`')
-#     except subprocess.CalledProcessError:
-#         message = 'Error during `touch'
-#         log.exception(message)
-#         raise Exception(message)
-#     return
-
-#     ## end def sync_dependencies()
-
-
-# def mark_active(backup_file: Path) -> None:
-#     """
-#     Marks the backup file as active by adding a header comment.
-#     """
-#     log.info('::: marking recent-backup as active ----------')
-#     with backup_file.open('r') as file:  # read the file
-#         content: list[str] = file.readlines()
-#     content.insert(0, '# ACTIVE\n')
-#     with backup_file.open('w') as file:  # write the file
-#         file.writelines(content)
-#     log.info('ok / marked recent-backup as active')
-#     return

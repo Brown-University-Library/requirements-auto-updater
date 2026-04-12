@@ -1,6 +1,7 @@
 import logging
 import os
 import pprint
+import re
 import subprocess
 from pathlib import Path
 
@@ -10,7 +11,8 @@ log = logging.getLogger(__name__)
 def check_for_django_update(incoming_text: str) -> bool:
     """
     Checks if the uv.lock unified diff indicates a Django version update.
-    Called by auto_updater.manage_update().
+
+    Called by auto_updater.run_staging_update_workflow().
     """
     log.info('::: check_for_django_update ----------')
     updated, old_v, new_v = parse_uv_lock_version_change(incoming_text, 'django')
@@ -20,6 +22,38 @@ def check_for_django_update(incoming_text: str) -> bool:
     else:
         log.info('ok / django-updated, ``False``')
         return False
+
+
+def find_installed_package_version(project_path: Path, package_name: str) -> str | None:
+    """
+    Finds an installed package version from dist-info metadata inside the project's .venv.
+
+    Called by auto_updater.run_production_sync_workflow().
+    """
+    metadata_paths: list[Path] = sorted(project_path.glob('.venv/lib/python*/site-packages/*.dist-info/METADATA'))
+    target_name: str = package_name.lower()
+    found_version: str | None = None
+    for metadata_path in metadata_paths:
+        metadata_text: str = metadata_path.read_text(encoding='utf-8')
+        name_match = re.search(r'^Name:\s*(.+)$', metadata_text, flags=re.MULTILINE)
+        version_match = re.search(r'^Version:\s*(.+)$', metadata_text, flags=re.MULTILINE)
+        if name_match is None or version_match is None:
+            continue
+        installed_name: str = name_match.group(1).strip().lower()
+        if installed_name == target_name:
+            found_version = version_match.group(1).strip()
+            break
+    return found_version
+
+
+def did_package_version_change(before_version: str | None, after_version: str | None) -> bool:
+    """
+    Determines whether a package version changed across a sync.
+
+    Called by auto_updater.run_production_sync_workflow().
+    """
+    changed: bool = before_version != after_version and after_version is not None
+    return changed
 
 
 def parse_uv_lock_version_change(
@@ -105,7 +139,8 @@ def _extract_first_quoted_value(line: str) -> str | None:
 def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
     """
     Runs collectstatic command.
-    Called by auto_updater.manage_update().
+
+    Called by lib_workflow_helpers.run_django_followup().
     """
     log.info('::: running collectstatic ----------')
     log.debug(f'cwd: {os.getcwd()}')
