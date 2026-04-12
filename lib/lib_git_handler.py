@@ -8,7 +8,8 @@ log = logging.getLogger(__name__)
 def run_git_status(project_path: Path) -> tuple[bool, dict]:
     """
     Runs `git status` and return the output similar to Go's (ok, err) format.
-    Called by lib_environment_checker.check_git_status()
+
+    Called by lib_environment_checker.check_git_status().
     """
     command = ['git', 'status']
     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)
@@ -22,13 +23,19 @@ def run_git_status(project_path: Path) -> tuple[bool, dict]:
 
 class GitHandler:
     def __init__(self):
+        """
+        Initializes the git handler.
+
+        Called by auto_updater.run_staging_update_workflow().
+        """
         pass
 
     def manage_git(self, project_path: Path, diff_text: str) -> tuple[bool, str]:
         """
         Manages the git process with proper error handling.
         Returns (success: bool, error_message: str)
-        Called by auto_updater.manage_update()
+
+        Called by auto_updater.run_staging_update_workflow().
         """
         log.info('::: starting git process ----------')
 
@@ -70,7 +77,8 @@ class GitHandler:
     def run_git_pull(self, project_path: Path) -> tuple[bool, dict]:
         """
         Runs the git pull command.
-        Called by manage_git()
+
+        Called by lib_git_handler.GitHandler.manage_git().
         """
         log.info('::: running git pull ----------')
         git_pull_command: list[str] = ['git', 'pull', 'origin', 'main']
@@ -91,7 +99,8 @@ class GitHandler:
     def run_git_add(self, requirements_path: Path, project_path: Path) -> tuple[bool, dict]:
         """
         Runs `git add` and return the output.
-        Called by manage_git()
+
+        Called by lib_git_handler.GitHandler.manage_git().
         """
         log.info('::: running git add ----------')
         command = ['git', 'add', str(requirements_path)]
@@ -109,7 +118,8 @@ class GitHandler:
         """
         Runs the git commit command.
         Returns (success: bool, output: dict)
-        Called by manage_git()
+
+        Called by lib_git_handler.GitHandler.manage_git().
         """
         log.info('::: running git commit ----------')
         git_commit_command: list[str] = ['git', 'commit', '-am', 'auto-updater: updates dependencies']
@@ -136,7 +146,8 @@ class GitHandler:
         """
         Runs the git push command.
         Returns (success: bool, output: dict)
-        Called by manage_git()
+
+        Called by lib_git_handler.GitHandler.manage_git().
         """
         log.info('::: running git push ----------')
         git_push_command: list[str] = ['git', 'push']

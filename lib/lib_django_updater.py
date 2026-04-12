@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 def check_for_django_update(incoming_text: str) -> bool:
     """
     Checks if the uv.lock unified diff indicates a Django version update.
-    Called by auto_updater.manage_update().
+
+    Called by auto_updater.run_staging_update_workflow().
     """
     log.info('::: check_for_django_update ----------')
     updated, old_v, new_v = parse_uv_lock_version_change(incoming_text, 'django')
@@ -26,6 +27,8 @@ def check_for_django_update(incoming_text: str) -> bool:
 def find_installed_package_version(project_path: Path, package_name: str) -> str | None:
     """
     Finds an installed package version from dist-info metadata inside the project's .venv.
+
+    Called by auto_updater.run_production_sync_workflow().
     """
     metadata_paths: list[Path] = sorted(project_path.glob('.venv/lib/python*/site-packages/*.dist-info/METADATA'))
     target_name: str = package_name.lower()
@@ -46,6 +49,8 @@ def find_installed_package_version(project_path: Path, package_name: str) -> str
 def did_package_version_change(before_version: str | None, after_version: str | None) -> bool:
     """
     Determines whether a package version changed across a sync.
+
+    Called by auto_updater.run_production_sync_workflow().
     """
     changed: bool = before_version != after_version and after_version is not None
     return changed
@@ -61,7 +66,7 @@ def parse_uv_lock_version_change(
     Tracks when inside a [[package]] block, reads the most recent name entry, and
     (within the matching package block) captures -version/+version values.
 
-    Called by check_for_django_update().
+    Called by lib_django_updater.check_for_django_update().
     """
     ## sets vars ----------------------------------------------------
     in_package_block: bool = False
@@ -118,7 +123,7 @@ def _extract_first_quoted_value(line: str) -> str | None:
 
     Returns None when the line does not contain a pair of double quotes.
 
-    Called by parse_uv_lock_version_change().
+    Called by lib_django_updater.parse_uv_lock_version_change().
     """
     first_quote: int = line.find('"')
     if first_quote == -1:
@@ -134,7 +139,8 @@ def _extract_first_quoted_value(line: str) -> str | None:
 def run_collectstatic(project_path: Path, uv_path: Path) -> None | str:
     """
     Runs collectstatic command.
-    Called by auto_updater.manage_update().
+
+    Called by lib_workflow_helpers.run_django_followup().
     """
     log.info('::: running collectstatic ----------')
     log.debug(f'cwd: {os.getcwd()}')

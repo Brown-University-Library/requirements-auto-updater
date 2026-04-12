@@ -35,7 +35,8 @@ def send_email_of_diffs(
     Note that on an email-send error, the error will be logged, but the script will continue,
       so the permissions-update will still occur.
 
-    Called by: auto_updater.manage_update()
+    Called by auto_updater.run_staging_update_workflow().
+    Called by lib_workflow_helpers.handle_staging_failure_rollback().
     """
     ## check for rollback scenario --------------------------------
     rollback_occurred: bool = followup_problems.get('rollback_occurred', False)
@@ -77,6 +78,21 @@ class Emailer:
     """
 
     def __init__(self, project_path: Path) -> None:
+        """
+        Initializes the email helper for a specific project.
+
+        Called by lib_emailer.send_email_of_diffs().
+        Called by lib_uv_updater.UvUpdater.email_setup_problem().
+        Called by lib_environment_checker.validate_project_path().
+        Called by lib_environment_checker.determine_project_email_addresses().
+        Called by lib_environment_checker.check_branch().
+        Called by lib_environment_checker.check_git_status().
+        Called by lib_environment_checker.validate_pyproject_toml().
+        Called by lib_environment_checker.validate_uv_path().
+        Called by lib_environment_checker.determine_group().
+        Called by lib_environment_checker.check_group_and_permissions().
+        Called by lib_call_runtests.run_initial_tests().
+        """
         self.project_path: Path = project_path
         self.sys_admin_recipients: list = json.loads(os.environ['AUTO_UPDTR__SYS_ADMIN_RECIPIENTS_JSON'])
         self.auto_updater_email_from: str = os.environ['AUTO_UPDTR__EMAIL_FROM']
@@ -88,6 +104,17 @@ class Emailer:
         """
         Prepares problem-email message.
         The incoming `message` parameter is the error message from the exception that was raised.
+
+        Called by lib_uv_updater.UvUpdater.email_setup_problem().
+        Called by lib_environment_checker.validate_project_path().
+        Called by lib_environment_checker.determine_project_email_addresses().
+        Called by lib_environment_checker.check_branch().
+        Called by lib_environment_checker.check_git_status().
+        Called by lib_environment_checker.validate_pyproject_toml().
+        Called by lib_environment_checker.validate_uv_path().
+        Called by lib_environment_checker.determine_group().
+        Called by lib_environment_checker.check_group_and_permissions().
+        Called by lib_call_runtests.run_initial_tests().
         """
         log.debug('starting create_setup_problem_message()')
         email_message = f"""
@@ -109,6 +136,8 @@ class Emailer:
         """
         Prepares update-ok email message.
         Includes the differences between the previous and current requirements.
+
+        Called by lib_emailer.send_email_of_diffs().
         """
         log.debug('starting create_update_ok_message()')
         email_message = f"""
@@ -125,6 +154,8 @@ class Emailer:
         """
         Prepares "update-happened, but there are post-update test failures" email message.
         Includes the differences between the previous and current requirements.
+
+        Called by lib_emailer.send_email_of_diffs().
         """
         log.debug('starting create_update_problem_message()')
         email_message = f"""
@@ -144,6 +175,8 @@ class Emailer:
         """
         Prepares rollback email message.
         Includes information about the failed update, rollback, and verification test results.
+
+        Called by lib_emailer.send_email_of_diffs().
         """
         log.debug('starting create_rollback_message()')
         
@@ -177,6 +210,8 @@ class Emailer:
     def truncate_long_lines(self, message: str, max_length: int = 950) -> str:
         """
         Handles error: `smtplib.SMTPDataError: (500, b'Line too long (see RFC5321 4.5.3.1.6)')` by truncating long lines
+
+        Called by lib_emailer.Emailer.send_email().
         """
         truncated_lines = []
         for line in message.splitlines():
@@ -192,6 +227,18 @@ class Emailer:
 
         On a successful update email, the email_addresses will be the project-admins.
         On a setup problem email, the email_addresses will be the auto-updater sys-admins.
+
+        Called by lib_emailer.send_email_of_diffs().
+        Called by lib_uv_updater.UvUpdater.email_setup_problem().
+        Called by lib_environment_checker.validate_project_path().
+        Called by lib_environment_checker.determine_project_email_addresses().
+        Called by lib_environment_checker.check_branch().
+        Called by lib_environment_checker.check_git_status().
+        Called by lib_environment_checker.validate_pyproject_toml().
+        Called by lib_environment_checker.validate_uv_path().
+        Called by lib_environment_checker.determine_group().
+        Called by lib_environment_checker.check_group_and_permissions().
+        Called by lib_call_runtests.run_initial_tests().
         """
         log.info('::: sending email ----------')
         log.debug(f'email_addresses: ``{email_addresses}``')

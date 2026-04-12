@@ -25,6 +25,10 @@ log = logging.getLogger(__name__)
 def should_run_tests(environment_type: str) -> bool:
     """
     Determines whether tests should run for the given environment.
+
+    Called by lib_call_runtests.run_initial_tests().
+    Called by lib_call_runtests.run_followup_tests().
+    Called by lib_uv_updater.UvUpdater.verify_staging_rollback().
     """
     return environment_type != 'production'
 
@@ -39,6 +43,8 @@ def run_initial_tests(
     On failure:
     - Emails project-admins
     - Raises an exception
+
+    Called by auto_updater.manage_update().
     """
     log.info('::: running initial tests ----------')
 
@@ -75,6 +81,9 @@ def run_followup_tests(uv_path: Path, project_path: Path, environment_type: str)
     If tests fail:
     - returns "tests failed" message (to be add to the diff email)
     - does not exit, so that diffs can be emailed and permissions updated
+
+    Called by auto_updater.run_staging_update_workflow().
+    Called by lib_workflow_helpers.handle_staging_failure_rollback().
     """
     log.info('::: running followup tests ----------')
 
@@ -100,7 +109,10 @@ def run_followup_tests(uv_path: Path, project_path: Path, environment_type: str)
 def make_run_tests_command(project_path: Path, uv_path: Path) -> list[str]:
     """
     Prepares the run_tests command.
-    Called by run_initial_tests() and run_followup_tests().
+
+    Called by lib_call_runtests.run_initial_tests().
+    Called by lib_call_runtests.run_followup_tests().
+    Called by lib_uv_updater.UvUpdater.verify_staging_rollback().
     """
     run_tests_path = project_path / 'run_tests.py'  # no need to resolve; project_path is already resolved
     command = [str(uv_path), 'run', '--no-active', str(run_tests_path)]
@@ -112,7 +124,10 @@ def run_run_tests_command(command: list, project_path: Path) -> tuple[bool, dict
     """
     Runs subprocess command and returns tuple (ok, data_dict).
     (Based on similar to `Go` style convention (err, data).)
-    Called by run_initial_tests() and run_followup_tests().
+
+    Called by lib_call_runtests.run_initial_tests().
+    Called by lib_call_runtests.run_followup_tests().
+    Called by lib_uv_updater.UvUpdater.verify_staging_rollback().
     """
     log.debug(f'running with cwd arg, ``{project_path}``')
     result: subprocess.CompletedProcess = subprocess.run(command, cwd=str(project_path), capture_output=True, text=True)

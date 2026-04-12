@@ -25,6 +25,8 @@ def classify_dry_run_output(output_text: str) -> DryRunClassification:
 
     The primary path parses uv's JSON output. If parsing fails, falls back to a
     conservative text classification.
+
+    Called by lib_uv_updater.UvUpdater.run_dry_run_sync_command().
     """
     parsed_payload: dict[str, Any] | None = _extract_json_payload(output_text)
     if parsed_payload is not None:
@@ -35,6 +37,8 @@ def classify_dry_run_output(output_text: str) -> DryRunClassification:
 def _extract_json_payload(output_text: str) -> dict[str, Any] | None:
     """
     Extracts the JSON object embedded in uv dry-run output, if present.
+
+    Called by lib_uv_dry_run_classifier.classify_dry_run_output().
     """
     start_index: int = output_text.find('{')
     end_index: int = output_text.rfind('}')
@@ -54,6 +58,8 @@ def _extract_json_payload(output_text: str) -> dict[str, Any] | None:
 def _classify_json_payload(parsed_payload: dict[str, Any]) -> DryRunClassification:
     """
     Classifies the parsed uv JSON payload.
+
+    Called by lib_uv_dry_run_classifier.classify_dry_run_output().
     """
     sync_action: str = str(parsed_payload.get('sync', {}).get('action', ''))
     lock_action: str = str(parsed_payload.get('lock', {}).get('action', ''))
@@ -88,6 +94,8 @@ def _classify_json_payload(parsed_payload: dict[str, Any]) -> DryRunClassificati
 def _classify_text_output(output_text: str) -> DryRunClassification:
     """
     Conservatively classifies dry-run output when JSON parsing is unavailable.
+
+    Called by lib_uv_dry_run_classifier.classify_dry_run_output().
     """
     normalized_text: str = output_text.lower()
     if 'would make no changes' in normalized_text or 'no lockfile changes detected' in normalized_text:

@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 def check_group(item: pathlib.Path, expected_group: str) -> str | None:
     """
     Helper function; checks if the group of the given item is the expected group.
-    Called by check_files().
+
+    Called by lib_perms_and_groups.check_files().
     """
     try:
         item_group: str = grp.getgrgid(item.stat().st_gid).gr_name
@@ -29,7 +30,8 @@ def check_group(item: pathlib.Path, expected_group: str) -> str | None:
 def check_permissions(item: pathlib.Path) -> str | None:
     """
     Helper function; checks if the item is group-writeable.
-    Called by check_files().
+
+    Called by lib_perms_and_groups.check_files().
     """
     try:
         st_mode: int = item.stat().st_mode
@@ -44,6 +46,7 @@ def check_permissions(item: pathlib.Path) -> str | None:
 def check_files(path: pathlib.Path, expected_group: str) -> dict[str, list[str]]:
     """
     Main function; checks the group and permissions of all files in the given path.
+
     Called by lib_environment_checker.check_group_and_permissions().
     """
     problems: dict[str, list[str]] = {}

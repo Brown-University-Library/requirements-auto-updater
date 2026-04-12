@@ -40,6 +40,8 @@ def main() -> None:
     - Uses standard library unittest
     - Discovers tests under tests/ with pattern "test*.py"
     - Sets top-level directory to the repository root so `lib/` is importable
+
+    Called by run_tests.__main__.
     """
     ## set up argparser ---------------------------------------------
     parser = argparse.ArgumentParser(description='Run repository unittests')
