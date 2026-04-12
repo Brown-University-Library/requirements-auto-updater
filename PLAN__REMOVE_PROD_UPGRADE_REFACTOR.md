@@ -1,37 +1,5 @@
 # Plan: Remove Prod Upgrade Refactor
 
-## Prompt
-
-Great plan; thanks.
-
-I've made a few changes to the plan.
-
-Review them, and update `requirements-auto-updater/PLAN__REMOVE_PROD_UPGRADE_REFACTOR.md` accordingly.
-
-Add this prompt near the top of the document, renaming the pre-existing prompt to "Previous prompt".
-
-Somewhere in your updated plan, briefly summarize your sense of my changes so I can easily confirm I've communicated them clearly.
-
-Somewhere in your updated plan, include the instruction to review `requirements-auto-updater/AGENTS.md` before implementing any code changes.
-
-Reminder that this set of tasks is only to update the plan, not to make any code-changes yet.
-
-## Previous prompt
-
-Goal:
-
-Create a plan to implement removal of the `--upgrade` sync on prod -- in the "clean-separation different-workflow" approach outlined in `requirements-auto-updater/IDEA_ASSESSMENT.md`.
-
-Tasks:
-
-- Review the existing code-flow.
-- Review the dev/prod analysis at `requirements-auto-updater/DEV_VS_PROD.md`.
-- Review `requirements-auto-updater/AGENTS.md` for code-directives to follow.
-- Review `requirements-auto-updater/IDEA_ASSESSMENT.md`.
-- Create and save an implementation-plan to `requirements-auto-updater/PLAN__REMOVE_PROD_UPGRADE_REFACTOR.md`.
-- Add this complete prompt near the top of the plan.
-- Don't change any code; just create and save the plan.
-
 ## Goal of the refactor
 
 Change the script so that:
@@ -44,16 +12,6 @@ Change the script so that:
 
 This is the "clean-separation different-workflow" approach described in `requirements-auto-updater/IDEA_ASSESSMENT.md`.
 
-## Sense of your changes
-
-My reading of your edits is:
-
-- production should definitely use `--locked`, not `--frozen`, for the normal sync path
-- production should retain the Django follow-up automation rather than skipping it
-- production should stay simpler than staging, but that simplification should come from not mutating `uv.lock`, not from dropping required operational follow-up
-- production failure handling should be reduced to logging and email notification, not rollback of a changed lockfile
-
-That reads as internally consistent. It keeps the clean workflow split while making production stricter about lockfile correctness and preserving the operational Django steps you consider essential.
 
 ## Current flow to refactor
 
@@ -409,6 +367,4 @@ That means:
 
 This approach is larger than a one-line change, but it is the design that best matches the stated safety model.
 
-## Reminder
-
-This document is only a plan update. Do not make Python code changes as part of this task.
+---
