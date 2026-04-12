@@ -208,6 +208,9 @@ class TestEnvironmentChecks(unittest.TestCase):
             [dependency-groups]
             staging = ["pkgA>=1.0"]
             prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = "2 days"
             """
             (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -243,6 +246,9 @@ class TestEnvironmentChecks(unittest.TestCase):
             [dependency-groups]
             staging = ["pkgA>=1.0"]
             prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = "2 days"
             """
             (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -266,6 +272,9 @@ class TestEnvironmentChecks(unittest.TestCase):
             [dependency-groups]
             staging = ["pkgA>=1.0"]
             prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = "2 days"
             """
             (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -290,6 +299,9 @@ class TestEnvironmentChecks(unittest.TestCase):
             [dependency-groups]
             staging = ["pkgA>=1.0"]
             prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = "2 days"
             """
             (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
             project_email_addresses = [('Admin', 'admin@example.com')]
@@ -380,6 +392,9 @@ class TestEnvironmentChecks(unittest.TestCase):
 
             [dependency-groups]
             staging = ["pkgA>=1.0"]
+
+            [tool.uv]
+            exclude-newer = "2 days"
             """
             (project_path_a / 'pyproject.toml').write_text(pyproject_content_a.strip() + '\n', encoding='utf-8')
             pea = [('Admin', 'admin@example.com')]
@@ -400,6 +415,9 @@ class TestEnvironmentChecks(unittest.TestCase):
 
             [dependency-groups]
             prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = "2 days"
             """
             (project_path_b / 'pyproject.toml').write_text(pyproject_content_b.strip() + '\n', encoding='utf-8')
             peb = [('Admin', 'admin@example.com')]
@@ -408,6 +426,110 @@ class TestEnvironmentChecks(unittest.TestCase):
                     lib_environment_checker.validate_pyproject_toml(project_path_b, peb)
                 self.assertIn('missing required key(s): staging', str(ctx_b.exception))
                 mock_send_b.assert_called_once()
+
+    def test_validate_pyproject_toml_missing_tool_uv_raises(self) -> None:
+        """
+        Checks that missing [tool.uv] section triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`[tool.uv]` section missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_missing_exclude_newer_raises(self) -> None:
+        """
+        Checks that missing exclude-newer field triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`exclude-newer` field missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_empty_exclude_newer_raises(self) -> None:
+        """
+        Checks that empty exclude-newer value triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = ""
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`exclude-newer` field missing', str(ctx.exception))
+                mock_send.assert_called_once()
+
+    def test_validate_pyproject_toml_wrong_type_exclude_newer_raises(self) -> None:
+        """
+        Checks that non-string exclude-newer value triggers error and email.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            pyproject_content = """
+            [project]
+            name = "example"
+            version = "0.0.0"
+            requires-python = ">=3.12"
+
+            [dependency-groups]
+            staging = ["pkgA>=1.0"]
+            prod = ["pkgB>=1.0"]
+
+            [tool.uv]
+            exclude-newer = 2
+            """
+            (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                with self.assertRaises(Exception) as ctx:
+                    lib_environment_checker.validate_pyproject_toml(project_path, project_email_addresses)
+                self.assertIn('`exclude-newer` field missing', str(ctx.exception))
+                mock_send.assert_called_once()
 
     def test_validate_pyproject_toml_various_formats_ok(self) -> None:
         """
@@ -432,6 +554,9 @@ class TestEnvironmentChecks(unittest.TestCase):
                     [dependency-groups]
                     staging = ["pkgA>=1.0"]
                     prod = ["pkgB>=1.0"]
+
+                    [tool.uv]
+                    exclude-newer = "2 days"
                     """
                     (project_path / 'pyproject.toml').write_text(pyproject_content.strip() + '\n', encoding='utf-8')
                     project_email_addresses = [('Admin', 'admin@example.com')]

@@ -169,6 +169,7 @@ def validate_pyproject_toml(project_path: Path, project_email_addresses: list[tu
     - File existence
     - [project] section with requires-python field
     - [dependency-groups] section with staging and prod keys
+    - [tool.uv] section with exclude-newer field
     If validation fails:
     - Sends an email to the project admins
     - Exits the script
@@ -220,6 +221,27 @@ def validate_pyproject_toml(project_path: Path, project_email_addresses: list[tu
     missing: list[str] = [k for k in required_keys if k not in dep_groups]
     if missing:
         message = 'Error: `[dependency-groups]` in pyproject.toml is missing required key(s): ' + ', '.join(missing)
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## check for [tool.uv] section -----------------------------
+    tool_section: dict | None = pyproject.get('tool')  # type: ignore[assignment]
+    uv_section: dict | None = None
+    if isinstance(tool_section, dict):
+        uv_section = tool_section.get('uv')  # type: ignore[assignment]
+    if not isinstance(uv_section, dict):
+        message = 'Error: `[tool.uv]` section missing from pyproject.toml'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+    ## check for exclude-newer field ---------------------------
+    exclude_newer: str | None = uv_section.get('exclude-newer')  # type: ignore[assignment]
+    if not isinstance(exclude_newer, str) or not exclude_newer:
+        message = 'Error: `exclude-newer` field missing from [tool.uv] section in pyproject.toml'
         log.exception(message)
         emailer = Emailer(project_path)
         email_message: str = emailer.create_setup_problem_message(message)
