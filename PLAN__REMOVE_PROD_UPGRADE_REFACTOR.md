@@ -112,9 +112,11 @@ Rationale:
 - `--locked` matches the stated philosophy that production should realize an already-tested `uv.lock`
 - this keeps production from resolving a newer dependency set on its own
 
-Open decision:
+~~Open decision~~:
 
-- decide whether `--locked` or `--frozen` is the better production flag
+- ~~decide whether `--locked` or `--frozen` is the better production flag~~
+
+REVIEWER-DECISION: use `--locked`, because it will raise an error on a mismatch between the lockfile and the pyproject.toml, which I want.
 
 Recommendation:
 
@@ -199,12 +201,14 @@ It does not naturally fit production if production no longer changes `uv.lock`.
 
 Plan options:
 
-- conservative option: staging keeps Django follow-up automation; production skips this automation entirely for now
+- ~~conservative option: staging keeps Django follow-up automation; production skips this automation entirely for now~~
 - more advanced option: introduce a separate production-safe way to detect whether the committed lockfile implies a Django version change in the installed environment
+
+REVIEWER-DECISION: implement the more advanced option. Reason: if django is upgraded, it is essential that collect-static update the admin-files, and that a `touch` is executed to ensure the code-changes are made active.
 
 Recommendation:
 
-- implement the conservative option in this refactor
+- ~~implement the conservative option in this refactor~~
 
 Reason:
 
@@ -235,6 +239,8 @@ Likely answer:
 
 - if production uses `--locked` and does not mutate `uv.lock`, rollback complexity should be much smaller
 - production may only need failure reporting, not lockfile restoration logic
+
+REVIEWER-DECISION: i aggree. if production uses `--locked` and does not mutate `uv.lock`, then production only needs failure logging and email notifications.
 
 ## File-level implementation plan
 
@@ -273,6 +279,8 @@ Possible changes:
 ### `requirements-auto-updater/lib/lib_django_updater.py`
 
 Likely no immediate code changes unless production Django automation is retained.
+
+REVIEWER-DECISION: we will retain post-update django automation, so redo this part.
 
 If production Django automation is skipped for this refactor:
 
