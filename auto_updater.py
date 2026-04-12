@@ -243,7 +243,9 @@ def manage_update(project_path_str: str) -> None:
         run_production_sync_workflow(project_path, project_email_addresses, uv_updater)
     else:
         ## staging upgrade workflow ---------------------------------
-        uv_lock_backup_path = run_staging_update_workflow(project_path, project_email_addresses, environment_type, uv_updater)
+        uv_lock_backup_path = run_staging_update_workflow(
+            project_path, project_email_addresses, environment_type, uv_updater
+        )
     ## clean up -----------------------------------------------------
     update_group_and_permissions(project_path, uv_lock_backup_path, group)
     return
