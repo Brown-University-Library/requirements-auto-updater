@@ -70,6 +70,8 @@ def update_group_and_permissions(project_path: Path, backup_file_path: Path | No
     """
     Tries to update group-ownership and group-permissions for relevant directories.
     Intentionally does not fail if the commands fail.
+
+    Called by manage_update().
     """
     log.info('::: updating group and permissions ----------')
     relative_env_path: Path = project_path / '.venv'
@@ -95,6 +97,8 @@ def update_group_and_permissions(project_path: Path, backup_file_path: Path | No
 def run_preflight_checks(project_path_str: str) -> PreflightData:
     """
     Runs shared setup and validation before branching into staging or production workflows.
+
+    Called by manage_update().
     """
     ## validate project path ----------------------------------------
     project_path: Path = Path(project_path_str).resolve()
@@ -129,6 +133,9 @@ def run_preflight_checks(project_path_str: str) -> PreflightData:
 def run_django_followup(project_path: Path, uv_path: Path, django_update: bool) -> None | str:
     """
     Runs Django follow-up commands when a Django update has been activated.
+
+    Called by run_staging_update_workflow().
+    Called by run_production_sync_workflow().
     """
     problem_message: None | str = None
     if django_update is True:
@@ -149,6 +156,8 @@ def handle_staging_failure_rollback(
 ) -> None:
     """
     Restores the original lockfile and environment after a staging post-update test failure.
+
+    Called by run_staging_update_workflow().
     """
     log.warning('Post-update tests failed; initiating rollback')
     ## restore original uv.lock from backup -------------------------
@@ -184,6 +193,8 @@ def run_staging_update_workflow(
 ) -> Path | None:
     """
     Runs the upgrade-oriented staging workflow.
+
+    Called by manage_update().
     """
     uv_lock_backup_path: Path | None = None
     dry_run_classification: DryRunClassification = uv_updater.inspect_pending_sync(
@@ -251,6 +262,8 @@ def run_production_sync_workflow(
 ) -> None:
     """
     Runs the locked production sync workflow.
+
+    Called by manage_update().
     """
     ## determine installed django version before sync ---------------
     django_before_version: str | None = lib_django_updater.find_installed_package_version(project_path, 'django')
@@ -268,6 +281,8 @@ def manage_update(project_path_str: str) -> None:
     """
     Main function to manage the update process for the project's dependencies.
     Note that `project_path_str` is not this project's path, but the path to the project to be updated.
+
+    Called by the __main__ block.
     """
     log.debug('starting manage_update()')
     ## run environmental checks -------------------------------------
