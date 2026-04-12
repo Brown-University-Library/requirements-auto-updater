@@ -3,8 +3,8 @@ revision = 3
 requires-python = "==3.12.*"
 
 [options]
-exclude-newer = "2026-03-30T11:27:36.739971Z"
-exclude-newer-span = "P1W"
+exclude-newer = "2026-04-10T14:51:25.023275Z"
+exclude-newer-span = "P2D"
 
 [[package]]
 name = "python-dotenv"
