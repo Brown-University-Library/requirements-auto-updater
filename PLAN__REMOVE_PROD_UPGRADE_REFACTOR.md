@@ -12,6 +12,8 @@ Change the script so that:
 
 This is the "clean-separation different-workflow" approach described in `requirements-auto-updater/IDEA_ASSESSMENT.md`.
 
+The main reason for this change is to ensure that production only uses the lockfile that has been tested in staging.
+
 
 ## Current flow to refactor
 
