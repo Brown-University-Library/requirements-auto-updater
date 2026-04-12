@@ -2,6 +2,22 @@
 
 ## Prompt
 
+Great plan; thanks.
+
+I've made a few changes to the plan.
+
+Review them, and update `requirements-auto-updater/PLAN__REMOVE_PROD_UPGRADE_REFACTOR.md` accordingly.
+
+Add this prompt near the top of the document, renaming the pre-existing prompt to "Previous prompt".
+
+Somewhere in your updated plan, briefly summarize your sense of my changes so I can easily confirm I've communicated them clearly.
+
+Somewhere in your updated plan, include the instruction to review `requirements-auto-updater/AGENTS.md` before implementing any code changes.
+
+Reminder that this set of tasks is only to update the plan, not to make any code-changes yet.
+
+## Previous prompt
+
 Goal:
 
 Create a plan to implement removal of the `--upgrade` sync on prod -- in the "clean-separation different-workflow" approach outlined in `requirements-auto-updater/IDEA_ASSESSMENT.md`.
@@ -27,6 +43,17 @@ Change the script so that:
 - `production` becomes a lockfile-consumer environment that syncs `.venv` to the already-committed `uv.lock`
 
 This is the "clean-separation different-workflow" approach described in `requirements-auto-updater/IDEA_ASSESSMENT.md`.
+
+## Sense of your changes
+
+My reading of your edits is:
+
+- production should definitely use `--locked`, not `--frozen`, for the normal sync path
+- production should retain the Django follow-up automation rather than skipping it
+- production should stay simpler than staging, but that simplification should come from not mutating `uv.lock`, not from dropping required operational follow-up
+- production failure handling should be reduced to logging and email notification, not rollback of a changed lockfile
+
+That reads as internally consistent. It keeps the clean workflow split while making production stricter about lockfile correctness and preserving the operational Django steps you consider essential.
 
 ## Current flow to refactor
 
@@ -77,9 +104,9 @@ Make production a distinct path:
 4. do not classify upstream upgrade availability
 5. do not mutate `uv.lock`
 6. run a lockfile-realization sync only
-7. optionally perform Django follow-up work only if the already-committed lockfile implies a Django update relative to the currently-installed environment, or more conservatively, skip that automation until a clear detection strategy is defined
+7. retain Django follow-up automation through a production-safe detection path
 8. do not commit or push from production
-9. send only operational/setup failure email if the sync fails
+9. send operational/setup failure email if the sync fails
 10. still update group/permissions at the end
 
 The most important architectural change is:
@@ -105,23 +132,22 @@ For staging:
 For production:
 
 - no upgrade dry-run path
-- real sync: prefer `uv sync --no-active --locked --group prod`
+- real sync: `uv sync --no-active --locked --group prod`
 
 Rationale:
 
 - `--locked` matches the stated philosophy that production should realize an already-tested `uv.lock`
+- `--locked` also fails if `pyproject.toml` and `uv.lock` are inconsistent, which is desired here
 - this keeps production from resolving a newer dependency set on its own
 
-~~Open decision~~:
+Decision:
 
-- ~~decide whether `--locked` or `--frozen` is the better production flag~~
-
-REVIEWER-DECISION: use `--locked`, because it will raise an error on a mismatch between the lockfile and the pyproject.toml, which I want.
+- use `--locked` for the normal production sync path
 
 Recommendation:
 
 - use `--locked` for the normal production sync path
-- continue using a restore-oriented command for rollback/error recovery paths only if a rollback path remains necessary
+- keep any restore-oriented command limited to staging rollback/error recovery paths only if such paths remain necessary after refactoring
 
 ## Refactor shape
 
@@ -192,31 +218,26 @@ For production:
 
 This should significantly simplify the production path.
 
-### 5. Revisit Django follow-up behavior
+### 5. Retain Django follow-up behavior on production
 
 Current Django follow-up logic is based on a diff in `uv.lock`.
 
 That works for staging because staging mutates `uv.lock`.
 It does not naturally fit production if production no longer changes `uv.lock`.
 
-Plan options:
+Plan direction:
 
-- ~~conservative option: staging keeps Django follow-up automation; production skips this automation entirely for now~~
-- more advanced option: introduce a separate production-safe way to detect whether the committed lockfile implies a Django version change in the installed environment
-
-REVIEWER-DECISION: implement the more advanced option. Reason: if django is upgraded, it is essential that collect-static update the admin-files, and that a `touch` is executed to ensure the code-changes are made active.
-
-Recommendation:
-
-- ~~implement the conservative option in this refactor~~
+- retain post-update Django automation on production
+- introduce a production-safe way to determine whether Django follow-up work is required without relying on a newly-mutated `uv.lock` diff
 
 Reason:
 
-- it keeps the refactor focused
-- it avoids inventing a second state-comparison system in the same change
-- it reduces the chance of subtle production-only behavior regressions
+- if Django changes are activated via dependency updates, production still needs `collectstatic` and the reload `touch`
+- those steps are operationally required even when production is only consuming a committed lockfile
 
-If that conservative choice is taken, document it clearly in the README and in the dev/prod analysis doc.
+Implementation note:
+
+- keep this detection logic explicit and isolated so it does not blur the clean workflow split
 
 ### 6. Clean up rollback semantics
 
@@ -235,12 +256,9 @@ Additionally:
 
 - decide whether production still needs rollback behavior at all once it becomes a locked-sync path
 
-Likely answer:
+Decision:
 
-- if production uses `--locked` and does not mutate `uv.lock`, rollback complexity should be much smaller
-- production may only need failure reporting, not lockfile restoration logic
-
-REVIEWER-DECISION: i aggree. if production uses `--locked` and does not mutate `uv.lock`, then production only needs failure logging and email notifications.
+- if production uses `--locked` and does not mutate `uv.lock`, production only needs failure logging and email notifications
 
 ## File-level implementation plan
 
@@ -252,6 +270,7 @@ Planned changes:
 - add separate staging and production workflow helpers
 - make staging retain the current dry-run -> backup -> upgrade -> diff -> follow-up path
 - make production bypass dry-run classification, `uv.lock` backup/diff, follow-up tests, and git operations
+- make production retain any required Django follow-up and restart handling via a production-safe detection path
 - keep final permissions/group cleanup common
 - fix the direct `--group production` rollback bug by routing all group naming through updater helpers or a shared mapping helper
 
@@ -262,10 +281,11 @@ Planned changes:
 - replace the current generic `make_sync_command()` usage pattern with explicit command helpers
 - preserve dry-run classification for staging only
 - add a production-safe locked sync helper
+- add a production-safe Django-change detection helper, or another explicit helper that enables Django follow-up without relying on a staging-style diff
 - narrow `manage_sync()` responsibilities, or split it into:
   - upgrade-oriented staging sync behavior
   - locked production sync behavior
-- simplify or remove rollback logic that only made sense when `uv.lock` was being changed
+- simplify or remove production rollback logic that only made sense when `uv.lock` was being changed
 
 ### `requirements-auto-updater/lib/lib_call_runtests.py`
 
@@ -278,14 +298,11 @@ Possible changes:
 
 ### `requirements-auto-updater/lib/lib_django_updater.py`
 
-Likely no immediate code changes unless production Django automation is retained.
+Planned changes:
 
-REVIEWER-DECISION: we will retain post-update django automation, so redo this part.
-
-If production Django automation is skipped for this refactor:
-
-- no code change may be needed here
-- only staging would continue to call it from the top-level workflow
+- review whether the current API, which keys off a `uv.lock` diff, is sufficient once production no longer mutates `uv.lock`
+- if not sufficient, add a focused helper for production-safe Django change detection
+- keep the existing `collectstatic` execution and restart-touch responsibilities here or in a closely related helper module, rather than spreading them into `auto_updater.py`
 
 ### `requirements-auto-updater/README.md`
 
@@ -302,6 +319,7 @@ Planned doc updates after code change:
 - update the "what differs" section
 - remove references to production dry-run upgrade classification if that no longer happens
 - note that production no longer mutates `uv.lock`
+- note that production still performs Django follow-up automation when required
 
 ## Test plan
 
@@ -316,6 +334,7 @@ In `tests/test_auto_updater.py`, add coverage for:
 - production path bypassing dry-run classification
 - production path bypassing `uv.lock` backup and compare steps
 - production path bypassing git handling
+- production path retaining Django follow-up decision-making when appropriate
 - production path still calling final permissions/group update
 
 ### Command-construction tests
@@ -326,6 +345,7 @@ In `tests/test_uv_updater.py`, add coverage for:
 - staging real sync command includes `--upgrade`
 - production sync command includes `--locked` and `--group prod`
 - rollback/restore command uses the proper dependency-group mapping and never uses `--group production`
+- any production Django-detection helper uses production-appropriate inputs rather than a staging-only `uv.lock` diff assumption
 
 ### Behavioral tests for production path
 
@@ -335,6 +355,7 @@ Add tests for:
 - production locked sync failure path sends the expected failure email
 - production path does not invoke rollback verification tests
 - production path does not attempt `uv.lock` diff-based downstream actions
+- production path still runs Django follow-up automation when the new detection logic says it should
 
 ### Regression tests
 
@@ -349,7 +370,7 @@ Keep or expand tests that already verify:
 2. Refactor command construction in `lib/lib_uv_updater.py` so command intent is explicit.
 3. Refactor `auto_updater.py` to separate staging and production workflows.
 4. Simplify production failure handling around locked sync semantics.
-5. Decide and implement the conservative Django behavior for production.
+5. Implement the production-safe Django follow-up detection and keep the required Django automation path.
 6. Update docs: `README.md` and `DEV_VS_PROD.md`.
 7. Run `uv run ./run_tests.py`.
 
@@ -361,15 +382,20 @@ Keep or expand tests that already verify:
 - inconsistent dependency-group naming between `production` and `prod`
 - preserving staging behavior while refactoring shared helpers
 - hidden assumptions in email content that expect a `uv.lock` diff to exist
+- designing Django follow-up detection for production without reintroducing upgrade-discovery behavior there
 
 ## Decisions to make before implementation
 
-These decisions should be resolved before coding starts:
+Pre-implementation instructions:
 
-1. Confirm that production should use `--locked` rather than `--frozen` for its normal sync path.
-2. Confirm whether production should skip Django follow-up automation for this refactor.
-3. Confirm whether production should send any "success" email at all, or only failure/setup emails.
-4. Confirm whether any existing operational process depends on production still doing dry-run upgrade detection.
+- review `requirements-auto-updater/AGENTS.md` immediately before making any code changes
+- follow the repository workflow there, including updating tests and running `uv run ./run_tests.py`
+
+Remaining decisions:
+
+1. Confirm whether production should send any "success" email at all, or only failure/setup emails.
+2. Confirm whether any existing operational process depends on production still doing dry-run upgrade detection.
+3. Confirm the exact production-safe source of truth for deciding that Django follow-up automation is required.
 
 ## Recommended implementation stance
 
@@ -382,3 +408,7 @@ That means:
 - command construction is made explicit enough that future regressions are harder to introduce
 
 This approach is larger than a one-line change, but it is the design that best matches the stated safety model.
+
+## Reminder
+
+This document is only a plan update. Do not make Python code changes as part of this task.
