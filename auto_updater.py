@@ -18,12 +18,14 @@ Usage...
 import argparse
 import logging
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import TypedDict
 
 from lib import lib_django_updater, lib_environment_checker
 from lib.lib_call_runtests import run_followup_tests, run_initial_tests
+from lib.lib_emailer import send_email_of_diffs
 from lib.lib_git_handler import GitHandler
 from lib.lib_uv_dry_run_classifier import DryRunClassification
 from lib.lib_uv_updater import CompareResult, UvUpdater
