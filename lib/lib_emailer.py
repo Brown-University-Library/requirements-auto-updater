@@ -81,7 +81,7 @@ class Emailer:
         """
         Initializes the email helper for a specific project.
 
-        Called by lib_emailer.send_email_of_diffs().
+        Called by send_email_of_diffs().
         Called by lib_uv_updater.UvUpdater.email_setup_problem().
         Called by lib_environment_checker.validate_project_path().
         Called by lib_environment_checker.determine_project_email_addresses().
@@ -137,7 +137,7 @@ class Emailer:
         Prepares update-ok email message.
         Includes the differences between the previous and current requirements.
 
-        Called by lib_emailer.send_email_of_diffs().
+        Called by send_email_of_diffs().
         """
         log.debug('starting create_update_ok_message()')
         email_message = f"""
@@ -155,7 +155,7 @@ class Emailer:
         Prepares "update-happened, but there are post-update test failures" email message.
         Includes the differences between the previous and current requirements.
 
-        Called by lib_emailer.send_email_of_diffs().
+        Called by send_email_of_diffs().
         """
         log.debug('starting create_update_problem_message()')
         email_message = f"""
@@ -176,7 +176,7 @@ class Emailer:
         Prepares rollback email message.
         Includes information about the failed update, rollback, and verification test results.
 
-        Called by lib_emailer.send_email_of_diffs().
+        Called by send_email_of_diffs().
         """
         log.debug('starting create_rollback_message()')
         
@@ -211,7 +211,7 @@ class Emailer:
         """
         Handles error: `smtplib.SMTPDataError: (500, b'Line too long (see RFC5321 4.5.3.1.6)')` by truncating long lines
 
-        Called by lib_emailer.Emailer.send_email().
+        Called by send_email().
         """
         truncated_lines = []
         for line in message.splitlines():
@@ -228,7 +228,7 @@ class Emailer:
         On a successful update email, the email_addresses will be the project-admins.
         On a setup problem email, the email_addresses will be the auto-updater sys-admins.
 
-        Called by lib_emailer.send_email_of_diffs().
+        Called by send_email_of_diffs().
         Called by lib_uv_updater.UvUpdater.email_setup_problem().
         Called by lib_environment_checker.validate_project_path().
         Called by lib_environment_checker.determine_project_email_addresses().

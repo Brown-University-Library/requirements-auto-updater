@@ -78,7 +78,7 @@ class GitHandler:
         """
         Runs the git pull command.
 
-        Called by lib_git_handler.GitHandler.manage_git().
+        Called by manage_git().
         """
         log.info('::: running git pull ----------')
         git_pull_command: list[str] = ['git', 'pull', 'origin', 'main']
@@ -100,7 +100,7 @@ class GitHandler:
         """
         Runs `git add` and return the output.
 
-        Called by lib_git_handler.GitHandler.manage_git().
+        Called by manage_git().
         """
         log.info('::: running git add ----------')
         command = ['git', 'add', str(requirements_path)]
@@ -119,7 +119,7 @@ class GitHandler:
         Runs the git commit command.
         Returns (success: bool, output: dict)
 
-        Called by lib_git_handler.GitHandler.manage_git().
+        Called by manage_git().
         """
         log.info('::: running git commit ----------')
         git_commit_command: list[str] = ['git', 'commit', '-am', 'auto-updater: updates dependencies']
@@ -147,7 +147,7 @@ class GitHandler:
         Runs the git push command.
         Returns (success: bool, output: dict)
 
-        Called by lib_git_handler.GitHandler.manage_git().
+        Called by manage_git().
         """
         log.info('::: running git push ----------')
         git_push_command: list[str] = ['git', 'push']

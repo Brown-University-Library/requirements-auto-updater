@@ -66,7 +66,7 @@ def parse_uv_lock_version_change(
     Tracks when inside a [[package]] block, reads the most recent name entry, and
     (within the matching package block) captures -version/+version values.
 
-    Called by lib_django_updater.check_for_django_update().
+    Called by check_for_django_update().
     """
     ## sets vars ----------------------------------------------------
     in_package_block: bool = False
@@ -123,7 +123,7 @@ def _extract_first_quoted_value(line: str) -> str | None:
 
     Returns None when the line does not contain a pair of double quotes.
 
-    Called by lib_django_updater.parse_uv_lock_version_change().
+    Called by parse_uv_lock_version_change().
     """
     first_quote: int = line.find('"')
     if first_quote == -1:

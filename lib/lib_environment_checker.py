@@ -110,7 +110,7 @@ def fetch_branch_data(project_path: Path) -> str:
     """
     Fetches branch-data by reading the `.git/HEAD` file (avoiding calling git via subprocess due to `dubious ownership` issue).
 
-    Called by lib_environment_checker.check_branch().
+    Called by check_branch().
     """
     # log.debug('starting fetch_branch_data')
     git_dir = project_path / '.git'

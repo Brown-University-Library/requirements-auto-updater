@@ -71,7 +71,7 @@ def update_group_and_permissions(project_path: Path, backup_file_path: Path | No
     Tries to update group-ownership and group-permissions for relevant directories.
     Intentionally does not fail if the commands fail.
 
-    Called by auto_updater.manage_update().
+    Called by manage_update().
     """
     log.info('::: updating group and permissions ----------')
     relative_env_path: Path = project_path / '.venv'
@@ -98,7 +98,7 @@ def run_preflight_checks(project_path_str: str) -> PreflightData:
     """
     Runs shared setup and validation before branching into staging or production workflows.
 
-    Called by auto_updater.manage_update().
+    Called by manage_update().
     """
     ## validate project path ----------------------------------------
     project_path: Path = Path(project_path_str).resolve()
@@ -139,7 +139,7 @@ def run_staging_update_workflow(
     """
     Runs the upgrade-oriented staging workflow.
 
-    Called by auto_updater.manage_update().
+    Called by manage_update().
     """
     uv_lock_backup_path: Path | None = None
     dry_run_classification: DryRunClassification = uv_updater.inspect_pending_sync(
@@ -208,7 +208,7 @@ def run_production_sync_workflow(
     """
     Runs the locked production sync workflow.
 
-    Called by auto_updater.manage_update().
+    Called by manage_update().
     """
     ## determine installed django version before sync ---------------
     django_before_version: str | None = lib_django_updater.find_installed_package_version(project_path, 'django')
@@ -227,7 +227,7 @@ def manage_update(project_path_str: str) -> None:
     Main function to manage the update process for the project's dependencies.
     Note that `project_path_str` is not this project's path, but the path to the project to be updated.
 
-    Called by auto_updater.__main__.
+    Called by __main__.
     """
     log.debug('starting manage_update()')
     ## run environmental checks -------------------------------------

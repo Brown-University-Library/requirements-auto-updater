@@ -53,9 +53,9 @@ class UvUpdater:
         """
         Maps the environment type to the project's uv dependency group name.
 
-        Called by lib_uv_updater.UvUpdater.make_upgrade_sync_command().
-        Called by lib_uv_updater.UvUpdater.make_locked_sync_command().
-        Called by lib_uv_updater.UvUpdater.make_restore_sync_command().
+        Called by make_upgrade_sync_command().
+        Called by make_locked_sync_command().
+        Called by make_restore_sync_command().
         """
         group_map: dict[str, str] = {
             'local': 'local',
@@ -169,7 +169,7 @@ class UvUpdater:
         """
         Restores uv.lock from the standard backup file.
 
-        Called by lib_uv_updater.UvUpdater.run_upgrade_sync().
+        Called by run_upgrade_sync().
         """
         shutil.copy(project_path.parent / 'uv.lock.bak', project_path / 'uv.lock')
         log.info('Restored uv.lock from backup')
@@ -179,7 +179,7 @@ class UvUpdater:
         """
         Restores the staging .venv from the backed-up uv.lock.
 
-        Called by lib_uv_updater.UvUpdater.run_upgrade_sync().
+        Called by run_upgrade_sync().
         Called by lib_workflow_helpers.handle_staging_failure_rollback().
         """
         sync_command: list[str] = self.make_restore_sync_command(uv_path, 'staging')
@@ -195,7 +195,7 @@ class UvUpdater:
         """
         Re-runs tests after a staging rollback to confirm the environment is healthy.
 
-        Called by lib_uv_updater.UvUpdater.run_upgrade_sync().
+        Called by run_upgrade_sync().
         """
         problem_message: None | str = None
         if should_run_tests(environment_type):
@@ -211,7 +211,7 @@ class UvUpdater:
         """
         Makes the staging dry-run upgrade command.
 
-        Called by lib_uv_updater.UvUpdater.inspect_pending_sync().
+        Called by inspect_pending_sync().
         """
         command: list[str] = self.make_upgrade_sync_command(uv_path, environment_type)
         command.extend(['--dry-run', '--output-format', 'json'])
@@ -222,8 +222,8 @@ class UvUpdater:
         """
         Makes the upgrade-oriented sync command.
 
-        Called by lib_uv_updater.UvUpdater.run_upgrade_sync().
-        Called by lib_uv_updater.UvUpdater.make_upgrade_dry_run_command().
+        Called by run_upgrade_sync().
+        Called by make_upgrade_dry_run_command().
         """
         group: str = self.resolve_dependency_group(environment_type)
         command: list[str] = [str(uv_path), 'sync', '--no-active', '--upgrade', '--group', group]
@@ -234,7 +234,7 @@ class UvUpdater:
         """
         Makes the production locked sync command.
 
-        Called by lib_uv_updater.UvUpdater.run_locked_sync().
+        Called by run_locked_sync().
         """
         group: str = self.resolve_dependency_group(environment_type)
         command: list[str] = [str(uv_path), 'sync', '--no-active', '--locked', '--group', group]
@@ -245,7 +245,7 @@ class UvUpdater:
         """
         Makes the rollback restore sync command.
 
-        Called by lib_uv_updater.UvUpdater.restore_staging_environment().
+        Called by restore_staging_environment().
         """
         group: str = self.resolve_dependency_group(environment_type)
         command: list[str] = [str(uv_path), 'sync', '--no-active', '--frozen', '--group', group]
@@ -256,9 +256,9 @@ class UvUpdater:
         """
         Runs a uv sync command and captures stdout/stderr.
 
-        Called by lib_uv_updater.UvUpdater.run_upgrade_sync().
-        Called by lib_uv_updater.UvUpdater.run_locked_sync().
-        Called by lib_uv_updater.UvUpdater.restore_staging_environment().
+        Called by run_upgrade_sync().
+        Called by run_locked_sync().
+        Called by restore_staging_environment().
         """
         result: subprocess.CompletedProcess[str] = subprocess.run(
             sync_command, cwd=str(project_path), capture_output=True, text=True
@@ -276,7 +276,7 @@ class UvUpdater:
         """
         Runs uv sync in dry-run mode and classifies the result.
 
-        Called by lib_uv_updater.UvUpdater.inspect_pending_sync().
+        Called by inspect_pending_sync().
         """
         log.info('::: running uv sync dry-run ----------')
         result: subprocess.CompletedProcess[str] = subprocess.run(
@@ -309,9 +309,9 @@ class UvUpdater:
         """
         Emails project admins about a sync/setup problem.
 
-        Called by lib_uv_updater.UvUpdater.inspect_pending_sync().
-        Called by lib_uv_updater.UvUpdater.run_upgrade_sync().
-        Called by lib_uv_updater.UvUpdater.run_locked_sync().
+        Called by inspect_pending_sync().
+        Called by run_upgrade_sync().
+        Called by run_locked_sync().
         """
         emailer = Emailer(project_path)
         email_message: str = emailer.create_setup_problem_message(problem_message)
