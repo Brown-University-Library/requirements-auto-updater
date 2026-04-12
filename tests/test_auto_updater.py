@@ -27,7 +27,7 @@ class TestManageUpdateWorkflows(unittest.TestCase):
                         with patch('auto_updater.UvUpdater.run_upgrade_sync') as mock_upgrade_sync:
                             with patch('auto_updater.run_followup_tests') as mock_followup_tests:
                                 with patch('auto_updater.GitHandler.manage_git') as mock_manage_git:
-                                    with patch('auto_updater.send_email_of_diffs') as mock_send_email:
+                                    with patch('auto_updater.handle_staging_failure_rollback') as mock_rollback:
                                         with patch('auto_updater.update_group_and_permissions') as mock_perms:
                                             auto_updater.manage_update(str(project_path))
             mock_dry_run.assert_called_once()
@@ -35,7 +35,7 @@ class TestManageUpdateWorkflows(unittest.TestCase):
             mock_upgrade_sync.assert_not_called()
             mock_followup_tests.assert_not_called()
             mock_manage_git.assert_not_called()
-            mock_send_email.assert_not_called()
+            mock_rollback.assert_not_called()
             mock_perms.assert_called_once_with(project_path, None, 'staff')
 
     def test_production_bypasses_staging_only_steps_and_runs_locked_sync(self) -> None:
@@ -53,15 +53,16 @@ class TestManageUpdateWorkflows(unittest.TestCase):
                                 side_effect=['4.2.20', '4.2.27'],
                             ) as mock_find_version:
                                 with patch('auto_updater.lib_django_updater.did_package_version_change', return_value=True):
-                                    with patch('auto_updater.lib_django_updater.run_collectstatic', return_value=None) as mock_collectstatic:
-                                        with patch('auto_updater.subprocess.run', return_value=None) as mock_subprocess_run:
-                                            with patch('auto_updater.run_followup_tests') as mock_followup_tests:
-                                                with patch('auto_updater.GitHandler.manage_git') as mock_manage_git:
-                                                    with patch('auto_updater.send_email_of_diffs') as mock_send_email:
-                                                        with patch(
-                                                            'auto_updater.update_group_and_permissions'
-                                                        ) as mock_perms:
-                                                            auto_updater.manage_update(str(project_path))
+                                    with patch('auto_updater.run_django_followup', return_value=None) as mock_django_followup:
+                                        with patch('auto_updater.run_followup_tests') as mock_followup_tests:
+                                            with patch('auto_updater.GitHandler.manage_git') as mock_manage_git:
+                                                with patch(
+                                                    'auto_updater.handle_staging_failure_rollback'
+                                                ) as mock_rollback:
+                                                    with patch(
+                                                        'auto_updater.update_group_and_permissions'
+                                                    ) as mock_perms:
+                                                        auto_updater.manage_update(str(project_path))
             mock_dry_run.assert_not_called()
             mock_backup.assert_not_called()
             mock_locked_sync.assert_called_once_with(
@@ -71,11 +72,10 @@ class TestManageUpdateWorkflows(unittest.TestCase):
                 [('Admin', 'admin@example.com')],
             )
             self.assertEqual(mock_find_version.call_count, 2)
-            mock_collectstatic.assert_called_once_with(project_path, auto_updater.uv_path)
-            mock_subprocess_run.assert_called_once_with(['touch', './config/tmp/restart.txt'], cwd=str(project_path), check=True)
+            mock_django_followup.assert_called_once_with(project_path, auto_updater.uv_path, True)
             mock_followup_tests.assert_not_called()
             mock_manage_git.assert_not_called()
-            mock_send_email.assert_not_called()
+            mock_rollback.assert_not_called()
             mock_perms.assert_called_once_with(project_path, None, 'staff')
 
     def _patch_common_dependencies(self, project_path: Path, environment_type: str):
