@@ -1,8 +1,8 @@
-# PLAN: Run `getfacl` Check Only On RedHat
+# PLAN: Skip `getfacl` Check On Local Development
 
 ## Goal
 
-Change the preflight flow so the default-ACL check runs only on RedHat hosts and is skipped for local development, where macOS does not provide `getfacl`.
+Change the preflight flow so the default-ACL check is skipped for local development and still runs for `staging` and `production`, where this environmental validation is relevant.
 
 
 ## First Step Before Implementation
@@ -19,54 +19,47 @@ Review `AGENTS.md` and follow its repository directives. That has been done for 
 
 ## Recommendation
 
-Add a small OS-gating helper in `lib/lib_environment_checker.py` and use it in preflight to decide whether the ACL check should run.
+Add a small environment-type gating helper in `lib/lib_environment_checker.py` and use it in preflight to decide whether the ACL check should run.
 
 Recommended shape:
 
 ```python
-def should_check_default_directory_facls(environment_type: str) -> bool:
+def should_check_facls(environment_type: str) -> bool:
 ```
 
 Behavior:
 
-- Return `False` for `environment_type == 'local'`.
-- For non-local hosts, separately detect whether the OS is RedHat.
-- Return `True` only when both conditions are satisfied.
+- Return `False` if `environment_type` is anything other than `staging` or `production`.
+- Return `True` if `environment_type` is `staging` or `production`.
 - Keep `check_default_directory_facls()` focused on ACL validation only; do not bury environment-detection logic inside it.
-
-FEEDBACK:
-- Return `False` if `environment_type` is anything other than `production` or `staging`.
-- Return `True` if `environment_type` is `production` or `staging` -- regardless of OS. No need for the RedHat check.
 
 
 ## Why This Shape
 
 - It keeps the skip decision near preflight orchestration, where the other environment-dependent decisions already live.
-- It respects the current meaning of `environment_type`, which is deployment role, not OS family.
-- It avoids treating `staging` or `production` as synonyms for "RedHat", which would be broader than the stated goal.
+- It respects the current meaning of `environment_type`, which is deployment role.
+- It cleanly solves the actual problem: local macOS should not try to run `getfacl`.
 - It gives tests a narrow seam to patch without needing to mock `getfacl` for local-only scenarios.
 
 
-## RedHat Detection
+## Gating Rule
 
-Use explicit OS detection rather than hostname prefixes alone. `determine_environment_type()` should stay responsible only for returning `local`, `staging`, or `production`; it should not be expanded to return OS-specific values like `redhat`.
+Use `environment_type` only. `determine_environment_type()` already returns `local`, `staging`, or `production`, and that is enough to decide whether the ACL check should run.
 
 Recommended approach:
 
-1. Add a helper that inspects `/etc/redhat-release`.
-2. Treat its presence as the RedHat signal.
-3. Return `False` if the file is absent.
+1. If `environment_type` is `local`, skip the ACL check.
+2. If `environment_type` is `staging` or `production`, run the ACL check.
 
 Why this approach:
 
-- It is simple and matches the deployment target directly.
+- It is the smallest correct change.
 - It cleanly excludes macOS local development.
-- It avoids changing the meaning of `environment_type`.
-- It avoids assuming every `staging` or `production` host is RedHat forever.
+- It avoids introducing OS-detection logic that the feedback says is unnecessary.
 
 Alternative:
 
-- `platform.system() == 'Linux'` is too broad for the stated requirement.
+- Adding RedHat detection is unnecessary for the stated requirement.
 
 
 ## Proposed Code Changes
@@ -78,17 +71,15 @@ File: `lib/lib_environment_checker.py`
 Add a helper such as:
 
 ```python
-def should_check_default_directory_facls(environment_type: str) -> bool:
+def should_check_facls(environment_type: str) -> bool:
 ```
 
 Implementation outline:
 
-- if `environment_type == 'local'`: return `False`
-- else:
-  - check whether `Path('/etc/redhat-release').exists()`
-  - return that boolean
+- if `environment_type` is `'staging'` or `'production'`: return `True`
+- otherwise: return `False`
 
-This keeps the existing environment-type API intact while layering OS detection on top of it.
+This keeps the existing environment-type API intact and makes the gating rule explicit in one place.
 
 This helper should log its decision at `info` level so the skip is visible in updater logs.
 
@@ -106,11 +97,11 @@ lib_environment_checker.check_default_directory_facls(project_path, group, proje
 with:
 
 ```python
-if lib_environment_checker.should_check_default_directory_facls(environment_type):
+if lib_environment_checker.should_check_facls(environment_type):
     lib_environment_checker.check_default_directory_facls(project_path, group, project_email_addresses)
 ```
 
-This preserves the existing ACL-check implementation and error handling on RedHat while skipping it elsewhere.
+This preserves the existing ACL-check implementation and error handling for `staging` and `production` while skipping it on `local`.
 
 
 ### 3. Keep `check_default_directory_facls()` unchanged unless needed
@@ -123,7 +114,7 @@ The ACL checker already handles:
 - non-zero return code
 - missing expected ACL line
 
-Those behaviors are still correct when the function is called on RedHat only, so no functional rewrite is needed unless log wording should mention the RedHat-only scope.
+Those behaviors are still correct when the function is called only for `staging` and `production`, so no functional rewrite is needed unless log wording should mention the local-development skip.
 
 
 ## Tests To Add Or Update
@@ -132,16 +123,16 @@ Those behaviors are still correct when the function is called on RedHat only, so
 
 File: `tests/test_environment_checks.py`
 
-Add focused tests for `should_check_default_directory_facls()`:
+Add focused tests for `should_check_facls()`:
 
-- returns `False` for `local` without checking RedHat state
-- returns `True` for `staging` when `/etc/redhat-release` exists
-- returns `True` for `production` when `/etc/redhat-release` exists
-- returns `False` for non-local when `/etc/redhat-release` does not exist
+- returns `False` for `local`
+- returns `True` for `staging`
+- returns `True` for `production`
+- returns `False` for any unexpected value, to keep the helper conservative
 
 Testing approach:
 
-- patch `lib.lib_environment_checker.Path.exists`
+- direct unit tests, no filesystem patching needed
 
 
 ### 2. Preflight orchestration tests
@@ -151,7 +142,7 @@ File: `tests/test_auto_updater.py`
 Update common patches to include:
 
 ```python
-patch('auto_updater.lib_environment_checker.should_check_default_directory_facls', return_value=True)
+patch('auto_updater.lib_environment_checker.should_check_facls', return_value=True)
 ```
 
 Add focused orchestration coverage for:
@@ -170,8 +161,8 @@ Keep the existing `check_default_directory_facls()` tests. They still cover the 
 ## Expected Outcome
 
 - Local macOS development no longer attempts to run `getfacl`.
-- RedHat staging/production hosts still enforce the ACL preflight check.
-- The RedHat-only requirement is captured in one explicit helper instead of overloading `determine_environment_type()` with OS semantics.
+- `staging` and `production` still enforce the ACL preflight check.
+- The skip rule is captured in one explicit helper instead of being embedded implicitly in preflight.
 
 
 ## Validation
