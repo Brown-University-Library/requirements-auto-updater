@@ -91,3 +91,10 @@ _(for reference)_
 
 ---
 
+- Review `requirements-auto-updater/AGENTS.md` for coding directives to follow.
+
+- Review `requirements-auto-updater/PLAN__facl_environmental_check.md`.
+
+- Implement the plan.
+
+---
