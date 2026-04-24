@@ -13,7 +13,7 @@ Review `AGENTS.md` and follow its repository directives. That has been done for 
 ## Current State
 
 - `auto_updater.run_preflight_checks()` always calls `lib_environment_checker.check_default_directory_facls(...)` after `determine_group()`.
-- `determine_environment_type()` already classifies the host as `local`, `staging`, or `production`.
+- `determine_environment_type()` currently returns only `local`, `staging`, or `production`, based on hostname prefixes.
 - The ACL checker itself directly shells out to `getfacl`, so local macOS runs will fail before the updater reaches the rest of preflight.
 
 
@@ -30,7 +30,8 @@ def should_check_default_directory_facls(environment_type: str) -> bool:
 Behavior:
 
 - Return `False` for `environment_type == 'local'`.
-- For non-local hosts, return `True` only when the OS is RedHat.
+- For non-local hosts, separately detect whether the OS is RedHat.
+- Return `True` only when both conditions are satisfied.
 - Keep `check_default_directory_facls()` focused on ACL validation only; do not bury environment-detection logic inside it.
 
 FEEDBACK:
@@ -41,13 +42,14 @@ FEEDBACK:
 ## Why This Shape
 
 - It keeps the skip decision near preflight orchestration, where the other environment-dependent decisions already live.
-- It avoids treating "not local" as a synonym for "RedHat", which is broader than the stated goal.
+- It respects the current meaning of `environment_type`, which is deployment role, not OS family.
+- It avoids treating `staging` or `production` as synonyms for "RedHat", which would be broader than the stated goal.
 - It gives tests a narrow seam to patch without needing to mock `getfacl` for local-only scenarios.
 
 
 ## RedHat Detection
 
-Use explicit OS detection rather than hostname prefixes alone.
+Use explicit OS detection rather than hostname prefixes alone. `determine_environment_type()` should stay responsible only for returning `local`, `staging`, or `production`; it should not be expanded to return OS-specific values like `redhat`.
 
 Recommended approach:
 
@@ -59,6 +61,7 @@ Why this approach:
 
 - It is simple and matches the deployment target directly.
 - It cleanly excludes macOS local development.
+- It avoids changing the meaning of `environment_type`.
 - It avoids assuming every `staging` or `production` host is RedHat forever.
 
 Alternative:
@@ -84,6 +87,8 @@ Implementation outline:
 - else:
   - check whether `Path('/etc/redhat-release').exists()`
   - return that boolean
+
+This keeps the existing environment-type API intact while layering OS detection on top of it.
 
 This helper should log its decision at `info` level so the skip is visible in updater logs.
 
@@ -166,7 +171,7 @@ Keep the existing `check_default_directory_facls()` tests. They still cover the 
 
 - Local macOS development no longer attempts to run `getfacl`.
 - RedHat staging/production hosts still enforce the ACL preflight check.
-- The RedHat-only requirement is captured in one explicit helper instead of being inferred indirectly from hostnames.
+- The RedHat-only requirement is captured in one explicit helper instead of overloading `determine_environment_type()` with OS semantics.
 
 
 ## Validation

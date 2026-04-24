@@ -112,3 +112,8 @@ Task:
 - Make a plan to add the exclusion, and save it to `requirements-auto-updater/PLAN__facl_check_on_redhat_only.md`
 
 ---
+
+› Update the plan given the feedback.
+
+---
+
