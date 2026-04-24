@@ -10,7 +10,7 @@ Add a new preflight/environmental check that verifies the target project directo
 - Preflight orchestration lives in [`auto_updater.py`](/Users/birkin/Documents/Brown_Library/auto_updater_stuff/requirements-auto-updater/auto_updater.py), in `run_preflight_checks()`.
 - The environmental checker functions live in [`lib/lib_environment_checker.py`](/Users/birkin/Documents/Brown_Library/auto_updater_stuff/requirements-auto-updater/lib/lib_environment_checker.py).
 - Existing checker functions follow a consistent pattern:
-  - log start
+  - log start, in the form of `::: checking the-thing ----------`
   - perform a focused validation
   - on failure: create message, send email, raise `Exception`
   - on success: log `ok / ...`
@@ -56,6 +56,8 @@ Recommended order in `run_preflight_checks()`:
 - It depends on `group`, so it should come after `determine_group()`.
 - It should run before the recursive group/permission scan, because ACL misconfiguration is the more structural/root-cause problem.
 - If ACLs are missing, the later file-permission failure is often just a downstream symptom, especially for `.venv/__pycache__` files.
+
+FEEDBACK: Agreed -- this placement makes sense.
 
 ### Alternative
 
@@ -165,6 +167,8 @@ This is more defensive if you want to avoid coupling to exact execute-bit render
 
 Start with Option A unless you already know `getfacl` output varies across your fleet. The repo’s current checker style is straightforward and explicit; overly abstract parsing would be out of character.
 
+FEEDBACK: Definitely go with `Option A: direct line membership check`.
+
 
 ## Proposed Code Changes
 
@@ -212,7 +216,7 @@ Add focused tests for:
 - success when `getfacl` output contains the expected default group ACL
 - failure when `getfacl` output has no default ACL block
 - failure when `getfacl` exits non-zero
-- optional: failure when default ACL exists for a different group
+- optional: failure when default ACL exists for a different group -- FEEDBACK: not-needed.
 
 Testing approach:
 
@@ -272,11 +276,11 @@ Unable to run `getfacl`: ...
 ## Risks / Edge Cases
 
 - `getfacl` may not be installed on some systems.
-  - Recommendation: treat that as a failed environmental prerequisite.
+  - Recommendation: treat that as a failed environmental prerequisite. FEEDBACK: agreed.
 - Some ACL output may include effective permissions or additional named entries.
-  - Recommendation: ignore extra lines and check only required lines.
+  - Recommendation: ignore extra lines and check only required lines. FEEDBACK: agreed.
 - Group inference via `determine_group()` is based on `ls -l` output and “most common group”.
-  - That is already an existing assumption in this codebase, so the new check should reuse it rather than invent a second source of truth.
+  - That is already an existing assumption in this codebase, so the new check should reuse it rather than invent a second source of truth. FEEDBACK: agreed.
 
 
 ## Final Recommendation
