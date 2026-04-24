@@ -98,3 +98,17 @@ _(for reference)_
 - Implement the plan.
 
 ---
+
+Goal: Only run the `getfacl` check on RedHat.
+
+Context:
+
+- For local-development, skip the `getfacl` check; macOS doesn't use it.
+
+Task:
+
+- Review `requirements-auto-updater/AGENTS.md` for code-directives to follow.
+
+- Make a plan to add the exclusion, and save it to `requirements-auto-updater/PLAN__facl_check_on_redhat_only.md`
+
+---
