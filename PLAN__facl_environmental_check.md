@@ -302,3 +302,25 @@ That gives you:
 3. Add unit tests in `tests/test_environment_checks.py`.
 4. Update `tests/test_auto_updater.py` mocks for the new preflight call.
 5. Run `uv run ./run_tests.py`.
+
+---
+
+## Original Prompt (for reference)
+
+Goal: explain the situation in which for some collections, an "Artist" facet, in a Studio collection-page, shows source-mods data like "Moore, Philip Alphonso" -- being displayed as separate "Moore", "Philip", and "Alphonso" entries.
+
+Context:
+
+- I have a vague recollection that this is caused by staff selecting, in the Workshop's collection-config form -- a solr field designed to split words instead of a solr field designed to maintain them.
+
+Tasks:
+
+- Skim the `bdr_ecosystem_project/AGENT_info` index entries for any info related to this. (And associated summary entries if you think that'd be useful.)
+
+- Pay particular attention to the workshop, the studio, and the solr-schema index files.
+
+- Review any relevant code in the `bdr_ecosystem_project/bdr_repos` project-repos you think would be useful.
+
+- Save your findings to `bdr_ecosystem_project/bdr_analyses/workshop_collection_facet_analysis.md`
+
+---
