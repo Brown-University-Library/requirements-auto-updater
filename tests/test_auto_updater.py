@@ -7,6 +7,78 @@ import auto_updater
 
 
 class TestManageUpdateWorkflows(unittest.TestCase):
+    def test_run_preflight_checks_runs_acl_check_when_enabled(self) -> None:
+        """
+        Checks preflight calls the ACL check when facl gating returns True.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_path = Path(tmpdir).resolve()
+            with patch('auto_updater.lib_environment_checker.validate_project_path', return_value=None):
+                with patch('auto_updater.os.chdir', return_value=None):
+                    with patch(
+                        'auto_updater.lib_environment_checker.determine_project_email_addresses',
+                        return_value=[('Admin', 'admin@example.com')],
+                    ):
+                        with patch('auto_updater.lib_environment_checker.check_branch', return_value=None):
+                            with patch('auto_updater.lib_environment_checker.check_git_status', return_value=None):
+                                with patch('auto_updater.lib_environment_checker.validate_pyproject_toml', return_value=None):
+                                    with patch(
+                                        'auto_updater.lib_environment_checker.determine_environment_type',
+                                        return_value='staging',
+                                    ):
+                                        with patch('auto_updater.lib_environment_checker.validate_uv_path', return_value=None):
+                                            with patch('auto_updater.lib_environment_checker.determine_group', return_value='staff'):
+                                                with patch(
+                                                    'auto_updater.lib_environment_checker.should_check_facls',
+                                                    return_value=True,
+                                                ):
+                                                    with patch(
+                                                        'auto_updater.lib_environment_checker.check_default_directory_facls',
+                                                        return_value=None,
+                                                    ) as mock_check_facls:
+                                                        with patch(
+                                                            'auto_updater.lib_environment_checker.check_group_and_permissions',
+                                                            return_value=None,
+                                                        ):
+                                                            auto_updater.run_preflight_checks(str(project_path))
+            mock_check_facls.assert_called_once_with(project_path, 'staff', [('Admin', 'admin@example.com')])
+
+    def test_run_preflight_checks_skips_acl_check_when_disabled(self) -> None:
+        """
+        Checks preflight skips the ACL check when facl gating returns False.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_path = Path(tmpdir).resolve()
+            with patch('auto_updater.lib_environment_checker.validate_project_path', return_value=None):
+                with patch('auto_updater.os.chdir', return_value=None):
+                    with patch(
+                        'auto_updater.lib_environment_checker.determine_project_email_addresses',
+                        return_value=[('Admin', 'admin@example.com')],
+                    ):
+                        with patch('auto_updater.lib_environment_checker.check_branch', return_value=None):
+                            with patch('auto_updater.lib_environment_checker.check_git_status', return_value=None):
+                                with patch('auto_updater.lib_environment_checker.validate_pyproject_toml', return_value=None):
+                                    with patch(
+                                        'auto_updater.lib_environment_checker.determine_environment_type',
+                                        return_value='local',
+                                    ):
+                                        with patch('auto_updater.lib_environment_checker.validate_uv_path', return_value=None):
+                                            with patch('auto_updater.lib_environment_checker.determine_group', return_value='staff'):
+                                                with patch(
+                                                    'auto_updater.lib_environment_checker.should_check_facls',
+                                                    return_value=False,
+                                                ):
+                                                    with patch(
+                                                        'auto_updater.lib_environment_checker.check_default_directory_facls',
+                                                        return_value=None,
+                                                    ) as mock_check_facls:
+                                                        with patch(
+                                                            'auto_updater.lib_environment_checker.check_group_and_permissions',
+                                                            return_value=None,
+                                                        ):
+                                                            auto_updater.run_preflight_checks(str(project_path))
+            mock_check_facls.assert_not_called()
+
     def test_staging_no_pending_change_skips_real_update_flow(self) -> None:
         """
         Checks that a no-op staging dry-run skips sync, follow-up tests, git, and diff email.
@@ -92,6 +164,8 @@ class TestManageUpdateWorkflows(unittest.TestCase):
             patch('auto_updater.lib_environment_checker.determine_environment_type', return_value=environment_type),
             patch('auto_updater.lib_environment_checker.validate_uv_path', return_value=None),
             patch('auto_updater.lib_environment_checker.determine_group', return_value='staff'),
+            patch('auto_updater.lib_environment_checker.should_check_facls', return_value=True),
+            patch('auto_updater.lib_environment_checker.check_default_directory_facls', return_value=None),
             patch('auto_updater.lib_environment_checker.check_group_and_permissions', return_value=None),
             patch('auto_updater.run_initial_tests', return_value=None),
         ]

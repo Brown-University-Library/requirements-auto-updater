@@ -8,7 +8,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 ## Project basics
 
 - Primary language: Python
-- Target runtime: Python 3.12
+- Target runtime: Python 3.12 -- unless a `pyproject.toml` specifies a different version
 - Dependency / execution tool: `uv`
 - Project-root is the directory containing this file (and `.git/`, and `.gitignore`).
 
@@ -28,7 +28,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 
 ### Type hints and imports
 
-- Use Python 3.12 type hints everywhere (functions and important variables).
+- Use Python 3.12 type hints everywhere (functions and important variables). (Unless a `pyproject.toml` specifies a different version.)
 - Prefer builtin generics (e.g., `list[str]`, `dict[str, int]`) over `typing.List` / `typing.Dict`.
 - Prefer PEP 604 unions (e.g., `str | None`) over `Optional[str]`.
 - Avoid `typing` and `annotations` imports unless strictly necessary.
@@ -40,6 +40,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
   - `if __name__ == '__main__': main()`
 - Keep `main()` simple: parse args / orchestrate calls only.
 - Put real logic into top-level helper functions and modules (no nested function definitions).
+- Rarely use more than three levels of hierarchy: main() can call helper_A() which can call helper(B) which can, if necessary, can call helper(C) -- but that's it.
 
 ### Functions and control flow
 
@@ -63,6 +64,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
     """
     ```
   - Avoid: `"""Parse ..."""`
+- The last line of non-test function-docstrings should be: `Called by: the_caller_function()` (or, if in another class/module, `Called by: module.Class.the_caller_function()`)
 - Start test-function docstring-text with "Checks..."
 - For header-comments, in functions, start the comment with two hashes (e.g., `## does this`).
 
@@ -76,7 +78,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 ### View-layer responsibilities
 
 - `project/app/views.py` should contain **only** view functions that directly handle URL endpoints.
-- Every view function in `project/app/views.py` should correspond to an entry in `pdf_checker_project/config/urls.py`.
+- Every view function in `project/app/views.py` should correspond to an entry in `project/config/urls.py`.
 - Views should act as **manager/orchestrator** functions:
   - Parse request input (query params, POST body, files)
   - Perform minimal validation and shaping of inputs

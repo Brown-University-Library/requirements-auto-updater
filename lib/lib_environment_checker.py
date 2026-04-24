@@ -272,6 +272,18 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     return env_type
 
 
+def should_check_facls(environment_type: str) -> bool:
+    """
+    Determines whether the default-directory ACL check should run for the current environment type.
+
+    Called by: auto_updater.run_preflight_checks()
+    """
+    log.info('::: determining whether facl check should run ----------')
+    should_check: bool = environment_type in ['staging', 'production']
+    log.info(f'ok / should_check_facls, ``{should_check}``, for environment_type, ``{environment_type}``')
+    return should_check
+
+
 # def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
 #     """
 #     Infers environment type based on the system hostname.
@@ -356,6 +368,59 @@ def determine_group(project_path: Path, project_email_addresses: list[tuple[str,
         emailer.send_email(project_email_addresses, email_message)
         ## raise exception -----------------------------------------
         raise Exception(message)
+
+
+def check_default_directory_facls(
+    project_path: Path, expected_group: str, project_email_addresses: list[tuple[str, str]]
+) -> None:
+    """
+    Checks that the project directory has the expected default ACL entry for the inferred group.
+    If there are any problems:
+    - Sends an email to the project sys-admins
+    - Exits the script
+
+    Called by: auto_updater.run_preflight_checks()
+    """
+    log.info('::: checking default directory facls ----------')
+    required_line: str = f'default:group:{expected_group}:rwx'
+    try:
+        result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['getfacl', str(project_path)], capture_output=True, text=True, check=False
+        )
+    except FileNotFoundError as e:
+        message = f'Error: Default ACL check failed for project directory ``{project_path}``. Unable to run `getfacl`: {e}'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+
+    if result.returncode != 0:
+        stderr: str = result.stderr.strip()
+        message = (
+            f'Error: Default ACL check failed for project directory ``{project_path}``. '
+            f'`getfacl` exited non-zero: {stderr}'
+        )
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+
+    output_lines: list[str] = [line.strip() for line in result.stdout.splitlines()]
+    if required_line not in output_lines:
+        message = (
+            f'Error: Default ACL check failed for project directory ``{project_path}``. '
+            f'Expected default ACL entry for group ``{expected_group}`` was not found.'
+        )
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+
+    log.info(f'ok / default ACL entry found, ``{required_line}``')
+    return
 
 
 def check_group_and_permissions(
