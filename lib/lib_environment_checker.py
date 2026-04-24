@@ -358,6 +358,59 @@ def determine_group(project_path: Path, project_email_addresses: list[tuple[str,
         raise Exception(message)
 
 
+def check_default_directory_facls(
+    project_path: Path, expected_group: str, project_email_addresses: list[tuple[str, str]]
+) -> None:
+    """
+    Checks that the project directory has the expected default ACL entry for the inferred group.
+    If there are any problems:
+    - Sends an email to the project sys-admins
+    - Exits the script
+
+    Called by: auto_updater.run_preflight_checks()
+    """
+    log.info('::: checking default directory facls ----------')
+    required_line: str = f'default:group:{expected_group}:rwx'
+    try:
+        result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['getfacl', str(project_path)], capture_output=True, text=True, check=False
+        )
+    except FileNotFoundError as e:
+        message = f'Error: Default ACL check failed for project directory ``{project_path}``. Unable to run `getfacl`: {e}'
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+
+    if result.returncode != 0:
+        stderr: str = result.stderr.strip()
+        message = (
+            f'Error: Default ACL check failed for project directory ``{project_path}``. '
+            f'`getfacl` exited non-zero: {stderr}'
+        )
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+
+    output_lines: list[str] = [line.strip() for line in result.stdout.splitlines()]
+    if required_line not in output_lines:
+        message = (
+            f'Error: Default ACL check failed for project directory ``{project_path}``. '
+            f'Expected default ACL entry for group ``{expected_group}`` was not found.'
+        )
+        log.exception(message)
+        emailer = Emailer(project_path)
+        email_message: str = emailer.create_setup_problem_message(message)
+        emailer.send_email(project_email_addresses, email_message)
+        raise Exception(message)
+
+    log.info(f'ok / default ACL entry found, ``{required_line}``')
+    return
+
+
 def check_group_and_permissions(
     project_path: Path, expected_group: str, project_email_addresses: list[tuple[str, str]]
 ) -> None:

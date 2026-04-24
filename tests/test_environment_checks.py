@@ -659,6 +659,96 @@ class TestEnvironmentChecks(unittest.TestCase):
                 self.assertIn('Error inferring group:', str(ctx.exception))
                 mock_send.assert_called_once()
 
+    ## default-acl checks ------------------------------------------
+
+    def test_check_default_directory_facls_ok(self) -> None:
+        """
+        Checks success when getfacl output contains the expected default group ACL entry.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            expected_group = 'staff'
+            stdout = '\n'.join(
+                [
+                    '# file: proj',
+                    'user::rwx',
+                    'group::rwx',
+                    'other::r-x',
+                    'default:user::rwx',
+                    'default:group::rwx',
+                    f'default:group:{expected_group}:rwx',
+                    'default:mask::rwx',
+                    'default:other::r-x',
+                ]
+            )
+            completed_process = subprocess.CompletedProcess(
+                args=['getfacl', str(project_path)], returncode=0, stdout=stdout, stderr=''
+            )
+            with patch('lib.lib_environment_checker.subprocess.run', return_value=completed_process) as mock_run:
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    self.assertIsNone(
+                        lib_environment_checker.check_default_directory_facls(
+                            project_path, expected_group, project_email_addresses
+                        )
+                    )
+                    mock_run.assert_called_once_with(
+                        ['getfacl', str(project_path)], capture_output=True, text=True, check=False
+                    )
+                    mock_send.assert_not_called()
+
+    def test_check_default_directory_facls_missing_acl_raises(self) -> None:
+        """
+        Checks failure when getfacl output does not include the expected default group ACL entry.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            expected_group = 'staff'
+            stdout = '\n'.join(
+                [
+                    '# file: proj',
+                    'user::rwx',
+                    'group::rwx',
+                    'other::r-x',
+                ]
+            )
+            completed_process = subprocess.CompletedProcess(
+                args=['getfacl', str(project_path)], returncode=0, stdout=stdout, stderr=''
+            )
+            with patch('lib.lib_environment_checker.subprocess.run', return_value=completed_process):
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    with self.assertRaises(Exception) as ctx:
+                        lib_environment_checker.check_default_directory_facls(
+                            project_path, expected_group, project_email_addresses
+                        )
+                    self.assertIn('Error: Default ACL check failed for project directory', str(ctx.exception))
+                    self.assertIn(f'group ``{expected_group}`` was not found', str(ctx.exception))
+                    mock_send.assert_called_once()
+
+    def test_check_default_directory_facls_nonzero_returncode_raises(self) -> None:
+        """
+        Checks failure when getfacl exits non-zero.
+        """
+        with TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            project_email_addresses = [('Admin', 'admin@example.com')]
+            completed_process = subprocess.CompletedProcess(
+                args=['getfacl', str(project_path)],
+                returncode=1,
+                stdout='',
+                stderr='permission denied',
+            )
+            with patch('lib.lib_environment_checker.subprocess.run', return_value=completed_process):
+                with patch('lib.lib_environment_checker.Emailer.send_email', return_value=None) as mock_send:
+                    with self.assertRaises(Exception) as ctx:
+                        lib_environment_checker.check_default_directory_facls(
+                            project_path, 'staff', project_email_addresses
+                        )
+                    self.assertIn('Error: Default ACL check failed for project directory', str(ctx.exception))
+                    self.assertIn('`getfacl` exited non-zero', str(ctx.exception))
+                    mock_send.assert_called_once()
+
     ## permissions checks -------------------------------------------
 
     def test_check_group_and_permissions_ok(self) -> None:

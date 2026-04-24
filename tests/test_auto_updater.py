@@ -92,6 +92,7 @@ class TestManageUpdateWorkflows(unittest.TestCase):
             patch('auto_updater.lib_environment_checker.determine_environment_type', return_value=environment_type),
             patch('auto_updater.lib_environment_checker.validate_uv_path', return_value=None),
             patch('auto_updater.lib_environment_checker.determine_group', return_value='staff'),
+            patch('auto_updater.lib_environment_checker.check_default_directory_facls', return_value=None),
             patch('auto_updater.lib_environment_checker.check_group_and_permissions', return_value=None),
             patch('auto_updater.run_initial_tests', return_value=None),
         ]

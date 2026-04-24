@@ -114,6 +114,8 @@ def run_preflight_checks(project_path_str: str) -> PreflightData:
     lib_environment_checker.validate_uv_path(uv_path, project_path)
     ## get group ----------------------------------------------------
     group: str = lib_environment_checker.determine_group(project_path, project_email_addresses)
+    ## check for default directory ACLs -----------------------------
+    lib_environment_checker.check_default_directory_facls(project_path, group, project_email_addresses)
     ## check for correct group and group-write permissions ----------
     lib_environment_checker.check_group_and_permissions(project_path, group, project_email_addresses)
     preflight_data = PreflightData(
