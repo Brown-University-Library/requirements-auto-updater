@@ -593,6 +593,21 @@ class TestEnvironmentChecks(unittest.TestCase):
                         )
                         self.assertEqual(expected, result)
 
+    def test_should_check_facls_valid_values(self) -> None:
+        """
+        Checks facl-check gating for supported environment types.
+        """
+        cases: list[tuple[str, bool]] = [
+            ('local', False),
+            ('staging', True),
+            ('production', True),
+            ('unexpected', False),
+        ]
+        for environment_type, expected in cases:
+            with self.subTest(environment_type=environment_type, expected=expected):
+                result: bool = lib_environment_checker.should_check_facls(environment_type)
+                self.assertEqual(expected, result)
+
     ## uv-path checks -----------------------------------------------
 
     def test_validate_uv_path_ok(self) -> None:

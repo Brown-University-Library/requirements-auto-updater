@@ -272,6 +272,18 @@ def determine_environment_type(project_path: Path, project_email_addresses: list
     return env_type
 
 
+def should_check_facls(environment_type: str) -> bool:
+    """
+    Determines whether the default-directory ACL check should run for the current environment type.
+
+    Called by: auto_updater.run_preflight_checks()
+    """
+    log.info('::: determining whether facl check should run ----------')
+    should_check: bool = environment_type in ['staging', 'production']
+    log.info(f'ok / should_check_facls, ``{should_check}``, for environment_type, ``{environment_type}``')
+    return should_check
+
+
 # def determine_environment_type(project_path: Path, project_email_addresses: list[tuple[str, str]]) -> str:
 #     """
 #     Infers environment type based on the system hostname.
